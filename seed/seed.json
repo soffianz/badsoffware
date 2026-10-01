@@ -1,0 +1,632 @@
+[
+ {
+  "path": "meta/trip",
+  "data": {
+   "name": "BBC26",
+   "startDate": "2026-10-07",
+   "endDate": "2026-10-09",
+   "checkInTime": "15:00",
+   "lateBy": 0,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d0-shereef",
+  "data": {
+   "day": 0,
+   "order": 1,
+   "when": "Night",
+   "title": "Pick up Shereef at KLIA1",
+   "place": "KLIA1",
+   "note": "Shereef stays at Soff's, Arcadia Apartment, USJ 11.",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d1-depart",
+  "data": {
+   "day": 1,
+   "order": 1,
+   "start": "07:00",
+   "title": "Depart USJ 11",
+   "place": "Arcadia Apartment, USJ 11, Subang Jaya",
+   "note": "Soff and Shereef.",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d1-arif",
+  "data": {
+   "day": 1,
+   "order": 2,
+   "start": "07:40",
+   "approx": true,
+   "title": "Pick up Arif",
+   "place": "Pantai Panorama, Bangsar South",
+   "note": "Rush hour on Federal Highway, allow slack.",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d1-bentong",
+  "data": {
+   "day": 1,
+   "order": 3,
+   "start": "08:50",
+   "approx": true,
+   "title": "Arrive Bentong",
+   "place": "Bentong, Pahang",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d1-breakfast",
+  "data": {
+   "day": 1,
+   "order": 4,
+   "start": "08:50",
+   "end": "09:40",
+   "title": "Breakfast at Lemang To'ki",
+   "place": "Lemang To'ki, Bentong",
+   "note": "Lemang, rendang, ayam bakar.",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d1-leave-bentong",
+  "data": {
+   "day": 1,
+   "order": 5,
+   "start": "09:40",
+   "title": "Depart for Chemerong",
+   "flag": "Leg estimated at 2h45m, may run long",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d1-chemerong",
+  "data": {
+   "day": 1,
+   "order": 6,
+   "start": "12:30",
+   "end": "15:00",
+   "approx": true,
+   "title": "Chemerong Waterfall",
+   "place": "Chemerong Waterfall",
+   "note": "Proper hike, about 2.5h round trip.",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d1-leave-chemerong",
+  "data": {
+   "day": 1,
+   "order": 7,
+   "start": "15:00",
+   "title": "Depart for Kuala Dungun",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d1-arrive",
+  "data": {
+   "day": 1,
+   "order": 8,
+   "key": "arrive",
+   "start": "16:00",
+   "approx": true,
+   "title": "Arrive and check in",
+   "place": "A'king Jetty, Jalan Rajawali, 23000 Kuala Dungun, Terengganu",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d1-evening",
+  "data": {
+   "day": 1,
+   "order": 9,
+   "when": "Evening",
+   "start": "18:00",
+   "title": "Free time",
+   "note": "Optional loop: A'king Jetty, Kampung Balik Bukit, Seberang Pintasan Jetty, Dungun coast, back to A'king Jetty.",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d2-dive",
+  "data": {
+   "day": 2,
+   "order": 1,
+   "when": "Time TBC",
+   "title": "Tenggol Island dive day trip",
+   "place": "A'king Jetty, Jalan Rajawali, 23000 Kuala Dungun, Terengganu",
+   "note": "Timings per boat operator.",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d3-morning",
+  "data": {
+   "day": 3,
+   "order": 1,
+   "when": "Morning",
+   "title": "Slow morning in Kuala Dungun, checkout",
+   "note": "Checkout time TBC.",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d3-drive",
+  "data": {
+   "day": 3,
+   "order": 2,
+   "when": "Midday",
+   "title": "Drive back to KL",
+   "note": "Lunch stop to be decided.",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "itinerary/d4-flight",
+  "data": {
+   "day": 4,
+   "order": 1,
+   "when": "Night",
+   "title": "Shereef flies out, KLIA1",
+   "place": "KLIA1",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "ledgerLines/transport-rental",
+  "data": {
+   "category": "Transport",
+   "item": "Car rental",
+   "budget": 450,
+   "order": 1,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "ledgerLines/transport-petrol",
+  "data": {
+   "category": "Transport",
+   "item": "Petrol",
+   "budget": 100,
+   "order": 2,
+   "note": "RM 100 is likely light for about 900 km. RM 130 to 140 is more realistic.",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "ledgerLines/transport-tolls",
+  "data": {
+   "category": "Transport",
+   "item": "Tolls (round trip, estimate)",
+   "budget": 120,
+   "order": 3,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "ledgerLines/dive-stay",
+  "data": {
+   "category": "Dive and stay",
+   "item": "Dive + accommodation",
+   "budget": 3400,
+   "order": 4,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "ledgerLines/food-meals",
+  "data": {
+   "category": "Food",
+   "item": "Meals",
+   "budget": null,
+   "order": 5,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "ledgerLines/act-chemerong",
+  "data": {
+   "category": "Activities",
+   "item": "Chemerong entry",
+   "budget": null,
+   "order": 6,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p01",
+  "data": {
+   "scope": "personal",
+   "name": "IC or passport",
+   "ticks": {},
+   "order": 1,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p02",
+  "data": {
+   "scope": "personal",
+   "name": "Driving licence (drivers)",
+   "ticks": {},
+   "order": 2,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p03",
+  "data": {
+   "scope": "personal",
+   "name": "Dive cert card",
+   "ticks": {},
+   "order": 3,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p04",
+  "data": {
+   "scope": "personal",
+   "name": "Dive logbook",
+   "ticks": {},
+   "order": 4,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p05",
+  "data": {
+   "scope": "personal",
+   "name": "Mask",
+   "ticks": {},
+   "order": 5,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p06",
+  "data": {
+   "scope": "personal",
+   "name": "Swimwear",
+   "ticks": {},
+   "order": 6,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p07",
+  "data": {
+   "scope": "personal",
+   "name": "Rash guard",
+   "ticks": {},
+   "order": 7,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p08",
+  "data": {
+   "scope": "personal",
+   "name": "Trekking shoes for Chemerong",
+   "ticks": {},
+   "order": 8,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p09",
+  "data": {
+   "scope": "personal",
+   "name": "Quick-dry change of clothes",
+   "ticks": {},
+   "order": 9,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p10",
+  "data": {
+   "scope": "personal",
+   "name": "Towel",
+   "ticks": {},
+   "order": 10,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p11",
+  "data": {
+   "scope": "personal",
+   "name": "Reef-safe sunscreen",
+   "ticks": {},
+   "order": 11,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p12",
+  "data": {
+   "scope": "personal",
+   "name": "Power bank",
+   "ticks": {},
+   "order": 12,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/p13",
+  "data": {
+   "scope": "personal",
+   "name": "Cash",
+   "ticks": {},
+   "order": 13,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/g01",
+  "data": {
+   "scope": "group",
+   "name": "First aid kit",
+   "ticks": {},
+   "packed": false,
+   "order": 1,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/g02",
+  "data": {
+   "scope": "group",
+   "name": "Car phone mount and chargers",
+   "ticks": {},
+   "packed": false,
+   "order": 2,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/g03",
+  "data": {
+   "scope": "group",
+   "name": "Dry bags",
+   "ticks": {},
+   "packed": false,
+   "order": 3,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/g04",
+  "data": {
+   "scope": "group",
+   "name": "Cooler box with water",
+   "ticks": {},
+   "packed": false,
+   "order": 4,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/g05",
+  "data": {
+   "scope": "group",
+   "name": "Snacks for the drive",
+   "ticks": {},
+   "packed": false,
+   "order": 5,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "kit/g06",
+  "data": {
+   "scope": "group",
+   "name": "Rubbish bags",
+   "ticks": {},
+   "packed": false,
+   "order": 6,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "intel/arif",
+  "data": {
+   "group": "Getting there",
+   "label": "Arif pickup",
+   "value": "Pantai Panorama, Bangsar South, ~07:40",
+   "kind": "text",
+   "status": "Confirmed",
+   "order": 1,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "intel/rental",
+  "data": {
+   "group": "Getting there",
+   "label": "Car rental pickup",
+   "value": "TBC",
+   "kind": "text",
+   "status": "TBC",
+   "neededBy": "2026-10-05",
+   "order": 2,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "intel/jetty",
+  "data": {
+   "group": "Stay",
+   "label": "A'king Jetty",
+   "value": "Jalan Rajawali, 23000 Kuala Dungun, Terengganu",
+   "kind": "address",
+   "status": "Confirmed",
+   "order": 1,
+   "mapsQuery": "A'king Jetty, Jalan Rajawali, 23000 Kuala Dungun, Terengganu",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "intel/checkin",
+  "data": {
+   "group": "Stay",
+   "label": "Check-in time",
+   "value": "15:00 (arriving ~16:00, confirm late check-in)",
+   "kind": "text",
+   "status": "TBC",
+   "neededBy": "2026-10-05",
+   "order": 2,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "intel/checkout",
+  "data": {
+   "group": "Stay",
+   "label": "Checkout time",
+   "value": "TBC",
+   "kind": "time",
+   "status": "TBC",
+   "neededBy": "2026-10-07",
+   "order": 3,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "intel/boat",
+  "data": {
+   "group": "Dive day",
+   "label": "Boat departure",
+   "value": "TBC",
+   "kind": "time",
+   "status": "TBC",
+   "neededBy": "2026-10-05",
+   "order": 1,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "intel/operator",
+  "data": {
+   "group": "Dive day",
+   "label": "Dive operator contact",
+   "value": "TBC",
+   "kind": "phone",
+   "status": "TBC",
+   "neededBy": "2026-10-05",
+   "order": 2,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "intel/return",
+  "data": {
+   "group": "Getting home",
+   "label": "Return drive",
+   "value": "Kuala Dungun to KL, ~midday",
+   "kind": "text",
+   "status": "TBC",
+   "order": 1,
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "intel/sh-arrive",
+  "data": {
+   "group": "People",
+   "label": "Shereef arrives",
+   "value": "KLIA1, Tue 6 Oct, night",
+   "kind": "text",
+   "status": "TBC",
+   "neededBy": "2026-10-05",
+   "order": 1,
+   "note": "Flight time TBC",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "intel/sh-depart",
+  "data": {
+   "group": "People",
+   "label": "Shereef departs",
+   "value": "KLIA1, Mon 12 Oct, night",
+   "kind": "text",
+   "status": "TBC",
+   "order": 2,
+   "note": "Flight time TBC",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ },
+ {
+  "path": "decisions/lunch",
+  "data": {
+   "group": "Getting home",
+   "question": "Day 3 lunch on the way home?",
+   "options": [
+    "Udang Galah Lubuk Hantu",
+    "Somewhere else",
+    "Skip and push on"
+   ],
+   "votes": {},
+   "neededBy": "2026-10-08",
+   "updatedBy": "seed",
+   "updatedAt": 1759800000000
+  }
+ }
+]
