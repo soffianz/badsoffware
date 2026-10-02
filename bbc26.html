@@ -224,7 +224,7 @@ const end=()=>trip().endDate||addDays(start(),2);
 const dayDate=i=>addDays(start(),DAYOFF[i]);
 const list=n=>Object.values(S[n]);
 function me(){const sl=S.crew&&S.crew.slots;if(!sl||!uid)return null;return CODES.find(c=>sl[c]===uid)||null}
-function sealOf(id){const sl=S.crew&&S.crew.slots;if(!sl||!id)return null;return CODES.find(c=>sl[c]===id)||null}
+function sealOf(id){if(CODES.indexOf(id)>=0)return id;const sl=S.crew&&S.crew.slots;if(!sl||!id)return null;return CODES.find(c=>sl[c]===id)||null}
 function clock(){
   const real=new Date(Date.now()+8*3600e3);
   if(!UI.ov)return real.getTime();
@@ -261,7 +261,7 @@ const docsOf={
   ledger:()=>list('ledgerLines').concat(list('ledgerSpends'),list('settlements')),
   intel:()=>list('intel').concat(list('decisions'))
 };
-const others=d=>d&&uid&&d.updatedAt&&d.updatedBy&&d.updatedBy!=='seed'&&d.updatedBy!==uid;
+const others=d=>d&&uid&&d.updatedAt&&d.updatedBy&&d.updatedBy!=='seed'&&d.updatedBy!==uid&&d.updatedBy!==me();
 const unseen=(d,tab)=>others(d)&&d.updatedAt>(UI.base[tab]||0);
 function tabUnseen(tab){
   if(!uid||!S.loaded.seen||tab===UI.tab)return false;
