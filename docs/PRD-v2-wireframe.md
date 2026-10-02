@@ -2,6 +2,15 @@
 
 Restyle only. Same app, same data, same db. The goal is a lighter, plainer page that looks like a wireframe built in raw HTML, with each of the three users seeing it in their own colour.
 
+## 0. How it works
+
+1. Soff, Arif or Shereef opens the shared artifact in their own Claude.
+2. First open only: "Which one are you?" with three boxes (Soff green, Arif blue, Shereef yellow). One tap, never asked again on that phone. Settings can change it.
+3. Three tabs:
+   - **ITINERARY** (home): a "Next up" box for the latest or next closest event, then a simple vertical timeline of every stop. Filled square = done, dashed square = next, solid colour = happening now. Today's day is open, other days collapse.
+   - **LEDGER**: budget, spends, who owes whom.
+   - **INFO**: flight details, booking numbers, phone numbers, addresses and open decisions.
+
 ## 1. Goals
 
 1. Wireframe look: boxes, rules, plain text, default-looking controls.
@@ -75,7 +84,7 @@ Think default HTML with a little discipline.
 - No images. The banner photo and its roughly 100 KB data URI are removed.
 - No external requests at all (no fonts, no CDNs).
 - No inline SVG textures or icon sets.
-- Page file target: under 40 KB, down from about 170 KB.
+- Page file: about 49 KB, down from about 172 KB.
 - No change to the db subscriptions or document count.
 - Implementation is a restyle of the existing file (CSS rewrite, remove banner, icons and textures, swap chips for text tags), not a rewrite. This also keeps the build cheap.
 
@@ -83,7 +92,9 @@ Think default HTML with a little discipline.
 
 - **NOW:** same content per phase, boxed. Header bar replaces the band. Day 2 keeps big monospace time and boat readout, no special treatment otherwise.
 - **LEDGER:** tiles become a 2x2 table. Budget lines become a ruled table. Spends and settle-up become tables.
-- **KIT:** removed from the tab bar (see open questions).
+- **KIT:** removed. Three tabs: ITINERARY, LEDGER, INFO.
+- **ITINERARY:** replaces NOW. Next-up box plus timeline (see section 0). Day 1 also shows the check-in slack and running-late controls.
+- **INFO:** replaces INTEL. Adds Flights and Bookings groups for the add-card sheet.
 - **INTEL:** each card is a bordered box: label, big value, status tag, optional needed-by, actions as words.
 - **Sheets:** square bordered panel, same fields.
 - **Gate ("Which one are you?"):** three square boxes with a coloured outline each, so choosing a person also chooses the colour.
@@ -94,12 +105,11 @@ Think default HTML with a little discipline.
 2. Seals show the same fixed colour per person for every viewer.
 3. Before binding, the UI is grey. After binding, it switches without a reload.
 4. No request leaves the page except the Claude runtime. No images, no fonts.
-5. Page file under 40 KB.
+5. Page file well under the old 172 KB (built: about 49 KB).
 6. Looks right at 375px wide, nothing under the notch or home indicator, text readable on all three colours (yellow with black text).
 7. Existing data, sync, offline bar, change dots, phase logic and writes all behave as before.
 
-## 8. Open questions
+## 8. Decisions
 
-1. **Colour mapping:** is SF green, AR blue, SH yellow right?
-2. **KIT tab:** drop it (3 tabs) or keep it as an empty list you can fill? Recommendation: drop it, since the packing items were not relevant. The code and any data stay recoverable.
-3. **Attention strip:** keep the three-item cap with "+n more"? Recommendation: keep.
+- Colours: SF green, AR blue, SH yellow.
+- KIT dropped. Attention strip kept, capped at three items.
