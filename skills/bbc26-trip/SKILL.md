@@ -76,3 +76,7 @@ Never touch `crew/members` or anything under `data/users`. Only add a `settlemen
 - "Booking ref for the dive is TBD4821" -> add an `intel` doc in Bookings, kind "ref".
 - "Paid RM 62 tolls" -> add a `ledgerSpends` doc on the tolls line, paidBy the speaker, split all three.
 - "Stuck in traffic, 45 mins behind" -> `meta/trip` lateBy 45.
+
+## Itinerary stop extras
+
+Stops can also carry: `done` (bool, set true once it has happened), `env` (urban, road, forest or coast) with `milestone: true` on stops where the trip enters a new environment (current: d0-car urban, d1-depart road, d1-chemerong forest, d1-arrive coast), `assignee` (SF, AR or SH), `plate`, `phone` and `callLabel` (shows a Call button on the Next up card).
