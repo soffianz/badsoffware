@@ -583,7 +583,7 @@ function stopRow(s,state,ev){
   return row;
 }
 function viewNow(ph,st,tgt){
-  const out=[attentionBlock(),heroBlock(st,tgt)];
+  const out=[h('div',{style:'font:700 20px var(--sans);text-align:center;color:var(--amber)'},'YEAAAA BOIIIII'),attentionBlock(),heroBlock(st,tgt)];
   const {ev}=st;
   if(ph==='d1')out.push(checkinBlock());
   if(!ev.length)return out;
