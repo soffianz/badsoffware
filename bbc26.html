@@ -412,12 +412,12 @@ function checkinBlock(){
   const ci=pm(trip().checkInTime||'15:00'),a=arr?pm(arr.start):null;
   const out=[pt('Day 1 check-in')];
   if(a!=null&&ci!=null){
-    const slack=ci-(a+late),k=slack<0?'warn':slack<30?'amb':'ok';
+    const gap=(a+late)-ci,k=gap>=0?'ok':'amb';
     out.push(h('div',{class:'tiles'},
       h('div',{class:'tile'},h('div',{class:'k'},'arrive'),h('div',{class:'v'},(arr.approx?'~':'')+hmOf(a+late))),
-      h('div',{class:'tile'},h('div',{class:'k'},'check-in'),h('div',{class:'v'},trip().checkInTime||'15:00')),
-      h('div',{class:'tile'},h('div',{class:'k'},'slack'),h('div',{class:'v '+k},(slack>0?'+':'')+slack+' min'))));
-    out.push(h('div',{class:'sub',style:'margin:6px 0 0'},slack<0?'You arrive '+(-slack)+' min after check-in. Ask for a late check-in.':slack<30?'Tight. Under 30 min spare.':slack+' min spare.'));
+      h('div',{class:'tile'},h('div',{class:'k'},'opens'),h('div',{class:'v'},trip().checkInTime||'15:00')),
+      h('div',{class:'tile'},h('div',{class:'k'},'margin'),h('div',{class:'v '+k},(gap>0?'+':'')+gap+' min'))));
+    out.push(h('div',{class:'sub',style:'margin:6px 0 0'},gap>=0?'Check-in opens at '+(trip().checkInTime||'15:00')+' and you arrive '+gap+' min after that, so you are fine.':'You arrive '+(-gap)+' min before check-in opens.'));
   }
   out.push(h('div',{class:'sub',style:'margin-top:8px'},'Delay so far: '+(late?late+' min':'none')+'. Tell Claude in chat if you are running late.'));
   return out;
