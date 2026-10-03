@@ -18,7 +18,8 @@
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--fg);font:13px/1.4 var(--mono);padding-inline:16px;padding-block:0 64px}
+body{background:var(--bg);color:var(--fg);font:14.5px/1.42 var(--mono);padding-inline:16px;padding-block:0 150px}
+.nochat body{padding-block:0 80px}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}
 a{color:var(--head)}
 :focus-visible{outline:2px solid var(--head);outline-offset:1px}
@@ -26,12 +27,12 @@ main{max-width:640px;margin:0 auto;border-inline:1px solid var(--line);padding:0
 
 .off{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--amb);color:var(--bg);padding:6px 10px;font-weight:700;text-align:center;margin-inline:-8px}
 .hd{display:flex;align-items:center;gap:10px;min-height:44px;border-bottom:1px solid var(--line)}
-.hd b{color:var(--hi);font-size:15px;user-select:none;-webkit-user-select:none}
-.hd .ph{flex:1;min-width:0;color:var(--dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd b{color:var(--hi);font-size:17px;user-select:none;-webkit-user-select:none}
+.hd .ph{flex:1;min-width:0;color:var(--dim);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .who{min-height:44px;padding:0 4px;color:var(--head);font-weight:700}
-.pt{color:var(--head);font-size:14px;margin:20px 0 8px}
+.pt{color:var(--head);font-size:16px;margin:22px 0 8px}
 .pt:before{content:"> "}
-.pt span{color:var(--dim);font-size:12px;margin-left:8px}
+.pt span{color:var(--dim);font-size:13px;margin-left:8px}
 .dim{color:var(--dim)} .hi{color:var(--hi)} .head{color:var(--head)} .ok{color:var(--ok)} .warn{color:var(--warn)} .amb{color:var(--amb)}
 .r{text-align:right;font-variant-numeric:tabular-nums}
 
@@ -48,10 +49,10 @@ main{max-width:640px;margin:0 auto;border-inline:1px solid var(--line);padding:0
 .rw>div{min-width:0;overflow-wrap:anywhere}
 .mk{color:var(--head)}
 .n{color:var(--dim)}
-.sub{color:var(--dim);font-size:12px;margin-top:2px}
+.sub{color:var(--dim);font-size:13.5px;margin-top:2px}
 .sub a{color:var(--head)}
-.t-it .gh,.t-it .rw{grid-template-columns:10.5ch minmax(0,1fr) auto}
-.t-led .gh,.t-led .rw{grid-template-columns:1.6ch minmax(0,1fr) 8.4ch 8.4ch 8.4ch;column-gap:5px;font-size:12px}
+.t-it .gh,.t-it .rw{grid-template-columns:11.5ch minmax(0,1fr) auto}
+.t-led .gh,.t-led .rw{grid-template-columns:1.4ch minmax(0,1fr) 7.6ch 7.6ch 7.6ch;column-gap:5px;font-size:13.5px}
 .t-led .x{grid-column:2/-1}
 .t-sp .rw{grid-template-columns:3ch minmax(0,1fr) auto}
 .row-now{background:rgba(141,187,58,.14)}
@@ -65,11 +66,11 @@ main{max-width:640px;margin:0 auto;border-inline:1px solid var(--line);padding:0
 .pend{color:var(--amb)}
 
 .box{border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:var(--panel);display:flex;flex-direction:column;gap:4px}
-.big{font-size:20px;line-height:1.2;color:var(--hi);font-weight:700}
+.big{font-size:24px;line-height:1.2;color:var(--hi);font-weight:700}
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .tile{border:1px solid var(--line);border-radius:6px;padding:6px 10px;background:var(--panel);min-width:0}
-.tile .k{color:var(--head);font-size:12px}
-.tile .v{color:var(--hi);font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tile .k{color:var(--head);font-size:13px}
+.tile .v{color:var(--hi);font-size:17px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .btn{min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:6px;color:var(--hi);display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:var(--panel)}
 .btn.p{background:var(--acc);border-color:var(--acc);color:var(--on);font-weight:700}
 .btn.s{min-height:40px;padding:0 10px}
@@ -86,39 +87,54 @@ main{max-width:640px;margin:0 auto;border-inline:1px solid var(--line);padding:0
 /* info rows */
 .rw.blk{display:block}
 .rw.blk .l{display:flex;justify-content:space-between;gap:10px;color:var(--dim)}
-.rw.blk .v{color:var(--hi);font-size:15px;margin:2px 0;overflow-wrap:anywhere;display:block;min-height:26px}
+.rw.blk .v{color:var(--hi);font-size:17px;margin:2px 0;overflow-wrap:anywhere;display:block;min-height:26px}
 .rw.blk .v.tbc{color:var(--amb)}
 .opt{display:flex;gap:10px;width:100%;min-height:40px;padding:6px 0;align-items:center;border-top:1px dashed var(--dash)}
 .opt .rb{color:var(--head)}
 .opt.dim{color:var(--dim)}
 
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--bg);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);padding-bottom:env(safe-area-inset-bottom,0px)}
-.tab{min-height:48px;text-align:center;color:var(--dim);font-size:14px;border-top:2px solid transparent;margin-top:-1px;position:relative}
+.tabs{position:fixed;left:0;right:0;bottom:calc(60px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--bg);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr)}
+.nochat .tabs{bottom:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+.chat{position:fixed;left:0;right:0;bottom:0;z-index:41;display:flex;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:2px solid var(--head)}
+.nochat .chat{display:none}
+.chat input{flex:1;min-width:0;font:inherit;font-size:16px;color:var(--hi);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:0 12px;min-height:44px}
+.chat input::placeholder{color:var(--dim)}
+.chat .btn{min-width:72px}
+.chatp{position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:640px;bottom:calc(106px + env(safe-area-inset-bottom,0px));max-height:46vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-bottom:0;border-radius:10px 10px 0 0;padding:6px 14px 12px;z-index:39;display:flex;flex-direction:column;gap:10px}
+.nochat .chatp{display:none}
+.ch-h{display:flex;justify-content:space-between;align-items:center;color:var(--head);position:sticky;top:-6px;background:var(--panel);padding-block:4px;z-index:1}
+.cm{white-space:pre-wrap;overflow-wrap:anywhere}
+.cm.me{color:var(--head)}
+.cm.ai .tx{color:var(--hi)}
+.cm.cf{border:1px solid var(--amb);border-radius:6px;padding:8px 10px}
+.tab{min-height:46px;text-align:center;color:var(--dim);font-size:15.5px;border-top:2px solid transparent;margin-top:-1px;position:relative}
 .tab[aria-current="true"]{color:var(--hi);border-top-color:var(--lime)}
 .tab i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--head);margin-left:6px}
 
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100}
 .sheet{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:640px;max-height:92%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-bottom:0;border-radius:10px 10px 0 0;padding:14px 16px calc(16px + env(safe-area-inset-bottom,0px));z-index:101;display:flex;flex-direction:column;gap:12px}
-.sheet h2{margin:0;font-size:15px;color:var(--head);font-weight:700}
+.sheet h2{margin:0;font-size:17px;color:var(--head);font-weight:700}
 .sheet h2:before{content:"> "}
 .fields{display:flex;flex-direction:column;gap:10px}
 .field{display:flex;flex-direction:column;gap:4px}
-.field>label,.field>.lab{color:var(--dim);font-size:12px}
-.field input,.field select{font:inherit;color:var(--hi);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-height:44px;width:100%}
+.field>label,.field>.lab{color:var(--dim);font-size:13.5px}
+.field input,.field select{font:inherit;font-size:16px;color:var(--hi);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-height:44px;width:100%}
 .names{display:flex;gap:8px;flex-wrap:wrap}
 .nb{min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:6px;color:var(--fg)}
 .nb[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--on);font-weight:700}
 .stack{display:flex;flex-direction:column;gap:8px}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(60px + env(safe-area-inset-bottom,0px));background:var(--hi);color:var(--bg);padding:8px 12px;border-radius:6px;z-index:120;max-width:calc(100% - 32px);text-align:center;display:none}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(130px + env(safe-area-inset-bottom,0px));background:var(--hi);color:var(--bg);padding:8px 12px;border-radius:6px;z-index:120;max-width:calc(100% - 32px);text-align:center;display:none}
 .toast.show{display:block}
 .gate{position:fixed;inset:0;background:var(--bg);z-index:110;overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 24px) 16px calc(env(safe-area-inset-bottom,0px) + 24px);display:flex;flex-direction:column;justify-content:center;gap:14px}
 .gate>*{width:100%;max-width:420px;margin-inline:auto}
-.pick{display:grid;grid-template-columns:3ch 1fr auto;gap:12px;align-items:center;min-height:56px;padding:8px 14px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:16px;color:var(--hi)}
+.pick{display:grid;grid-template-columns:3ch 1fr auto;gap:12px;align-items:center;min-height:56px;padding:8px 14px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:18px;color:var(--hi)}
 .pick small{color:var(--dim);font-size:12px}
 </style>
 
 <main id="app"></main>
+<div class="chatp" id="chatp" hidden></div>
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+<form class="chat" id="chat" autocomplete="off"><input id="chat-in" type="text" placeholder="Ask or tell me what changed" enterkeyhint="send" aria-label="Message BBCGPT" disabled><button type="submit" id="chat-go" class="btn p" disabled>Send</button></form>
 <div id="sheet-host"></div>
 <div class="toast" id="toast" role="status"></div>
 <div class="gate" id="gate" hidden></div>
@@ -154,6 +170,7 @@ function h(tag,a,...kids){
   put(e,kids);return e;
 }
 const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const n0=x=>{x=Math.round((+x||0)*100)/100;return x.toLocaleString('en-MY',{minimumFractionDigits:Number.isInteger(x)?0:2,maximumFractionDigits:2})};
 const n2=x=>(Math.round((+x||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 const rm=n=>{n=Math.round((+n||0)*100)/100;const a=Math.abs(n);return (n<0?'-':'')+'RM '+a.toLocaleString('en-MY',{minimumFractionDigits:Number.isInteger(a)?0:2,maximumFractionDigits:2})};
 const pad=n=>String(n).padStart(2,'0');
@@ -173,7 +190,7 @@ const byOrder=(a,b)=>((a.order||0)-(b.order||0))||(a.id>b.id?1:-1);
 
 const S={crew:null,trip:null,seen:null,loaded:{},pend:new Set(),liveAt:0,ro:false};
 COLS.forEach(c=>S[c]={});
-const UI={tab:LS.get('bbc26.tab')||'now',ov:LS.get('bbc26.phase')||'',open:{},base:{now:0,ledger:0,intel:0},focus:null,gateConfirm:null};
+const UI={chatOpen:false,tab:LS.get('bbc26.tab')||'now',ov:LS.get('bbc26.phase')||'',open:{},base:{now:0,ledger:0,intel:0},focus:null,gateConfirm:null};
 if(!TABS.some(t=>t[0]===UI.tab))UI.tab='now';
 if(!PH_NAME[UI.ov])UI.ov='';
 let db=null,user=null,uid=null,live=false;
@@ -477,7 +494,7 @@ function viewLedger(){
       const ls=c.lines.filter(l=>l.category===cat);
       const tb=ls.reduce((a,l)=>a+(+l.budget||0),0),ts=ls.reduce((a,l)=>a+(c.spentBy[l.id]||0),0);
       const g=h('div',{class:'grp t-led c-'+BARS[(gi+0)%BARS.length]});
-      g.append(h('div',{class:'gh'},h('div'),h('div',null,cat),h('div',{class:'r'},n2(tb)),h('div',{class:'r'},n2(ts)),h('div',{class:'r'},n2(tb-ts))));
+      g.append(h('div',{class:'gh'},h('div'),h('div',null,cat),h('div',{class:'r'},n0(tb)),h('div',{class:'r'},n0(ts)),h('div',{class:'r'},n0(tb-ts))));
       ls.forEach(l=>{
         num++;
         const sp=c.spentBy[l.id]||0,b=l.budget==null?null:+l.budget,ratio=b?sp/b:0;
@@ -487,7 +504,7 @@ function viewLedger(){
         g.append(h('div',{class:'rw'},
           h('div',{class:'n'},num),
           h('div',{class:'tt'},l.item),
-          h('div',{class:'r'},b==null?'\u2014':n2(b)),h('div',{class:'r'},sp?n2(sp):'\u2014'),h('div',{class:'r'+(b!=null&&b-sp<0?' over':'')},b==null?'\u2014':n2(b-sp)),
+          h('div',{class:'r'},b==null?'\u2014':n0(b)),h('div',{class:'r'},sp?n0(sp):'\u2014'),h('div',{class:'r'+(b!=null&&b-sp<0?' over':'')},b==null?'\u2014':n0(b-sp)),
           ex.length?h('div',{class:'x'},ex):null));
       });
       out.push(g);
@@ -569,6 +586,146 @@ function viewIntel(){
   return out;
 }
 
+
+/* ---------- chat bar ---------- */
+const chatp=document.getElementById('chatp'),chatF=document.getElementById('chat'),chatIn=document.getElementById('chat-in'),chatGo=document.getElementById('chat-go');
+let sampleFn=null,chatTools=false,chatBusy=false,chatCtl=null;
+const MSGS=[],TURNS=[],PENDDEL=[];
+const WRITABLE=['itinerary','intel','decisions','ledgerLines','ledgerSpends','settlements','meta'];
+function writeDoc(path,data){
+  if(!db)return Promise.reject(new Error('Not connected, so nothing was saved'));
+  if(S.ro)return Promise.reject(new Error('This person has view only access, so nothing was saved'));
+  const v=Object.assign({},data,stamp());
+  const run=async()=>{const ref=db.doc(path);try{await ref.update(v)}catch(e){if(e&&e.code==='invalid_argument')await ref.set(v);else throw e}};
+  const p=(Q[path]||Promise.resolve()).then(run);
+  Q[path]=p.catch(()=>{});return p;
+}
+const strip=d=>{const o={};for(const k in d){if(k==='updatedBy'||k==='updatedAt'||k==='confirmedBy'||k==='mapsQuery')continue;if(d[k]!=null&&d[k]!=='')o[k]=d[k]}return o};
+function chatState(){
+  return JSON.stringify({trip:strip(S.trip||{}),itinerary:events().map(strip),intel:list('intel').sort(byOrder).map(strip),decisions:list('decisions').map(strip),ledgerLines:list('ledgerLines').sort(byOrder).map(strip),ledgerSpends:list('ledgerSpends').sort((a,b)=>(a.at||0)-(b.at||0)).map(strip),settlements:list('settlements').map(strip)});
+}
+function chatRules(){
+  const w=me(),now=new Date(clock()).toISOString().slice(0,16).replace('T',' ');
+  return ['You are the assistant inside BBCGPT, the shared trip dashboard for Soff (SF), Arif (AR) and Shereef (SH): a road trip, hike and Tenggol Island dive trip, Wed 7 to Fri 9 Oct 2026. Malaysia time (MYT), money in MYR.',
+  'Speaking now: '+(w?NAME[w]+' ('+w+')':'unknown. Ask which of SF, AR or SH when it matters, for example who paid')+'. Current date and time: '+now+' MYT.',
+  chatTools?'You can answer questions from the data below and change the data with the save_doc tool. The dashboard updates straight away.':'You can only answer questions in this view. You cannot change the data, so say so if asked to.',
+  'Rules:',
+  '- Answer questions plainly from the data. If the data does not say, say so.',
+  '- When the user tells you something about the trip (a time, booking reference, flight, phone number, address, delay, schedule change, spend, vote, who paid whom, budget), update the matching record with save_doc straight away. Use an existing id when one fits, otherwise add a new record with a short lowercase id.',
+  '- Ignore chit-chat and anything not about the trip. If it is trip related but has nowhere to go, say so in one line.',
+  '- Ask one short question first when unsure: unclear record or budget line, unknown payer or split, a value that clashes with a Confirmed one, or an ambiguous time or number. Never delete unless the user clearly asks. delete_doc only queues a deletion and the user confirms with a button.',
+  '- Set status to Confirmed only when the user says it is confirmed or booked. Otherwise keep TBC and put the caveat in note.',
+  '- Replies: short, plain, British spelling, no em dashes. After editing, say in one line what changed.',
+  'Data model. Day numbers: 0 Tue 6 Oct, 1 Wed 7, 2 Thu 8, 3 Fri 9, 4 Mon 12 Oct. Seal codes SF, AR, SH.',
+  '- itinerary: day, order, start/end "HH:MM", when (label if no time), approx (bool), title, place, note, flag (warning).',
+  '- intel (Info tab): group (Getting there, Stay, Dive day, Getting home, People, Flights, Bookings), label, value, kind (text, address, phone, ref, time), status (TBC or Confirmed), neededBy (YYYY-MM-DD), note, mapsQuery, order.',
+  '- decisions: group, question, options (array), votes (code to option index), decided (index or null), neededBy.',
+  '- ledgerLines: category, item, budget (number or null), note, order. ledgerSpends: amount, lineId, paidBy (code), splitBetween (codes, default all three), note, at (ms).',
+  '- settlements: from, to, amount, settled (true). Add one when money changed hands.',
+  '- meta, id trip: lateBy (minutes, Day 1 delay), checkInTime, startDate, endDate.',
+  'Current data (JSON, ids included):',chatState()].join('\n');
+}
+const CODEIN=v=>CODES.indexOf(v)>=0;
+function chatToolList(ans){
+  const note=t=>{ans.log.push(t);renderChat()};
+  return [
+    {name:'save_doc',description:'Create or update one record in the trip database. Fields are merged into the record if it exists, otherwise a new record is created. Use null to clear a field. Returns a short confirmation or an error.',
+     inputSchema:{type:'object',properties:{collection:{type:'string',enum:WRITABLE},id:{type:'string',description:'An existing id from the data, or a new short lowercase id (letters, digits, dashes). Use trip for meta.'},fields:{type:'object',description:'Fields to set'}},required:['collection','id','fields']},
+     async execute(input){
+       const col=String(input.collection||''),id=String(input.id||''),f=input.fields;
+       if(WRITABLE.indexOf(col)<0)throw new Error('Not allowed to write '+col);
+       if(!/^[A-Za-z0-9_-]{1,60}$/.test(id))throw new Error('Bad id. Use letters, digits and dashes only.');
+       if(!f||typeof f!=='object'||Array.isArray(f))throw new Error('fields must be an object');
+       const fields={};for(const k in f){if(k!=='updatedBy'&&k!=='updatedAt'&&k!=='id')fields[k]=f[k]}
+       if(col==='meta'){
+         if(id!=='trip')throw new Error('meta only has the record trip');
+         Object.keys(fields).forEach(k=>{if(['lateBy','checkInTime','startDate','endDate'].indexOf(k)<0)delete fields[k]});
+         if(!Object.keys(fields).length)throw new Error('Nothing to save. Allowed: lateBy, checkInTime, startDate, endDate');
+         if('lateBy' in fields)fields.lateBy=Math.max(0,Math.round(+fields.lateBy||0));
+         await writeDoc('meta/trip',fields);note('Saved trip settings');return 'Saved meta/trip';
+       }
+       const exists=!!S[col][id];
+       ['start','end'].forEach(k=>{if(fields[k]!=null&&fields[k]!==''&&pm(fields[k])==null)throw new Error(k+' must be HH:MM, 24 hour')});
+       if(fields.status==='Confirmed'&&!fields.confirmedBy)fields.confirmedBy=me()||uid||null;
+       if(fields.status==='TBC')fields.confirmedBy=null;
+       if('paidBy' in fields&&!CODEIN(fields.paidBy))throw new Error('paidBy must be SF, AR or SH');
+       if('splitBetween' in fields&&(!Array.isArray(fields.splitBetween)||!fields.splitBetween.length||!fields.splitBetween.every(CODEIN)))throw new Error('splitBetween must be a non-empty list of SF, AR, SH');
+       if('amount' in fields&&!(+fields.amount>0))throw new Error('amount must be a number above 0');
+       if(!exists){
+         if(col==='itinerary'){if(!fields.title||!(fields.day>=0&&fields.day<=4))throw new Error('New itinerary stop needs title and day 0 to 4');fields.day=Math.round(fields.day);if(fields.order==null)fields.order=Math.max.apply(null,events().filter(x=>x.day===fields.day).map(x=>x.order||0).concat([0]))+1}
+         else if(col==='intel'){if(!fields.label||fields.value==null||!fields.group)throw new Error('New info needs label, value and group');if(!fields.kind)fields.kind='text';if(!fields.status)fields.status='TBC';if(fields.order==null)fields.order=Date.now()}
+         else if(col==='ledgerLines'){if(!fields.item)throw new Error('New budget line needs item');if(!fields.category)fields.category='Other';if(!('budget' in fields))fields.budget=null;if(fields.order==null)fields.order=Math.max.apply(null,list('ledgerLines').map(x=>x.order||0).concat([0]))+1}
+         else if(col==='ledgerSpends'){if(!(+fields.amount>0)||!CODEIN(fields.paidBy))throw new Error('New spend needs amount and paidBy');fields.amount=Math.round(+fields.amount*100)/100;if(fields.lineId==null)fields.lineId='';if(!fields.splitBetween)fields.splitBetween=CODES.slice();if(!fields.at)fields.at=Date.now()}
+         else if(col==='settlements'){if(!CODEIN(fields.from)||!CODEIN(fields.to)||fields.from===fields.to||!(+fields.amount>0))throw new Error('New settlement needs from, to (different) and amount');fields.amount=Math.round(+fields.amount*100)/100;if(fields.settled==null)fields.settled=true}
+         else if(col==='decisions'){if(!fields.question||!Array.isArray(fields.options)||fields.options.length<2)throw new Error('New decision needs question and 2 or more options');if(!fields.group)fields.group='Getting home';if(!fields.votes)fields.votes={}}
+       }
+       await writeDoc(col+'/'+id,fields);
+       const nm=(S[col][id]&&(S[col][id].title||S[col][id].label||S[col][id].item||S[col][id].question))||fields.title||fields.label||fields.item||fields.question||id;
+       note((exists?'Updated ':'Added ')+col+': '+nm);
+       return (exists?'Updated ':'Added ')+col+'/'+id;
+     }},
+    {name:'delete_doc',description:'Ask to delete one record. This does not delete anything yet: the user must tap Confirm in the chat panel. Only use when the user clearly asked to remove something.',
+     inputSchema:{type:'object',properties:{collection:{type:'string',enum:['itinerary','intel','decisions','ledgerLines','ledgerSpends','settlements']},id:{type:'string'}},required:['collection','id']},
+     async execute(input){
+       const col=String(input.collection||''),id=String(input.id||''),d=(S[col]||{})[id];
+       if(['itinerary','intel','decisions','ledgerLines','ledgerSpends','settlements'].indexOf(col)<0||!d)throw new Error('No such record');
+       PENDDEL.push({col:col,id:id,label:d.title||d.label||d.item||d.question||(d.amount?rm(d.amount)+' spend':id)});renderChat();
+       return 'Queued. Nothing is deleted yet. Tell the user to tap Confirm in the panel.';
+     }}
+  ];
+}
+function renderChat(){
+  if(!UI.chatOpen){chatp.hidden=true;return}
+  chatp.hidden=false;
+  const near=chatp.scrollHeight-chatp.scrollTop-chatp.clientHeight<80;
+  chatp.replaceChildren(...[
+    h('div',{class:'ch-h'},h('span',null,'> BBCGPT'),h('span',{class:'acts'},
+      MSGS.length&&!chatBusy?h('button',{type:'button',class:'lk',onclick:()=>{MSGS.length=0;TURNS.length=0;PENDDEL.length=0;UI.chatOpen=false;renderChat()}},'clear'):null,
+      h('button',{type:'button',class:'lk',onclick:()=>{UI.chatOpen=false;renderChat()}},'close'))),
+    MSGS.map(m=>m.role==='user'?h('div',{class:'cm me'},'> '+m.text):h('div',{class:'cm ai'},m.log.map(l=>h('div',{class:'dim'},'✓ '+l)),m.text?h('div',{class:'tx'},m.text):(m.pending?h('div',{class:'dim'},'Thinking...'):null))),
+    PENDDEL.map((p,i)=>h('div',{class:'cm cf'},'Delete "'+p.label+'" for good?',h('div',{class:'acts',style:'margin-top:6px'},
+      h('button',{type:'button',class:'btn s',onclick:()=>{
+        if(!guard())return;
+        enqueue(p.col+'/'+p.id,()=>db.doc(p.col+'/'+p.id).delete());
+        MSGS.push({role:'ai',text:'Deleted "'+p.label+'".',log:[]});PENDDEL.splice(PENDDEL.indexOf(p),1);renderChat()}},'Confirm'),
+      h('button',{type:'button',class:'btn s d',onclick:()=>{PENDDEL.splice(PENDDEL.indexOf(p),1);renderChat()}},'Keep it'))))
+  ].flat(Infinity).filter(Boolean));
+  if(near)chatp.scrollTop=chatp.scrollHeight;
+}
+const CHAT_ERR={not_granted:'Chat needs permission to use Claude. Reload this page and allow it.',sampling_disabled:'Claude is not available on this account.',rate_limited:'Too many requests or your usage limit is reached. Try again in a bit.',session_expired:'Sign in again, then retry.',refused:'Claude declined that one. Try rewording it.',empty_completion:'Claude sent nothing back. Try rewording it.',prompt_too_large:'Too much data to send. Try a shorter message.',upstream_error:'Connection problem. Try again.'};
+async function sendChat(text){
+  text=(text||'').trim();
+  if(!text||chatBusy||!sampleFn)return;
+  UI.chatOpen=true;chatBusy=true;chatCtl=new AbortController();
+  TURNS.push({role:'user',content:text});MSGS.push({role:'user',text:text});
+  const ans={role:'ai',text:'',log:[],pending:true};MSGS.push(ans);
+  chatSync();renderChat();
+  let hist=TURNS.slice(-8);while(hist.length&&hist[0].role!=='user')hist.shift();
+  try{
+    const o={modelTier:'default',signal:chatCtl.signal,onText:u=>{ans.text=u.text;renderChat()}};
+    if(chatTools)o.tools=chatToolList(ans);
+    const r=await sampleFn([{role:'user',content:chatRules()}].concat(hist),o);
+    ans.text=r.text;TURNS.push({role:'assistant',content:r.text});
+  }catch(e){
+    if(e&&e.text)ans.text=e.text;
+    if(!e||e.code!=='cancelled')ans.text=(ans.text?ans.text+'\n\n':'')+(CHAT_ERR[e&&e.code]||'Something went wrong. Try again.');
+    else ans.text=(ans.text?ans.text+'\n\n':'')+'Stopped.';
+    if(e&&(e.code==='not_granted'||e.code==='sampling_disabled'||e.code==='not_declared')){sampleFn=null;chatSync()}
+  }finally{chatBusy=false;ans.pending=false;chatSync();renderChat();render()}
+}
+function chatSync(){
+  root.classList.toggle('nochat',!sampleFn);
+  chatIn.disabled=chatBusy||!sampleFn;
+  chatGo.textContent=chatBusy?'Stop':'Send';chatGo.disabled=!sampleFn;
+  chatIn.placeholder=chatBusy?'Working...':'Ask or tell me what changed';
+}
+chatF.addEventListener('submit',e=>{
+  e.preventDefault();
+  if(chatBusy){if(chatCtl)chatCtl.abort();return}
+  const t=chatIn.value;chatIn.value='';sendChat(t);
+});
+chatIn.addEventListener('focus',()=>{if(MSGS.length&&!UI.chatOpen){UI.chatOpen=true;renderChat()}});
+
 /* ---------- page ---------- */
 function goInfo(id){UI.tab='intel';LS.set('bbc26.tab','intel');UI.focus=id;render()}
 function header(ph){
@@ -578,7 +735,7 @@ function header(ph){
   t.addEventListener('pointerdown',()=>{lp=setTimeout(()=>{lp=null;phaseSheet()},650)});
   ['pointerup','pointerleave','pointercancel','pointermove'].forEach(ev=>t.addEventListener(ev,clr));
   return [h('header',{class:'hd'},t,h('span',{class:'ph'},PH_NAME[ph]+(UI.ov?' (preview)':'')),
-    h('button',{type:'button',class:'who','aria-label':'Settings',onclick:settingsSheet},'['+(w?NAME[w]:'who are you?')+']')),h('div',{class:'sub',style:'padding:6px 0 0'},'Read only. To change anything, tell Claude in your chat.')];
+    h('button',{type:'button',class:'who','aria-label':'Settings',onclick:settingsSheet},'['+(w?NAME[w]:'who are you?')+']')),h('div',{class:'sub',style:'padding:6px 0 0'},sampleFn?'Use the chat bar at the bottom to ask questions or change anything.':'Read only here. To change anything, tell Claude in your own chat.')];
 }
 function offBar(){
   if(isOffline())return h('div',{class:'off',role:'status'},'Offline. '+(S.liveAt?'Showing the last update from '+clockHM(S.liveAt)+'.':'Nothing saved on this phone yet.'));
@@ -626,6 +783,9 @@ async function boot(){
     try{const id=await user.id();if(id)uid=id}catch(e){}
     try{S.ro=(await user.can('data.write'))===false}catch(e){}
   }
+  try{sampleFn=C0&&C0.use?await C0.use('sample'):null}catch(e){sampleFn=null}
+  if(sampleFn){try{const lim=await sampleFn.limits();chatTools=!!(lim&&lim.tools)}catch(e){chatTools=false}}
+  chatSync();
   render();
   if(!db)return;
   const err=n=>e=>{if(e&&e.code==='revoked')S.ro=true;console.warn(n,e&&e.code)};
