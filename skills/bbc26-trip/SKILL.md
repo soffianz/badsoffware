@@ -5,7 +5,7 @@ description: Keeps the BBC26 trip app (Tenggol Island dive trip, Wed 7 to Fri 9 
 
 # BBC26 trip updater
 
-The three of us (Soff, Arif, Shereef) are on a road trip, hike and dive day. The shared trip app is a Claude artifact:
+The three of us (Soff, Arif, Shereef) are on a road trip, hike and dive day. The shared trip app is called BBCGPT and is a Claude artifact:
 
 **https://claude.ai/artifact/C7c9DVY2Fcub3tuSJio3qN**
 

@@ -1,4 +1,4 @@
-<title>BBC26 Trip Dashboard</title>
+<title>BBCGPT</title>
 <style>
 /* Compact monospace tables, coloured group bars, totals in the header row, dashed dividers. Dark by default, light in Settings. */
 :root{
@@ -573,7 +573,7 @@ function viewIntel(){
 function goInfo(id){UI.tab='intel';LS.set('bbc26.tab','intel');UI.focus=id;render()}
 function header(ph){
   const w=me();
-  const t=h('b',null,'BBC26');
+  const t=h('b',null,'BBCGPT');
   let lp=null;const clr=()=>{clearTimeout(lp);lp=null};
   t.addEventListener('pointerdown',()=>{lp=setTimeout(()=>{lp=null;phaseSheet()},650)});
   ['pointerup','pointerleave','pointercancel','pointermove'].forEach(ev=>t.addEventListener(ev,clr));
@@ -592,7 +592,7 @@ function renderGate(){
   gate.hidden=!need;
   if(!need){gate.replaceChildren();return}
   const sl=(S.crew&&S.crew.slots)||{};
-  gate.replaceChildren(h('div',{class:'head'},'BBC26 trip dashboard'),h('div',{class:'pt',style:'margin:0;font-size:20px'},'Who are you?'),
+  gate.replaceChildren(h('div',{class:'head'},'BBCGPT'),h('div',{class:'pt',style:'margin:0;font-size:20px'},'Who are you?'),
     h('div',{class:'stack'},CREW.map((x,i)=>{
       const taken=sl[x.c]&&sl[x.c]!==uid,sure=UI.gateConfirm===x.c;
       return h('button',{type:'button',class:'pick',onclick:()=>{if(taken&&!sure){UI.gateConfirm=x.c;renderGate();return}bind(x.c)}},
