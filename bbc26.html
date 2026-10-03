@@ -3,17 +3,17 @@
 /* Compact monospace tables, coloured group bars, totals in the header row, dashed dividers. Dark by default, light in Settings. */
 :root{
   --bg:#050F0C; --panel:#08160F; --line:#1D4236; --dash:#1E4A3A;
-  --fg:#A8E6C8; --dim:#62A088; --head:#8FA9F2; --hi:#E8FFF5;
+  --fg:#FFE23F; --dim:#D8BD3A; --head:#7FD8FF; --hi:#FFF37A;
   --lime:#8DBB3A; --rose:#C2506F; --blue:#6F96E8; --amber:#D8A24A; --teal:#3DB89C;
-  --ok:#7BE0A2; --warn:#F2A79E; --amb:#E8B866; --acc:#3DB89C; --on:#04110C;
+  --ok:#9BFFB0; --warn:#FF9E8F; --amb:#FFA94D; --acc:#3DB89C; --on:#04110C;
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
   color-scheme:dark;
 }
 :root[data-theme="light"]{
   --bg:#F3F8F5; --panel:#FFFFFF; --line:#BCD2C6; --dash:#CBDCD3;
-  --fg:#123A2C; --dim:#47705F; --head:#2C4CB0; --hi:#06201A;
+  --fg:#2E2600; --dim:#6B5A12; --head:#1B4FB5; --hi:#000000;
   --lime:#5E8A12; --rose:#A02D50; --blue:#3B5FC4; --amber:#A8710F; --teal:#187E6A;
-  --ok:#1C7A44; --warn:#A83A2E; --amb:#8A5A00; --acc:#187E6A; --on:#FFFFFF;
+  --ok:#1C7A44; --warn:#A83A2E; --amb:#8A4B00; --acc:#187E6A; --on:#FFFFFF;
   color-scheme:light;
 }
 *{box-sizing:border-box}
@@ -41,7 +41,8 @@ main{max-width:640px;margin:0 auto;border-inline:1px solid var(--line);padding:0
 .gh,.rw{display:grid;column-gap:8px;align-items:start;padding:8px 6px 8px 10px;min-width:0}
 .gh{color:var(--head);border-bottom:1px solid var(--line);position:relative;min-height:40px;align-items:center;width:100%}
 .gh:after{content:"";position:absolute;left:0;bottom:-1px;width:34%;height:1px;background:var(--c)}
-.rw{border-top:1px dashed var(--dash);min-height:40px;cursor:pointer}
+.rw{border-top:1px dashed var(--dash);min-height:40px}
+.rw.go{cursor:pointer}
 .rw:first-of-type{border-top:0}
 .rw.static{cursor:default}
 .rw>div{min-width:0;overflow-wrap:anywhere}
@@ -266,9 +267,6 @@ function guard(){
   return true;
 }
 const stamp=()=>({updatedBy:uid,updatedAt:Date.now()});
-function upd(path,data){if(!guard())return;return enqueue(path,()=>db.doc(path).update(Object.assign({},data,stamp())))}
-function setd(path,data){if(!guard())return;return enqueue(path,()=>db.doc(path).set(Object.assign({},data,stamp())))}
-function del(path){if(!guard())return;return enqueue(path,()=>db.doc(path).delete())}
 function upsert(path,data){
   if(!guard())return;
   return enqueue(path,async()=>{
@@ -329,14 +327,6 @@ function openSheet(o){
   sheet.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'&&o.onSave){e.preventDefault();save()}});
   if(o.focus!==false){const f=sheet.querySelector('input,select');if(f)setTimeout(()=>f.focus(),60)}
 }
-function quick(title,value,save,o){
-  o=o||{};
-  openSheet({title:title,fields:[{k:'v',label:o.label||'Value',value:value||'',im:o.im,ph:o.ph}],
-    validate:v=>{if(!o.validate)return null;const r=o.validate((v.v||'').trim());return r===true?null:r},
-    onSave:v=>{const t=(v.v||'').trim();if(t!==(value||''))save(o.norm?o.norm(t):t)}});
-}
-const hmValid=v=>v===''||(/^\d{1,2}:\d{2}$/.test(v)&&pm(v)<1440)?true:'Use HH:MM, like 07:40';
-const hmNorm=v=>{const m=pm(v);return m==null?'':hmOf(m)};
 function phaseSheet(){
   const opts=[['','Automatic (phone clock)']].concat(Object.keys(PH_NAME).map(k=>[k,PH_NAME[k]]));
   openSheet({title:'Preview a trip phase',focus:false,node:h('div',{class:'stack'},opts.map(([k,t])=>h('button',{type:'button',class:'btn w'+(UI.ov===k?' p':''),onclick:()=>{UI.ov=k;LS.set('bbc26.phase',k);closeSheet();render()}},t)))});
@@ -372,30 +362,6 @@ function itState(){
   const curActive=idx>=0&&!(ev[idx].end&&evAt(ev[idx],true)<now);
   return {ev,idx,cur:curActive?ev[idx]:null,nxt:ev[idx+1]||null,now};
 }
-function stopSheet(s,day){
-  const isNew=!s;
-  openSheet({
-    title:isNew?'Add a stop':'Edit stop',
-    fields:[
-      isNew?{k:'day',label:'Day',t:'select',options:DAYOFF.map((_,i)=>[i,fmtD(dayDate(i))+', '+DAYTAG[i]]),value:day==null?1:day}:null,
-      {k:'title',label:'What',value:s?s.title:''},
-      {k:'start',label:'Start time (HH:MM)',value:s?s.start||'':'',im:'numeric'},
-      {k:'end',label:'End time (HH:MM)',value:s?s.end||'':'',im:'numeric'},
-      {k:'when',label:'Label if no time',value:s?s.when||'':'',ph:'Evening'},
-      {k:'place',label:'Place',value:s?s.place||'':''},
-      {k:'note',label:'Note',value:s?s.note||'':''},
-      {k:'flag',label:'Warning',value:s?s.flag||'':''}
-    ].filter(Boolean),
-    validate:v=>!(v.title||'').trim()?'Add a title':(hmValid((v.start||'').trim())!==true||hmValid((v.end||'').trim())!==true)?'Use HH:MM for times':null,
-    onSave:v=>{
-      const data={title:v.title.trim(),start:hmNorm((v.start||'').trim()),end:hmNorm((v.end||'').trim())||null,when:(v.when||'').trim()||null,place:(v.place||'').trim()||null,note:(v.note||'').trim()||null,flag:(v.flag||'').trim()||null};
-      if(isNew){const d=+v.day,mx=Math.max.apply(null,events().filter(x=>x.day===d).map(x=>x.order||0).concat([0]));setd('itinerary/'+newId(),Object.assign(data,{day:d,order:mx+1}))}
-      else upd('itinerary/'+s.id,Object.assign(data,{approx:data.start===s.start?!!s.approx:false}));
-    },
-    onDelete:isNew?null:()=>del('itinerary/'+s.id)
-  });
-}
-
 /* ---------- ledger data ---------- */
 function ledgerCalc(){
   const lines=list('ledgerLines').sort(byOrder);
@@ -426,80 +392,14 @@ function settle(){
   }
   return {net,transfers,done};
 }
-const markSettled=t=>setd('settlements/'+newId(),{from:t.from,to:t.to,amount:t.amount,settled:true});
-function spendSheet(sp){
-  const L=ledgerCalc().lines,last=LS.get('bbc26.lastLine');
-  const lineId=sp?sp.lineId:(L.find(l=>l.id===last)?last:(L[0]?L[0].id:''));
-  openSheet({
-    title:sp?'Edit spend':'Log a spend',saveLabel:sp?'Save':'Log spend',
-    fields:[
-      {k:'amount',label:'Amount (RM)',value:sp?sp.amount:'',im:'decimal',ph:'0'},
-      {k:'lineId',label:'What for',t:'select',options:L.map(l=>[l.id,l.item]).concat([['','Unassigned']]),value:lineId},
-      {k:'paidBy',label:'Paid by',t:'seal1',value:sp?sp.paidBy:(me()||'SF')},
-      {k:'splitBetween',label:'Split between',t:'sealN',value:sp?sp.splitBetween:CODES.slice()},
-      {k:'note',label:'Note',value:sp?sp.note||'':'',ph:'Optional'}
-    ],
-    validate:v=>{const a=parseFloat(String(v.amount).replace(/,/g,''));if(!(a>0))return 'Enter an amount';if(!(v.splitBetween||[]).length)return 'Pick at least one person to split with';return null},
-    onSave:v=>{
-      const data={amount:Math.round(parseFloat(String(v.amount).replace(/,/g,''))*100)/100,lineId:v.lineId,paidBy:v.paidBy,splitBetween:v.splitBetween,note:(v.note||'').trim()||null};
-      LS.set('bbc26.lastLine',v.lineId);
-      if(sp)upd('ledgerSpends/'+sp.id,data);else setd('ledgerSpends/'+newId(),Object.assign(data,{at:Date.now()}));
-    },
-    onDelete:sp?()=>del('ledgerSpends/'+sp.id):null
-  });
-}
-function lineSheet(l){
-  const isNew=!l;
-  openSheet({
-    title:isNew?'Add a budget line':'Edit budget line',
-    fields:[
-      {k:'category',label:'Category',value:l?l.category:'',ph:'Food'},
-      {k:'item',label:'Item',value:l?l.item:''},
-      {k:'budget',label:'Budget (RM, can be blank)',value:l&&l.budget!=null?l.budget:'',im:'decimal'},
-      {k:'note',label:'Note',value:l?l.note||'':''}
-    ],
-    validate:v=>!(v.item||'').trim()?'Add an item name':null,
-    onSave:v=>{
-      const b=String(v.budget==null?'':v.budget).trim();
-      const data={category:(v.category||'').trim()||'Other',item:v.item.trim(),budget:b===''?null:(parseFloat(b.replace(/,/g,''))||0),note:(v.note||'').trim()||null};
-      if(isNew){const mx=Math.max.apply(null,list('ledgerLines').map(x=>x.order||0).concat([0]));setd('ledgerLines/'+newId(),Object.assign(data,{order:mx+1}))}
-      else upd('ledgerLines/'+l.id,data);
-    },
-    onDelete:isNew?null:()=>del('ledgerLines/'+l.id)
-  });
-}
-function intelSheet(d){
-  const isNew=!d;
-  openSheet({
-    title:isNew?'Add info':'Edit info',
-    fields:[
-      {k:'label',label:'Label',value:d?d.label:'',ph:'Flight number'},
-      {k:'group',label:'Group',t:'select',options:GROUPS.map(g=>[g,g]),value:d?d.group:'Getting there'},
-      {k:'kind',label:'Type',t:'select',options:KINDS,value:d?(d.kind||'text'):'text'},
-      isNew?{k:'value',label:'Value',value:'TBC'}:null,
-      {k:'neededBy',label:'Needed by',t:'date',value:d?d.neededBy||'':''},
-      {k:'note',label:'Note',value:d?d.note||'':'',ph:'One line'}
-    ].filter(Boolean),
-    validate:v=>!(v.label||'').trim()?'Add a label':null,
-    onSave:v=>{
-      const base={label:v.label.trim(),group:v.group,kind:v.kind,neededBy:v.neededBy||null,note:(v.note||'').trim()||null};
-      if(isNew)setd('intel/'+newId(),Object.assign(base,{value:(v.value||'TBC').trim()||'TBC',status:'TBC',order:Date.now()}));
-      else upd('intel/'+d.id,base);
-    },
-    onDelete:isNew?null:()=>del('intel/'+d.id)
-  });
-}
-
 /* ---------- building blocks ---------- */
-function tap(fn){return {role:'button',tabindex:'0',onclick:fn,onkeydown:e=>{if((e.key==='Enter'||e.key===' ')&&e.target===e.currentTarget){e.preventDefault();fn(e)}}}}
 const pt=(t,right)=>h('div',{class:'pt'},t,right?h('span',null,right):null);
 const mapA=(q,label)=>h('a',{href:mapsUrl(q),target:'_blank',rel:'noopener',onclick:e=>e.stopPropagation()},label||'map');
-const addBtn=(t,fn)=>h('button',{type:'button',class:'btn w',style:'margin-top:14px',onclick:fn},t);
 function attentionBlock(){
   const items=attentionItems();
   if(!items.length)return null;
   return h('div',null,pt('Needs attention',items.length+' open'),
-    h('div',{class:'grp c-rose'},items.slice(0,3).map(i=>h('div',Object.assign({class:'rw',style:'grid-template-columns:minmax(0,1fr) auto'},tap(()=>goInfo(i.id))),
+    h('div',{class:'grp c-rose'},items.slice(0,3).map(i=>h('div',{role:'button',tabindex:'0',class:'rw go',style:'grid-template-columns:minmax(0,1fr) auto',onclick:()=>goInfo(i.id)},
       h('div',{class:'tt'},i.label),
       h('div',{class:i.s==='late'?'st-bad':'st-tbc'},(i.s==='late'?'overdue ':'due ')+fmtS(i.neededBy))))),
     items.length>3?h('div',{class:'sub',style:'margin-top:6px'},'+'+(items.length-3)+' more in Info'):null);
@@ -519,11 +419,7 @@ function checkinBlock(){
       h('div',{class:'tile'},h('div',{class:'k'},'slack'),h('div',{class:'v '+k},(slack>0?'+':'')+slack+' min'))));
     out.push(h('div',{class:'sub',style:'margin:6px 0 0'},slack<0?'You arrive '+(-slack)+' min after check-in. Ask for a late check-in.':slack<30?'Tight. Under 30 min spare.':slack+' min spare.'));
   }
-  out.push(h('div',{class:'acts',style:'margin-top:8px'},
-    h('span',{class:'dim'},'delay '+(late?late+' min':'none')),
-    [15,30,60].map(n=>h('button',{type:'button',class:'btn s',onclick:()=>upsert('meta/trip',{lateBy:late+n})},'+'+n)),
-    h('button',{type:'button',class:'btn s d',onclick:()=>upsert('meta/trip',{lateBy:0})},'reset'),
-    h('button',{type:'button',class:'btn s d',onclick:()=>quick('Check-in time',trip().checkInTime||'15:00',v=>upsert('meta/trip',{checkInTime:v}),{label:'Check-in time (HH:MM)',validate:v=>pm(v)!=null?true:'Use HH:MM, like 15:00',norm:hmNorm,im:'numeric'})},'check-in time')));
+  out.push(h('div',{class:'sub',style:'margin-top:8px'},'Delay so far: '+(late?late+' min':'none')+'. Tell Claude in chat if you are running late.'));
   return out;
 }
 function nextBlock(st){
@@ -543,7 +439,7 @@ function viewNow(ph){
   const st=itState(),{ev,idx,cur,nxt}=st;
   out.push(nextBlock(st));
   if(ph==='d1')out.push(h('div',null,checkinBlock()));
-  if(!ev.length){out.push(h('div',null,pt('Itinerary'),h('div',{class:'dim'},'No stops yet.'),addBtn('Add a stop',()=>stopSheet(null,1))));return out}
+  if(!ev.length){out.push(h('div',null,pt('Itinerary'),h('div',{class:'dim'},'No stops yet. Tell Claude in chat to add them.')));return out}
   const focus=nxt||cur||ev[ev.length-1];
   const days=[];ev.forEach(s=>{if(days.indexOf(s.day)<0)days.push(s.day)});
   const sOf=s=>{const i=ev.indexOf(s);return i<idx?'past':i===idx?(cur?'cur':'past'):i===idx+1?'nxt':''};
@@ -560,21 +456,19 @@ function viewNow(ph){
     if(isO)stops.forEach((s,i)=>{
       const state=states[i],q=s.mapsQuery||s.place;
       const sp=state==='past'?['done','done']:state==='cur'?['now','now']:state==='nxt'?['next','next']:['planned',''];
-      g.append(h('div',Object.assign({class:'rw row-'+(state||'plan'),id:'S-'+s.id},tap(()=>stopSheet(s))),
+      g.append(h('div',{class:'rw row-'+(state||'plan'),id:'S-'+s.id},
         h('div',{class:'tm'},timeStr(s)),
         h('div',null,h('div',{class:'tt'},s.title),q?h('div',{class:'sub'},(s.place||q)+' · ',mapA(q,'map')):null,s.note?h('div',{class:'sub'},s.note):null,s.flag?h('div',{class:'sub amb'},'heads up: '+s.flag):null,meta(s,'now','itinerary/'+s.id)),
         h('div',{class:'st-'+sp[0]},sp[1])));
     });
     out.push(g);
   });
-  out.push(addBtn('Add a stop',()=>stopSheet(null,focus.day)));
   return out;
 }
 
 /* ---------- ledger ---------- */
 function viewLedger(){
   const c=ledgerCalc(),left=c.budget-c.spent,out=[attentionBlock()];
-  out.push(h('button',{type:'button',class:'btn p w',style:'margin-top:14px',onclick:()=>spendSheet(null)},'Log a spend'));
   if(c.lines.length){
     out.push(h('div',{class:'t-led',style:'margin-top:14px'},h('div',{class:'rw static dim',style:'border:0;min-height:0;padding-block:0'},h('div'),h('div',null,'item'),h('div',{class:'r'},'budget'),h('div',{class:'r'},'spent'),h('div',{class:'r'},'left'))));
     const cats=[];c.lines.forEach(l=>{if(cats.indexOf(l.category)<0)cats.push(l.category)});
@@ -590,7 +484,7 @@ function viewLedger(){
         const ex=[b!=null&&sp>0?h('div',{class:'bar '+(ratio>1?'b':ratio>=.8?'w':'')},h('i',{style:'width:'+Math.min(100,Math.round(ratio*100))+'%'})):null,
           l.note?h('div',{class:'sub'},l.note):null,
           ratio>1?h('div',{class:'sub over'},'over budget by '+n2(sp-b)):ratio>=.8?h('div',{class:'sub amb'},Math.round(ratio*100)+'% used'):null,meta(l,'ledger','ledgerLines/'+l.id)].filter(Boolean);
-        g.append(h('div',Object.assign({class:'rw'},tap(()=>lineSheet(l))),
+        g.append(h('div',{class:'rw'},
           h('div',{class:'n'},num),
           h('div',{class:'tt'},l.item),
           h('div',{class:'r'},b==null?'\u2014':n2(b)),h('div',{class:'r'},sp?n2(sp):'\u2014'),h('div',{class:'r'+(b!=null&&b-sp<0?' over':'')},b==null?'\u2014':n2(b-sp)),
@@ -606,12 +500,11 @@ function viewLedger(){
     const overs=c.lines.filter(l=>l.budget!=null&&(c.spentBy[l.id]||0)>+l.budget);
     if(overs.length){const tot=overs.reduce((a,l)=>a+(c.spentBy[l.id]-+l.budget),0);
       out.push(h('div',{class:'over',style:'margin-top:12px'},'> overspend: RM '+n2(tot),overs.map(l=>h('div',{style:'padding-left:2ch'},l.item+': RM '+n2(c.spentBy[l.id]-+l.budget)))))}
-    out.push(addBtn('Add a budget line',()=>lineSheet(null)));
-  }else out.push(h('div',null,pt('Budget lines'),h('div',{class:'dim'},'No budget lines yet.'),addBtn('Add a budget line',()=>lineSheet(null))));
+  }else out.push(h('div',null,pt('Budget lines'),h('div',{class:'dim'},'No budget lines yet. Tell Claude in chat to add them.')));
   if(c.spends.length)out.push(h('div',null,pt('Spends',c.spends.length+' logged'),h('div',{class:'grp t-sp c-blue'},
     c.spends.map(s=>{
       const l=S.ledgerLines[s.lineId],sp=(s.splitBetween&&s.splitBetween.length)?s.splitBetween:CODES;
-      return h('div',Object.assign({class:'rw'},tap(()=>spendSheet(s))),
+      return h('div',{class:'rw'},
         h('div',{class:'head'},s.paidBy),
         h('div',null,h('div',{class:'tt'},l?l.item:'Unassigned'),h('div',{class:'sub'},NAME[s.paidBy]+' paid · '+whenStr(s.at||0)+(s.note?' · '+s.note:'')+(sp.length<3?' · split '+sp.map(x=>NAME[x]).join(' + '):'')),meta(s,'ledger','ledgerSpends/'+s.id)),
         h('div',{class:'r hi'},n2(s.amount)));
@@ -619,9 +512,9 @@ function viewLedger(){
   if(list('ledgerSpends').length||list('settlements').length){
     const r=settle();
     out.push(h('div',null,pt('Settle up'),h('div',{class:'grp t-sp c-amber'},
-      r.transfers.length?r.transfers.map(t=>h('div',{class:'rw static'},h('div',{class:'head'},t.from),h('div',null,h('div',{class:'tt'},NAME[t.from]+' pays '+NAME[t.to]),h('div',{class:'hi'},'RM '+n2(t.amount))),h('button',{type:'button',class:'btn s',onclick:()=>markSettled(t)},'settled'))):h('div',{class:'rw static',style:'grid-template-columns:1fr'},h('div',{class:'ok'},'All square. Nobody owes anybody.')),
+      r.transfers.length?r.transfers.map(t=>h('div',{class:'rw static'},h('div',{class:'head'},t.from),h('div',null,h('div',{class:'tt'},NAME[t.from]+' pays '+NAME[t.to]),h('div',{class:'hi'},'RM '+n2(t.amount))))):h('div',{class:'rw static',style:'grid-template-columns:1fr'},h('div',{class:'ok'},'All square. Nobody owes anybody.')),
       h('div',{class:'rw static',style:'grid-template-columns:1fr'},h('div',{class:'sub'},'balances: '+CODES.map(k=>NAME[k]+' '+(r.net[k]>0?'+':'')+n2(r.net[k])).join(' · ')))),
-      r.done.length?h('div',{class:'grp t-sp c-teal',style:'margin-top:12px'},h('div',{class:'gh',style:'grid-template-columns:1fr'},'settled ('+r.done.length+')'),r.done.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).map(x=>h('div',{class:'rw static'},h('div',{class:'dim'},x.from),h('div',null,NAME[x.from]+' paid '+NAME[x.to]+' RM '+n2(x.amount)),h('button',{type:'button',class:'btn s d',onclick:()=>del('settlements/'+x.id)},'undo')))):null));
+      r.done.length?h('div',{class:'grp t-sp c-teal',style:'margin-top:12px'},h('div',{class:'gh',style:'grid-template-columns:1fr'},'settled ('+r.done.length+')'),r.done.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).map(x=>h('div',{class:'rw static'},h('div',{class:'dim'},x.from),h('div',null,NAME[x.from]+' paid '+NAME[x.to]+' RM '+n2(x.amount))))):null));
   }
   return out;
 }
@@ -636,11 +529,10 @@ function infoRow(d){
     if(kind==='phone'){links.push(h('a',{class:'lk',href:'tel:'+val.replace(/[^\d+]/g,'')},'call'));links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'copy'))}
     if(kind==='ref')links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'copy'));
   }
-  links.push(h('button',{type:'button',class:'lk',onclick:()=>intelSheet(d)},'edit'));
   return h('div',{class:'rw blk static',id:'S-'+d.id},
     h('div',{class:'l'},h('span',null,d.label),
-      h('button',{type:'button',class:conf?'st-ok':due==='late'?'st-bad':'st-tbc','aria-label':conf?'Confirmed. Tap to set back to TBC':'TBC. Tap to confirm',style:'min-height:32px;font-weight:700',onclick:()=>upd('intel/'+d.id,conf?{status:'TBC',confirmedBy:null}:{status:'Confirmed',confirmedBy:me()||uid})},conf?'confirmed':'TBC')),
-    h('button',{type:'button',class:'v'+(isTbc?' tbc':''),'aria-label':'Edit '+d.label,onclick:()=>quick(d.label,val,v=>upd('intel/'+d.id,{value:v}),{label:'Value'})},isTbc&&!val?'tap to add':val),
+      h('span',{class:conf?'st-ok':due==='late'?'st-bad':'st-tbc',style:'font-weight:700'},conf?'confirmed':'TBC')),
+    h('div',{class:'v'+(isTbc?' tbc':'')},val||'not set'),
     d.note?h('div',{class:'sub'},d.note):null,
     d.neededBy&&!conf?h('div',{class:'sub '+(due==='late'?'over':due==='soon'?'amb':'')},(due==='late'?'overdue, was needed by ':'needed by ')+fmtD(d.neededBy)):null,
     conf&&sealOf(d.confirmedBy)?h('div',{class:'sub'},'confirmed by '+NAME[sealOf(d.confirmedBy)]):null,
@@ -655,14 +547,10 @@ function voteBlock(d){
     h('div',{class:'v'},d.question),
     opts.map((t,i)=>{
       const mine=my&&votes[my]===i,vs=CODES.filter(c=>votes[c]===i);
-      return h('button',{type:'button',class:'opt'+(decided&&d.decided!==i?' dim':''),'aria-pressed':mine?'true':'false',onclick:()=>{
-        if(decided){toast('Already decided. Reopen to vote');return}
-        if(!my){toast('Pick who you are in Settings');return}
-        upd('decisions/'+d.id,{votes:{[my]:mine?null:i}});
-      }},h('span',{class:'rb'},(decided?d.decided===i:mine)?'(x)':'( )'),h('span',{style:'flex:1'},t,vs.length?h('span',{class:'dim'},'  '+vs.map(c=>NAME[c]).join(', ')):null),
+      return h('div',{class:'opt'+(decided&&d.decided!==i?' dim':'')},h('span',{class:'rb'},(decided?d.decided===i:mine)?'(x)':'( )'),h('span',{style:'flex:1'},t,vs.length?h('span',{class:'dim'},'  '+vs.map(c=>NAME[c]).join(', ')):null),
         decided&&d.decided===i?h('span',{class:'ok'},'chosen'):(i===lead&&!decided?h('span',{class:'head'},'leading'):null));
     }),
-    h('div',{class:'acts',style:'margin-top:6px'},decided?h('button',{type:'button',class:'btn s',onclick:()=>upd('decisions/'+d.id,{decided:null})},'reopen vote'):(lead>=0?h('button',{type:'button',class:'btn s p',onclick:()=>upd('decisions/'+d.id,{decided:lead})},'mark leading option decided'):h('span',{class:'sub'},'tap an option to vote'))),
+    h('div',{class:'sub'},decided?'Decided. To reopen it, tell Claude in chat.':'To vote or decide, tell Claude in chat.'),
     d.neededBy?h('div',{class:'sub'},'needed by '+fmtD(d.neededBy)):null,meta(d,'intel','decisions/'+d.id));
 }
 function viewIntel(){
@@ -677,8 +565,7 @@ function viewIntel(){
     cs.forEach(d=>grp.append(infoRow(d)));ds.forEach(d=>grp.append(voteBlock(d)));
     out.push(grp);
   });
-  if(!any)out.push(h('div',null,pt('Info'),h('div',{class:'dim'},'Nothing here yet. Add flights, booking numbers, phone numbers and addresses.')));
-  out.push(addBtn('Add info',()=>intelSheet(null)));
+  if(!any)out.push(h('div',null,pt('Info'),h('div',{class:'dim'},'Nothing here yet. Tell Claude in chat to add flights, booking numbers, phone numbers and addresses.')));
   return out;
 }
 
@@ -690,12 +577,11 @@ function header(ph){
   let lp=null;const clr=()=>{clearTimeout(lp);lp=null};
   t.addEventListener('pointerdown',()=>{lp=setTimeout(()=>{lp=null;phaseSheet()},650)});
   ['pointerup','pointerleave','pointercancel','pointermove'].forEach(ev=>t.addEventListener(ev,clr));
-  return h('header',{class:'hd'},t,h('span',{class:'ph'},PH_NAME[ph]+(UI.ov?' (preview)':'')),
-    h('button',{type:'button',class:'who','aria-label':'Settings',onclick:settingsSheet},'['+(w?NAME[w]:'who are you?')+']'));
+  return [h('header',{class:'hd'},t,h('span',{class:'ph'},PH_NAME[ph]+(UI.ov?' (preview)':'')),
+    h('button',{type:'button',class:'who','aria-label':'Settings',onclick:settingsSheet},'['+(w?NAME[w]:'who are you?')+']')),h('div',{class:'sub',style:'padding:6px 0 0'},'Read only. To change anything, tell Claude in your chat.')];
 }
 function offBar(){
   if(isOffline())return h('div',{class:'off',role:'status'},'Offline. '+(S.liveAt?'Showing the last update from '+clockHM(S.liveAt)+'.':'Nothing saved on this phone yet.'));
-  if(S.ro)return h('div',{class:'off'},'View only. Ask Soff for Contributor access.');
   return null;
 }
 function renderTabs(){

@@ -9,7 +9,7 @@ The three of us (Soff, Arif, Shereef) are on a road trip, hike and dive day. The
 
 **https://claude.ai/artifact/C7c9DVY2Fcub3tuSJio3qN**
 
-When the user drops trip info into chat, put it into the app. Do not wait to be asked.
+The app is read only. Nobody can edit it by tapping, so every change comes through chat. When the user drops trip info into chat, put it into the app. Do not wait to be asked.
 
 ## Who is talking
 
@@ -38,6 +38,10 @@ Update straight away when the info is clear and about the trip:
 | "Running 30 min late" | Set `meta/trip` `lateBy` to 30 (absolute minutes, 0 to clear). Only affects Day 1 |
 | "I paid RM 85 for petrol" | Add a `ledgerSpends` doc (see below) |
 | "I vote option 2" | Set `votes.<code>` on the `decisions` doc to the option index |
+| "We picked option 2", "lunch is decided" | Set `decided` on the `decisions` doc to the option index. Reopen by setting it to null |
+| "Arif paid me back RM 100", "I settled up with Shereef" | Add a `settlements` doc: `from` (who paid), `to` (who received), `amount`, `settled: true`, plus `updatedBy` and `updatedAt` |
+| "Budget for petrol is RM 140" | Update `budget` on the matching `ledgerLines` doc. Add a new line or rename one when asked |
+| "Remove the Chemerong stop" | Ask for a clear yes, then delete the `itinerary` doc |
 
 ## What to ignore
 
@@ -63,7 +67,7 @@ Times are Malaysia time (GMT+8). Money is MYR. Day index: 0 Tue 6 Oct, 1 Wed 7 O
 - `decisions/{id}`: `group`, `question`, `options` (array), `votes` (object of code to option index), `decided` (index), `neededBy`.
 - `meta/trip`: `lateBy` (minutes), `checkInTime` ("HH:MM"), `startDate`, `endDate`.
 
-Never touch `crew/members`, `settlements`, or anything under `data/users`.
+Never touch `crew/members` or anything under `data/users`. Only add a `settlements` doc when someone says money changed hands, and only delete one when asked to undo it.
 
 ## Examples
 
