@@ -191,6 +191,8 @@ main{display:flex;flex-direction:column;gap:20px;padding-top:20px}
 .abt p{margin:2px 0 8px;color:var(--text-2)}
 .fb{padding:10px 0;border-top:1px solid var(--line)}
 .field textarea{font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--line-2);border-radius:12px;padding:12px 14px;min-height:96px;width:100%}
+.ph{display:block;width:calc(100% + 40px);margin:-20px -20px 14px;max-width:none;aspect-ratio:16/9;object-fit:cover;border-radius:15px 15px 0 0;background:var(--line)}
+.ph.sm{width:100%;margin:0 0 12px;border-radius:12px}
 </style>
 
 <header id="top">
@@ -535,6 +537,7 @@ function renderTop(st,tgt){
 }
 
 /* ---------- building blocks ---------- */
+const photoEl=(s,cls)=>s&&s.photo&&/^[a-z0-9-]+$/i.test(s.photo)?h('img',{class:'ph'+(cls?' '+cls:''),src:'img/'+s.photo+'.webp',alt:'The three of us, '+(s.title||''),loading:'lazy',decoding:'async',onerror:e=>e.target.remove()}):null;
 const nav=q=>'https://waze.com/ul?q='+encodeURIComponent(q)+'&navigate=yes';
 const mapA=(q,label)=>h('a',{class:'lk',href:mapsUrl(q),target:'_blank',rel:'noopener',onclick:e=>e.stopPropagation()},label||'Map');
 function attentionBlock(){
@@ -567,6 +570,7 @@ function heroBlock(st,tgt){
   if(!tgt)return h('section',{class:'card hero'},h('h2',null,'That is every stop done.'));
   const q=tgt.mapsQuery||tgt.place,ph=tgt.phone,cd=evAt(tgt)-now,hasT=!!tgt.start,w=tgt.assignee&&NAME[sealOf(tgt.assignee)||tgt.assignee];
   return h('section',{class:'card hero',id:'hero'},
+    photoEl(tgt),
     h('div',{class:'meta'},h('span',null,'Next up'),h('span',{class:'cd mo'},cd>0?'in '+inStr(cd):'now')),
     h('div',{class:'time mo'+(hasT?'':' txt')},timeStr(tgt)),
     h('h2',null,tgt.title),
@@ -692,6 +696,7 @@ function stopRow(s,state,ev){
       h('span',null,h('span',{class:'ttl'},s.title),s.place?h('span',{class:'pl'},s.place):null),
       s.done?h('span',{class:'ck','aria-label':'Done'},'✓',driftEl(s)):h('span')));
   if(open)row.append(h('div',{class:'ex'},
+    photoEl(s,'sm'),
     s.note?h('div',null,s.note):null,
     w?h('div',{class:'dim fb'},w+'’s job'):null,
     s.flag?h('div',{class:'flag'},'Heads up: '+s.flag):null,
@@ -848,7 +853,7 @@ function chatRules(){
   '- Set status to Confirmed only when the user says it is confirmed or booked. Otherwise keep TBC and put the caveat in note.',
   '- Replies: short, plain, British spelling, no em dashes. After editing, say in one line what changed.',
   'Data model. Day numbers: 0 Tue 6 Oct, 1 Wed 7, 2 Thu 8, 3 Fri 9, 4 Mon 12 Oct. Seal codes SF, AR, SH.',
-  '- itinerary: day, order, start/end "HH:MM", when (label if no time), approx (bool), title, place, note, flag (warning), done (bool, true when the stop has happened), env (urban, road, forest or coast) with milestone (true) on the stops where the journey enters a new environment, assignee (code of who owns the job), phone and callLabel (shows a Call button), plate (vehicle plate), actualAt (ms, when it really happened, set together with done), critical (bool, shows on the Critical path), deadline "HH:MM" and deadlineLabel (the thing the stop must beat, gives a buffer).','- intel and decisions can have owner (code SF, AR or SH) shown as Owner. When a decision is made set decided, decidedBy (code), decidedAt (ms) and why (one short reason).',
+  '- itinerary: day, order, start/end "HH:MM", when (label if no time), approx (bool), title, place, note, flag (warning), done (bool, true when the stop has happened), env (urban, road, forest or coast) with milestone (true) on the stops where the journey enters a new environment, assignee (code of who owns the job), phone and callLabel (shows a Call button), plate (vehicle plate), photo (name of a picture in the img folder, shown as a banner), actualAt (ms, when it really happened, set together with done), critical (bool, shows on the Critical path), deadline "HH:MM" and deadlineLabel (the thing the stop must beat, gives a buffer).','- intel and decisions can have owner (code SF, AR or SH) shown as Owner. When a decision is made set decided, decidedBy (code), decidedAt (ms) and why (one short reason).',
   '- intel (Info tab): group (Getting there, Stay, Dive day, Getting home, People, Flights, Bookings), label, value, kind (text, address, phone, ref, time), status (TBC or Confirmed), neededBy (YYYY-MM-DD), note, mapsQuery, order.',
   '- decisions: group, question, options (array), votes (code to option index), decided (index or null), neededBy.',
   '- ledgerLines: category, item, budget (number or null), note, order. ledgerSpends: amount, lineId, paidBy (code), splitBetween (codes, default all three), note, at (ms).',
