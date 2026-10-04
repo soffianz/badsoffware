@@ -84,3 +84,5 @@ Stops can also carry: `done` (bool, set true once it has happened), `env` (urban
 More stop fields: `actualAt` (ms, set together with `done`), `critical` (true shows it on the Critical path), `deadline` ("HH:MM", may be 25:00 for 1am next day) and `deadlineLabel` (what it must beat; gives the buffer).
 
 Owners and decisions: `intel` and `decisions` can have `owner` (SF, AR or SH). When a decision is made set `decided`, `decidedBy` (code), `decidedAt` (ms) and `why` (one short reason). The page also has a `feedback` collection (text, by, at) written from the Suggest a change button; read it, do not edit it.
+
+Unplanned events: when the user reports something that was not in the plan (accident, breakdown, new friend, impromptu detour, extra stop), add an itinerary stop with a new id starting `x-`, `unplanned: true`, `day`, `start` (HH:MM), title, place, note. If it already happened also set `done: true` and `actualAt` (ms). The app shows these in magenta with an Unplanned tag, slotted in by time.
