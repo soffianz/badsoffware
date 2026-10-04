@@ -570,7 +570,7 @@ function heroBlock(st,tgt){
   if(!tgt)return h('section',{class:'card hero'},h('h2',null,'That is every stop done.'));
   const q=tgt.mapsQuery||tgt.place,ph=tgt.phone,cd=evAt(tgt)-now,hasT=!!tgt.start,w=tgt.assignee&&NAME[sealOf(tgt.assignee)||tgt.assignee];
   return h('section',{class:'card hero',id:'hero'},
-    photoEl(tgt),
+    photoEl(tgt)||photoEl({photo:'default',title:'default banner'}),
     h('div',{class:'meta'},h('span',null,'Next up'),h('span',{class:'cd mo'},cd>0?'in '+inStr(cd):'now')),
     h('div',{class:'time mo'+(hasT?'':' txt')},timeStr(tgt)),
     h('h2',null,tgt.title),
