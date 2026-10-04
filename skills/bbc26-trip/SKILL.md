@@ -80,3 +80,7 @@ Never touch `crew/members` or anything under `data/users`. Only add a `settlemen
 ## Itinerary stop extras
 
 Stops can also carry: `done` (bool, set true once it has happened), `env` (urban, road, forest or coast) with `milestone: true` on stops where the trip enters a new environment (current: d0-car urban, d1-depart road, d1-chemerong forest, d1-arrive coast), `assignee` (SF, AR or SH), `plate`, `phone` and `callLabel` (shows a Call button on the Next up card).
+
+More stop fields: `actualAt` (ms, set together with `done`), `critical` (true shows it on the Critical path), `deadline` ("HH:MM", may be 25:00 for 1am next day) and `deadlineLabel` (what it must beat; gives the buffer).
+
+Owners and decisions: `intel` and `decisions` can have `owner` (SF, AR or SH). When a decision is made set `decided`, `decidedBy` (code), `decidedAt` (ms) and `why` (one short reason). The page also has a `feedback` collection (text, by, at) written from the Suggest a change button; read it, do not edit it.

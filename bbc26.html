@@ -167,6 +167,30 @@ main{display:flex;flex-direction:column;gap:20px;padding-top:20px}
 .pick small{margin-left:auto;font:400 14px var(--sans);color:var(--text-3);text-align:right}
 
 .chg{color:var(--mint)}.pend{color:var(--amber)}
+
+.own{font-size:14px;color:var(--text-2);margin-top:2px}
+.own.no{color:var(--amber)}
+.rd .bar{margin-top:10px}
+.rd .tl{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.rd .big{font:700 22px var(--mono)}
+.cp{display:grid;grid-template-columns:20px 1fr;gap:0 12px;padding:10px 0;border-top:1px solid var(--line)}
+.cp .dt{width:12px;height:12px;border-radius:50%;margin-top:6px;background:var(--text-3)}
+.cp .dt.ok{background:var(--mint)}.cp .dt.low{background:var(--amber)}.cp .dt.bad{background:var(--alert)}
+.cp .ln{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.cp .bf{font:500 14px var(--mono)}
+.cp .bf.low{color:var(--amber)}.cp .bf.bad{color:var(--alert)}.cp .bf.ok{color:var(--mint)}
+.dr{display:block;font:500 12px var(--mono);color:var(--text-3);text-align:right}
+.dr.late{color:var(--amber)}
+.vs{display:grid;grid-template-columns:1fr auto auto auto;gap:4px 12px;font-size:14px;align-items:baseline}
+.vs .h{color:var(--text-3);font-size:13px}
+.vs .mo{font-size:14px}
+.dg{padding:8px 0;border-top:1px solid var(--line)}
+.why{margin-top:4px;color:var(--text-2)}
+.foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding-top:8px}
+.abt h3{font:600 15px var(--sans);color:var(--mint);margin-top:6px}
+.abt p{margin:2px 0 8px;color:var(--text-2)}
+.fb{padding:10px 0;border-top:1px solid var(--line)}
+.field textarea{font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--line-2);border-radius:12px;padding:12px 14px;min-height:96px;width:100%}
 </style>
 
 <header id="top">
@@ -197,7 +221,7 @@ const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','De
 const DAYOFF=[-1,0,1,2,5];
 const DAYTAG=['Before','Land','Sea','Return','After'];
 const PH_NAME={pre:'Before the trip',d1:'Day 1, Land',d2:'Day 2, Sea',d3:'Day 3, Return',post:'After the trip'};
-const COLS=['itinerary','ledgerLines','ledgerSpends','settlements','intel','decisions'];
+const COLS=['itinerary','ledgerLines','ledgerSpends','settlements','intel','decisions','feedback'];
 const TABS=[['now','Itinerary'],['ledger','Ledger'],['intel','Info']];
 const ICONS={now:'<path d="M12 3a6 6 0 0 0-6 6c0 4.5 6 12 6 12s6-7.5 6-12a6 6 0 0 0-6-6z"/><circle cx="12" cy="9" r="2"/>',ledger:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',intel:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>'};
 const BARS=['lime','rose','blue','amber','teal'];
@@ -291,8 +315,8 @@ function dueOf(d){
 }
 function attentionItems(){
   const out=[];
-  list('intel').forEach(d=>{if(d.status==='TBC'){const s=dueOf(d);if(s)out.push({id:d.id,label:d.label,neededBy:d.neededBy,s})}});
-  list('decisions').forEach(d=>{if(d.decided==null){const s=dueOf(d);if(s)out.push({id:d.id,label:d.question,neededBy:d.neededBy,s})}});
+  list('intel').forEach(d=>{if(d.status==='TBC'){const s=dueOf(d);if(s)out.push({id:d.id,label:d.label,neededBy:d.neededBy,s,d})}});
+  list('decisions').forEach(d=>{if(d.decided==null){const s=dueOf(d);if(s)out.push({id:d.id,label:d.question,neededBy:d.neededBy,s,d})}});
   return out.sort((a,b)=>(a.s===b.s?0:a.s==='late'?-1:1)||(a.neededBy>b.neededBy?1:-1));
 }
 
@@ -367,7 +391,10 @@ function openSheet(o){
       }))};
       draw();els.push(h('div',{class:'field'},h('span',{class:'lab'},f.label),ctl));return;
     }
-    if(f.t==='select'){
+    if(f.t==='area'){
+      ctl=h('textarea',{id,placeholder:f.ph||''},f.value||'');
+      ctl.addEventListener('input',()=>vals[f.k]=ctl.value);
+    }else if(f.t==='select'){
       ctl=h('select',{id});
       f.options.forEach(([v,t])=>{const op=h('option',{value:v},t);if(String(v)===String(f.value))op.selected=true;ctl.append(op)});
       ctl.addEventListener('change',()=>vals[f.k]=ctl.value);
@@ -515,7 +542,7 @@ function attentionBlock(){
   if(!items.length)return null;
   return h('section',{class:'card'},h('div',{class:'sect-h'},h('h2',null,'Needs attention'),h('span',{class:'ct'},items.length+' open')),
     items.slice(0,3).map(i=>h('button',{type:'button',class:'ar',onclick:()=>goInfo(i.id)},
-      h('span',null,i.label),h('span',{class:'pil '+(i.s==='late'?'bad':'')},(i.s==='late'?'Overdue ':'Due ')+fmtS(i.neededBy)))),
+      h('span',null,i.label,ownerLine(i.d)),h('span',{class:'pil '+(i.s==='late'?'bad':'')},(i.s==='late'?'Overdue ':'Due ')+fmtS(i.neededBy)))),
     items.length>3?h('div',{class:'sub'},'+'+(items.length-3)+' more in Info'):null);
 }
 function checkinBlock(){
@@ -556,9 +583,103 @@ function heroBlock(st,tgt){
 }
 function markDone(s){
   if(!guard())return;
-  upsert('itinerary/'+s.id,{done:true});
+  upsert('itinerary/'+s.id,{done:true,actualAt:Date.now()});
 }
-function undo(s){if(guard())upsert('itinerary/'+s.id,{done:false})}
+function undo(s){if(guard())upsert('itinerary/'+s.id,{done:false,actualAt:null})}
+
+/* ---------- product blocks ---------- */
+const ownerOf=d=>d&&d.owner?(NAME[sealOf(d.owner)||d.owner]||null):null;
+function ownerLine(d){const o=ownerOf(d);return h('div',{class:'own'+(o?'':' no')},o?'Owner: '+o:'No owner yet')}
+function driftOf(s){if(!s.actualAt)return null;const m=Math.round((s.actualAt-evAt(s))/6e4);return Math.abs(m)>720?null:m}
+function driftEl(s){
+  const m=driftOf(s);if(m==null)return null;
+  const t=Math.abs(m)<=5?'on time':(m>0?'+':'−')+Math.abs(m)+' min';
+  return h('span',{class:'dr'+(m>5?' late':'')},t);
+}
+function openItems(){
+  const out=[];
+  list('intel').forEach(d=>{if(d.status!=='Confirmed')out.push({id:d.id,label:d.label,neededBy:d.neededBy,s:dueOf(d),d})});
+  list('decisions').forEach(d=>{if(d.decided==null)out.push({id:d.id,label:d.question,neededBy:d.neededBy,s:dueOf(d),d})});
+  return out.sort((a,b)=>{const x=a.neededBy||'9999',y=b.neededBy||'9999';return x>y?1:x<y?-1:0});
+}
+function readinessBlock(){
+  const total=list('intel').length+list('decisions').length;
+  if(!total)return null;
+  const open=openItems(),set=total-open.length;
+  return h('section',{class:'card rd'},
+    h('div',{class:'tl'},h('h2',{style:'font:600 18px var(--sans)'},'Trip readiness'),h('span',{class:'big'},set+' / '+total)),
+    h('div',{class:'bar'+(open.some(i=>i.s==='late')?' o':'')},h('i',{style:'width:'+Math.round(set/total*100)+'%'})),
+    open.length?h('div',{class:'sub'},open.length+' still open'):h('div',{class:'sub'},'Everything is locked in.'),
+    open.slice(0,3).map(i=>h('button',{type:'button',class:'ar',style:'align-items:flex-start',onclick:()=>goInfo(i.id)},
+      h('span',null,i.label,ownerLine(i.d)),
+      i.neededBy?h('span',{class:'pil '+(i.s==='late'?'bad':'')},(i.s==='late'?'Overdue ':'Due ')+fmtS(i.neededBy)):h('span',{class:'pil'},'No date'))),
+    open.length>3?h('div',{class:'sub'},'+'+(open.length-3)+' more in Info'):null);
+}
+function critBuffer(s){
+  const late=lateFor(s);
+  if(s.id==='d1-arrive'||s.key==='arrive'){
+    const ci=pm(trip().checkInTime||'15:00'),a=pm(s.start);
+    if(ci==null||a==null)return null;
+    return {min:a+late-ci,txt:'after check-in opens '+(trip().checkInTime||'15:00')};
+  }
+  if(s.deadline&&s.start){
+    const dl=pm(s.deadline),a=pm(s.start);
+    if(dl==null||a==null)return null;
+    return {min:dl-(a+late),txt:'before '+(s.deadlineLabel||s.deadline)+' '+s.deadline};
+  }
+  return null;
+}
+function criticalBlock(st){
+  const cs=st.ev.filter(s=>s.critical);
+  if(cs.length<2)return null;
+  return h('section',{class:'card'},h('div',{class:'sect-h'},h('h2',null,'Critical path'),h('span',{class:'ct'},cs.length+' must-hits')),
+    h('div',{class:'sub'},'The stops everything else depends on, and the slack around them.'),
+    cs.map(s=>{
+      const b=critBuffer(s),k=!b?'':b.min<0?'bad':b.min<30?'low':'ok';
+      return h('div',{class:'cp'},h('span',{class:'dt '+(s.done?'ok':k)}),
+        h('div',null,h('div',{class:'ln'},h('span',{style:'font-weight:500'},s.title),h('span',{class:'mo dim',style:'font-size:14px;white-space:nowrap'},fmtS(dayDate(s.day))+' '+timeStr(s))),
+          b?h('div',{class:'bf '+k},(b.min>=0?'+':'−')+Math.abs(b.min)+' min '+b.txt):h('div',{class:'sub'},s.deadline&&!s.start?'Must be done by '+s.deadline+(pm(s.deadline)>=1440?' next day':''):'No buffer measured')));
+    }));
+}
+function retroBlock(st){
+  const ds=st.ev.filter(s=>s.done&&driftOf(s)!=null);
+  if(!ds.length)return null;
+  const last=ds[ds.length-1],net=driftOf(last);
+  return h('section',{class:'card'},h('div',{class:'sect-h'},h('h2',null,'Planned vs actual'),h('span',{class:'ct'},ds.length+' logged')),
+    h('div',{class:'sub'},'Running '+(Math.abs(net)<=5?'on time':Math.abs(net)+' min '+(net>0?'behind':'ahead'))+' as of the last stop.'),
+    h('div',{class:'vs',style:'margin-top:10px'},h('span',{class:'h'},'Stop'),h('span',{class:'h'},'Plan'),h('span',{class:'h'},'Actual'),h('span',{class:'h'},'Drift'),
+      ds.slice(-5).map(s=>{const m=driftOf(s);return [h('span',null,s.title),h('span',{class:'mo'},hmOf(Math.round((evAt(s)-Date.parse(dayDate(s.day)+'T00:00:00Z'))/6e4))),h('span',{class:'mo'},clockHM(s.actualAt)),h('span',{class:'mo'+(m>5?' over':'')},(m>0?'+':m<0?'−':'')+Math.abs(m))]})));
+}
+function digestBlock(){
+  if(!uid||!S.loaded.seen)return null;
+  const src=[['now','itinerary',d=>d.title],['ledger','ledgerLines',d=>d.item],['ledger','ledgerSpends',d=>'RM '+n2(d.amount)+' spend'],['ledger','settlements',d=>'a settlement'],['intel','intel',d=>d.label],['intel','decisions',d=>d.question]];
+  const rows=[];
+  src.forEach(([ch,col,nm])=>list(col).forEach(d=>{if(unseen(d,ch))rows.push({t:d.updatedAt,txt:who(d.updatedBy)+' updated '+nm(d)})}));
+  if(!rows.length)return null;
+  rows.sort((a,b)=>b.t-a.t);
+  return h('section',{class:'card'},h('div',{class:'sect-h'},h('h2',null,'Since you last looked'),h('span',{class:'ct'},rows.length)),
+    rows.slice(0,5).map(r=>h('div',{class:'dg'},r.txt,h('span',{class:'dim'},' · '+ago(r.t)))),
+    rows.length>5?h('div',{class:'sub'},'+'+(rows.length-5)+' more'):null);
+}
+const BUILD='v17';
+function aboutSheet(){
+  const P=(t,b)=>[h('h3',null,t),h('p',null,b)];
+  openSheet({title:'About BBCGPT',focus:false,node:h('div',{class:'abt'},
+    P('Problem','Three people, one trip, and the plan lived in WhatsApp threads, screenshots and three heads.'),
+    P('Users','Soff, Arif and Shereef, on phones, often with patchy signal on the road.'),
+    P('Principles','One screen answers "what is next". Every open item has an owner and a date. Edits go through chat, so taps never change data by accident.'),
+    P('Non-goals','Tap-to-edit forms, push notifications, accounts outside Claude, a public version.'),
+    P('Now ('+BUILD+')','Next-up card, journey UI, readiness, owners, critical path, digest, planned vs actual, decision log.'),
+    P('Next','Trip retro summary after Day 3, reminders written into the plan, settle-up with copy-ready amounts.'),
+    P('Later','Reuse the same app as a template for the next trip.'))});
+}
+function feedbackSheet(){
+  const fb=list('feedback').sort((a,b)=>(b.at||0)-(a.at||0));
+  openSheet({title:'Suggest a change',fields:[{k:'text',t:'area',label:'What should be better, missing or broken?',ph:'Be blunt.'}],saveLabel:'Send',
+    node:fb.length?h('div',null,h('div',{class:'sub'},'Already logged ('+fb.length+')'),fb.slice(0,4).map(f=>h('div',{class:'fb'},f.text,h('div',{class:'sub'},(f.by&&NAME[f.by]?NAME[f.by]:'Someone')+' · '+ago(f.at||0))))):null,
+    validate:v=>(v.text||'').trim().length<3?'Write a few words first':null,
+    onSave:v=>{if(!guard())return;upsert('feedback/'+newId(),{text:v.text.trim().slice(0,1000),by:me(),at:Date.now()});toast('Logged. Thank you.')}});
+}
 
 /* ---------- itinerary ---------- */
 const COMPACT_N=3;
@@ -569,7 +690,7 @@ function stopRow(s,state,ev){
     h('button',{type:'button',class:'sr','aria-expanded':open?'true':'false',onclick:()=>{UI.open['s'+s.id]=!open;render()}},
       h('span',{class:'tm'+(s.start?'':' lbl')},timeStr(s)),
       h('span',null,h('span',{class:'ttl'},s.title),s.place?h('span',{class:'pl'},s.place):null),
-      s.done?h('span',{class:'ck','aria-label':'Done'},'✓'):h('span')));
+      s.done?h('span',{class:'ck','aria-label':'Done'},'✓',driftEl(s)):h('span')));
   if(open)row.append(h('div',{class:'ex'},
     s.note?h('div',null,s.note):null,
     w?h('div',{class:'dim fb'},w+'’s job'):null,
@@ -583,7 +704,7 @@ function stopRow(s,state,ev){
   return row;
 }
 function viewNow(ph,st,tgt){
-  const out=[attentionBlock(),heroBlock(st,tgt)];
+  const out=[heroBlock(st,tgt),readinessBlock(),digestBlock()];
   const {ev}=st;
   if(ph==='d1')out.push(checkinBlock());
   if(!ev.length)return out;
@@ -604,6 +725,7 @@ function viewNow(ph,st,tgt){
   });
   if(hidden>0||all)sec.append(h('button',{type:'button',class:'more',onclick:()=>{UI.open.all=!all;render()}},all?'Show fewer stops':'Show the other '+hidden+' stops'));
   out.push(sec);
+  out.push(criticalBlock(st),retroBlock(st));
   return out;
 }
 
@@ -661,6 +783,7 @@ function infoRow(d){
     h('div',{class:'top'},h('span',{class:'lb'},d.label),h('span',{class:'pil '+(conf?'ok':due==='late'?'bad':'')},conf?'Confirmed':'TBC')),
     h('div',{class:'vv'+(isTbc?' tbc':'')+(kind==='ref'||kind==='time'||kind==='phone'?' mo':'')},val||'Not set'),
     d.note?h('div',{class:'sub'},d.note):null,
+    conf?null:ownerLine(d),
     d.neededBy&&!conf?h('div',{class:'sub'+(due==='late'?' over':'')},(due==='late'?'Overdue, was needed by ':'Needed by ')+fmtD(d.neededBy)):null,
     conf&&sealOf(d.confirmedBy)?h('div',{class:'sub'},'Confirmed by '+NAME[sealOf(d.confirmedBy)]):null,
     links.length?h('div',{class:'links'},links):null,meta(d,'intel','intel/'+d.id));
@@ -677,6 +800,8 @@ function voteBlock(d){
       return h('div',{class:'opt'+(mine?' mine':'')+(decided&&d.decided!==i?' dim':'')},h('span',{class:'rb'}),h('span',{style:'flex:1'},t,vs.length?h('span',{class:'dim'},'  '+vs.map(c=>NAME[c]).join(', ')):null),
         decided&&d.decided===i?h('span',{class:'pil ok'},'Chosen'):(i===lead&&!decided?h('span',{class:'pil'},'Leading'):null));
     }),
+    decided&&(d.decidedBy||d.decidedAt||d.why)?h('div',{class:'why'},'Decided'+(sealOf(d.decidedBy)?' by '+NAME[sealOf(d.decidedBy)]:'')+(d.decidedAt?', '+fmtS(new Date(d.decidedAt+8*3600e3).toISOString().slice(0,10)):'')+(d.why?'. Why: '+d.why:'')):null,
+    ownerLine(d),
     h('div',{class:'sub'},decided?'Decided. To reopen it, tell BBCGPT.':'To vote or decide, tell BBCGPT.'),
     d.neededBy?h('div',{class:'sub'},'Needed by '+fmtD(d.neededBy)):null,meta(d,'intel','decisions/'+d.id));
 }
@@ -723,7 +848,7 @@ function chatRules(){
   '- Set status to Confirmed only when the user says it is confirmed or booked. Otherwise keep TBC and put the caveat in note.',
   '- Replies: short, plain, British spelling, no em dashes. After editing, say in one line what changed.',
   'Data model. Day numbers: 0 Tue 6 Oct, 1 Wed 7, 2 Thu 8, 3 Fri 9, 4 Mon 12 Oct. Seal codes SF, AR, SH.',
-  '- itinerary: day, order, start/end "HH:MM", when (label if no time), approx (bool), title, place, note, flag (warning), done (bool, true when the stop has happened), env (urban, road, forest or coast) with milestone (true) on the stops where the journey enters a new environment, assignee (code of who owns the job), phone and callLabel (shows a Call button), plate (vehicle plate).',
+  '- itinerary: day, order, start/end "HH:MM", when (label if no time), approx (bool), title, place, note, flag (warning), done (bool, true when the stop has happened), env (urban, road, forest or coast) with milestone (true) on the stops where the journey enters a new environment, assignee (code of who owns the job), phone and callLabel (shows a Call button), plate (vehicle plate), actualAt (ms, when it really happened, set together with done), critical (bool, shows on the Critical path), deadline "HH:MM" and deadlineLabel (the thing the stop must beat, gives a buffer).','- intel and decisions can have owner (code SF, AR or SH) shown as Owner. When a decision is made set decided, decidedBy (code), decidedAt (ms) and why (one short reason).',
   '- intel (Info tab): group (Getting there, Stay, Dive day, Getting home, People, Flights, Bookings), label, value, kind (text, address, phone, ref, time), status (TBC or Confirmed), neededBy (YYYY-MM-DD), note, mapsQuery, order.',
   '- decisions: group, question, options (array), votes (code to option index), decided (index or null), neededBy.',
   '- ledgerLines: category, item, budget (number or null), note, order. ledgerSpends: amount, lineId, paidBy (code), splitBetween (codes, default all three), note, at (ms).',
@@ -868,7 +993,7 @@ const VIEWS={now:viewNow,ledger:viewLedger,intel:viewIntel};
 function render(){
   const ph=phase(),y=window.scrollY,st=itState(),tgt=pendingStop(st);
   renderTop(st,tgt);
-  app.replaceChildren(...[].concat(offBar(),sampleFn?null:h('div',{class:'sub'},'Read only here. To change anything, tell Claude in your own chat.'),VIEWS[UI.tab](ph,st,tgt)).flat(Infinity).filter(Boolean));
+  app.replaceChildren(...[].concat(offBar(),sampleFn?null:h('div',{class:'sub'},'Read only here. To change anything, tell Claude in your own chat.'),VIEWS[UI.tab](ph,st,tgt),h('div',{class:'foot'},h('button',{type:'button',class:'lk',onclick:aboutSheet},'About BBCGPT'),h('button',{type:'button',class:'lk',onclick:feedbackSheet},'Suggest a change'))).flat(Infinity).filter(Boolean));
   window.scrollTo(0,y);
   renderTabs();renderGate();chatLayout();
   if(UI.focus){const f=document.getElementById('S-'+UI.focus);UI.focus=null;if(f)f.scrollIntoView({block:'center'})}
