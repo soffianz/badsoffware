@@ -194,6 +194,7 @@ main{display:flex;flex-direction:column;gap:20px;padding-top:20px}
 .field textarea{font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--line-2);border-radius:12px;padding:12px 14px;min-height:96px;width:100%}
 .ph{display:block;width:calc(100% + 40px);margin:-20px -20px 14px;max-width:none;aspect-ratio:16/9;object-fit:cover;border-radius:15px 15px 0 0;background:var(--line)}
 .ph.sm{width:100%;margin:0 0 12px;border-radius:12px}
+.hero .ph{aspect-ratio:2.7/1;margin-bottom:12px}
 .ihd{display:block;width:100%;text-align:left}
 .ihd .vv{display:block}
 .ihd[aria-expanded] .lb{color:var(--text-2)}
@@ -564,7 +565,8 @@ function renderTop(st,tgt){
 }
 
 /* ---------- building blocks ---------- */
-const photoEl=(s,cls)=>s&&s.photo&&/^[a-z0-9-]+$/i.test(s.photo)?h('img',{class:'ph'+(cls?' '+cls:''),src:'img/'+s.photo+'.webp',alt:'The three of us, '+(s.title||''),loading:'lazy',decoding:'async',onerror:e=>e.target.remove()}):null;
+const PPOS={airport:42,pub:50,divers:50,beach:60,default:52};
+const photoEl=(s,cls)=>s&&s.photo&&/^[a-z0-9-]+$/i.test(s.photo)?h('img',{class:'ph'+(cls?' '+cls:''),src:'img/'+s.photo+'.webp',style:'object-position:50% '+(PPOS[s.photo]||50)+'%',alt:'The three of us, '+(s.title||''),loading:'lazy',decoding:'async',onerror:e=>e.target.remove()}):null;
 const nav=q=>'https://waze.com/ul?q='+encodeURIComponent(q)+'&navigate=yes';
 const mapA=(q,label)=>h('a',{class:'lk',href:mapsUrl(q),target:'_blank',rel:'noopener',onclick:e=>e.stopPropagation()},label||'Map');
 function attentionBlock(){
@@ -892,7 +894,11 @@ function viewIntel(){
   const cards=list('intel').sort(byOrder),decs=list('decisions'),gs=GROUPS.slice(),out=[attentionBlock()];
   cards.concat(decs).forEach(d=>{if(d.group&&gs.indexOf(d.group)<0)gs.push(d.group)});
   const shown=gs.filter(g=>cards.some(d=>d.group===g)||decs.some(d=>d.group===g));
-  const phones=cards.filter(d=>d.kind==='phone'&&d.value&&!/^tbc/i.test(d.value));
+  const dg=v=>String(v||'').replace(/\D/g,''),seenP={};
+  const phones=cards.filter(d=>d.kind==='phone'&&d.value&&!/^tbc/i.test(d.value)).map(d=>({label:d.label,value:d.value}));
+  list('itinerary').filter(x=>x.phone).sort((a,b)=>(a.day-b.day)||byOrder(a,b)).forEach(x=>phones.push({label:x.callLabel||x.title,value:x.phone}));
+  for(let i=phones.length-1;i>=0;i--){const k=dg(phones[i].value);if(seenP[k])phones.splice(i,1);else seenP[k]=1}
+  phones.reverse();
   if(phones.length)out.push(h('section',{class:'card'},h('h3',null,'Quick call'),h('div',{class:'chips'},phones.map(d=>h('a',{class:'chip call',href:'tel:'+d.value.replace(/[^\d+]/g,'')},'☎ '+d.label)))));
   if(shown.length>1)out.push(h('div',{class:'chips scroll'},shown.map(g=>h('button',{type:'button',class:'chip',onclick:()=>{const e=document.getElementById('G-'+g.replace(/\W+/g,'-'));if(e)e.scrollIntoView({behavior:'smooth',block:'start'})}},g))));
   let any=false;
