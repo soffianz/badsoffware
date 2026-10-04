@@ -639,7 +639,7 @@ function heroBlock(st,tgt){
       q?h('a',{class:'btn p',href:nav(q),target:'_blank',rel:'noopener'},'Navigate'):null,
       ph?h('a',{class:'btn',href:'tel:'+ph.replace(/[^\d+]/g,'')},tgt.callLabel||'Call'):null,
       h('button',{type:'button',class:'btn',onclick:()=>markDone(tgt)},'Mark done')),
-    q?h('div',null,h('a',{class:'lk',href:mapsUrl(q),target:'_blank',rel:'noopener'},'No Waze? Open in Google Maps')):null,
+    q?h('div',{class:'links'},h('a',{class:'lk',href:mapsUrl(q),target:'_blank',rel:'noopener'},'No Waze? Open in Google Maps'),tgt.place?h('button',{type:'button',class:'lk',onclick:()=>copy(tgt.place)},'Copy address'):null):null,
     meta(tgt,'now','itinerary/'+tgt.id));
 }
 function markDone(s){
@@ -761,7 +761,7 @@ function stopRow(s,state,ev){
       q?h('a',{class:'btn s',href:nav(q),target:'_blank',rel:'noopener'},'Navigate'):null,
       s.phone?h('a',{class:'btn s',href:'tel:'+s.phone.replace(/[^\d+]/g,'')},s.callLabel||'Call'):null,
       s.done?h('button',{type:'button',class:'btn s d',onclick:()=>undo(s)},'Undo done'):h('button',{type:'button',class:'btn s',onclick:()=>markDone(s)},'Mark done')),
-    q?h('div',{class:'fb'},h('a',{class:'lk',href:mapsUrl(q),target:'_blank',rel:'noopener'},'Google Maps')):null,
+    q?h('div',{class:'fb links'},h('a',{class:'lk',href:mapsUrl(q),target:'_blank',rel:'noopener'},'Google Maps'),s.place?h('button',{type:'button',class:'lk',onclick:()=>copy(s.place)},'Copy address'):null):null,
     meta(s,'now','itinerary/'+s.id)));
   return row;
 }
@@ -887,19 +887,21 @@ function infoRow(d){
   const isTbc=/^tbc/i.test(val)||!val,q=d.mapsQuery||val;
   const links=[];
   if(!isTbc){
-    if(kind==='address')links.push(h('a',{class:'lk',href:mapsUrl(q),target:'_blank',rel:'noopener'},'Map'));
+    if(kind==='address'){links.push(h('a',{class:'lk',href:mapsUrl(q),target:'_blank',rel:'noopener'},'Map'));links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy address'))}
     if(kind==='phone'){links.push(h('a',{class:'lk',href:'tel:'+val.replace(/[^\d+]/g,'')},'Call'));links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy'))}
-    if(kind==='ref')links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy'));
+    if(kind==='ref')links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy number'));
+    else if(kind!=='address'&&kind!=='phone'&&(d.group==='Bookings'||d.group==='Flights'))links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy'));
   }
   const more=[photoEl(d,'sm'),d.note?h('div',{class:'sub'},d.note):null,
     conf?null:ownerLine(d),
     d.neededBy&&!conf?h('div',{class:'sub'+(due==='late'?' over':'')},(due==='late'?'Overdue, was needed by ':'Needed by ')+fmtD(d.neededBy)):null,
-    links.length?h('div',{class:'links'},links):null].filter(Boolean);
+    ].filter(Boolean);
   const k='i'+d.id,open=!!UI.open[k];
   const head=[h('span',{class:'top'},h('span',{class:'lb'},d.label+(more.length?(open?' \u25BE':' \u25B8'):'')),h('span',{class:'pil '+(conf?'ok':due==='late'?'bad':'')},conf?'Confirmed':'TBC')),
     h('span',{class:'vv'+(isTbc?' tbc':'')+(kind==='ref'||kind==='time'||kind==='phone'?' mo':'')},val||'Not set')];
   return h('div',{class:'it',id:'S-'+d.id},
     more.length?h('button',{type:'button',class:'ihd','aria-expanded':open?'true':'false',onclick:()=>{UI.open[k]=!open;render()}},head):h('div',{class:'ihd'},head),
+    links.length?h('div',{class:'links'},links):null,
     open?more:null,meta(d,'intel','intel/'+d.id));
 }
 function voteBlock(d){
