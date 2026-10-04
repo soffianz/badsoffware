@@ -193,6 +193,9 @@ main{display:flex;flex-direction:column;gap:20px;padding-top:20px}
 .field textarea{font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--line-2);border-radius:12px;padding:12px 14px;min-height:96px;width:100%}
 .ph{display:block;width:calc(100% + 40px);margin:-20px -20px 14px;max-width:none;aspect-ratio:16/9;object-fit:cover;border-radius:15px 15px 0 0;background:var(--line)}
 .ph.sm{width:100%;margin:0 0 12px;border-radius:12px}
+.ihd{display:block;width:100%;text-align:left}
+.ihd .vv{display:block}
+.ihd[aria-expanded] .lb{color:var(--text-2)}
 </style>
 
 <header id="top">
@@ -750,10 +753,11 @@ function viewLedger(){
       out.push(h('section',{class:'card'},h('h3',null,cat+' ',h('span',{class:'dim mo',style:'font-size:14px;font-weight:500'},n0(ts)+' / '+n0(tb))),
         ls.map(l=>{
           const sp=c.spentBy[l.id]||0,b=l.budget==null?null:+l.budget,ratio=b?sp/b:0;
+          const lk='l'+l.id,lop=!!UI.open[lk],lrow=h('div',{class:'lr'},h('span',{class:'nm'},l.item+(l.note?(lop?' \u25BE':' \u25B8'):'')),h('span',{class:'amt'+(ratio>1?' over':'')},sp?n0(sp):'—',b!=null?h('span',{class:'dim'},' / '+n0(b)):null));
           return h('div',{class:'li'},
-            h('div',{class:'lr'},h('span',{class:'nm'},l.item),h('span',{class:'amt'+(ratio>1?' over':'')},sp?n0(sp):'—',b!=null?h('span',{class:'dim'},' / '+n0(b)):null)),
+            l.note?h('button',{type:'button',class:'ihd','aria-expanded':lop?'true':'false',onclick:()=>{UI.open[lk]=!lop;render()}},lrow):lrow,
             b!=null&&sp>0?h('div',{class:'bar'+(ratio>1?' o':'')},h('i',{style:'width:'+Math.min(100,Math.round(ratio*100))+'%'})):null,
-            l.note?h('div',{class:'sub'},l.note):null,
+            lop&&l.note?h('div',{class:'sub'},l.note):null,
             ratio>1?h('div',{class:'sub over'},'Over budget by '+n2(sp-b)):null,meta(l,'ledger','ledgerLines/'+l.id));
         })));
     });
@@ -784,13 +788,16 @@ function infoRow(d){
     if(kind==='phone'){links.push(h('a',{class:'lk',href:'tel:'+val.replace(/[^\d+]/g,'')},'Call'));links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy'))}
     if(kind==='ref')links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy'));
   }
-  return h('div',{class:'it',id:'S-'+d.id},
-    h('div',{class:'top'},h('span',{class:'lb'},d.label),h('span',{class:'pil '+(conf?'ok':due==='late'?'bad':'')},conf?'Confirmed':'TBC')),
-    h('div',{class:'vv'+(isTbc?' tbc':'')+(kind==='ref'||kind==='time'||kind==='phone'?' mo':'')},val||'Not set'),
-    d.note?h('div',{class:'sub'},d.note):null,
+  const more=[d.note?h('div',{class:'sub'},d.note):null,
     conf?null:ownerLine(d),
     d.neededBy&&!conf?h('div',{class:'sub'+(due==='late'?' over':'')},(due==='late'?'Overdue, was needed by ':'Needed by ')+fmtD(d.neededBy)):null,
-    links.length?h('div',{class:'links'},links):null,meta(d,'intel','intel/'+d.id));
+    links.length?h('div',{class:'links'},links):null].filter(Boolean);
+  const k='i'+d.id,open=!!UI.open[k];
+  const head=[h('span',{class:'top'},h('span',{class:'lb'},d.label+(more.length?(open?' \u25BE':' \u25B8'):'')),h('span',{class:'pil '+(conf?'ok':due==='late'?'bad':'')},conf?'Confirmed':'TBC')),
+    h('span',{class:'vv'+(isTbc?' tbc':'')+(kind==='ref'||kind==='time'||kind==='phone'?' mo':'')},val||'Not set')];
+  return h('div',{class:'it',id:'S-'+d.id},
+    more.length?h('button',{type:'button',class:'ihd','aria-expanded':open?'true':'false',onclick:()=>{UI.open[k]=!open;render()}},head):h('div',{class:'ihd'},head),
+    open?more:null,meta(d,'intel','intel/'+d.id));
 }
 function voteBlock(d){
   const my=me(),opts=d.options||[],votes=d.votes||{};
@@ -967,7 +974,7 @@ chatPill.addEventListener('click',openChat);
 document.getElementById('chat-x').addEventListener('click',()=>{UI.chatOpen=false;renderChat()});
 
 /* ---------- page ---------- */
-function goInfo(id){UI.tab='intel';LS.set('bbc26.tab','intel');UI.focus=id;render()}
+function goInfo(id){UI.open['i'+id]=true;UI.tab='intel';LS.set('bbc26.tab','intel');UI.focus=id;render()}
 function offBar(){
   if(isOffline())return h('div',{class:'off',role:'status'},'Offline. '+(S.liveAt?'Showing the last update from '+clockHM(S.liveAt)+'.':'Nothing saved on this phone yet.'));
   return null;
