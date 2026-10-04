@@ -581,7 +581,7 @@ function renderTop(st,tgt){
 }
 
 /* ---------- building blocks ---------- */
-const PPOS={airport:42,pub:50,divers:50,beach:60,default:52};
+const PPOS={airport:42,pub:50,divers:50,beach:60,default:52,riverbank:38,car:55};
 const photoEl=(s,cls)=>s&&s.photo&&/^[a-z0-9-]+$/i.test(s.photo)?h('img',{class:'ph'+(cls?' '+cls:''),src:'img/'+s.photo+'.webp',style:'object-position:50% '+(PPOS[s.photo]||50)+'%',alt:'The three of us, '+(s.title||''),loading:'lazy',decoding:'async',onerror:e=>e.target.remove()}):null;
 const nav=q=>'https://waze.com/ul?q='+encodeURIComponent(q)+'&navigate=yes';
 const mapA=(q,label)=>h('a',{class:'lk',href:mapsUrl(q),target:'_blank',rel:'noopener',onclick:e=>e.stopPropagation()},label||'Map');
@@ -879,7 +879,7 @@ function infoRow(d){
     if(kind==='phone'){links.push(h('a',{class:'lk',href:'tel:'+val.replace(/[^\d+]/g,'')},'Call'));links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy'))}
     if(kind==='ref')links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy'));
   }
-  const more=[d.note?h('div',{class:'sub'},d.note):null,
+  const more=[photoEl(d,'sm'),d.note?h('div',{class:'sub'},d.note):null,
     conf?null:ownerLine(d),
     d.neededBy&&!conf?h('div',{class:'sub'+(due==='late'?' over':'')},(due==='late'?'Overdue, was needed by ':'Needed by ')+fmtD(d.neededBy)):null,
     links.length?h('div',{class:'links'},links):null].filter(Boolean);
