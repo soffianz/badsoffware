@@ -790,7 +790,6 @@ function infoRow(d){
     d.note?h('div',{class:'sub'},d.note):null,
     conf?null:ownerLine(d),
     d.neededBy&&!conf?h('div',{class:'sub'+(due==='late'?' over':'')},(due==='late'?'Overdue, was needed by ':'Needed by ')+fmtD(d.neededBy)):null,
-    conf&&sealOf(d.confirmedBy)?h('div',{class:'sub'},'Confirmed by '+NAME[sealOf(d.confirmedBy)]):null,
     links.length?h('div',{class:'links'},links):null,meta(d,'intel','intel/'+d.id));
 }
 function voteBlock(d){
