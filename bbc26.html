@@ -33,10 +33,14 @@ h1,h2,h3{margin:0}
 .hz svg{position:absolute;inset:0;width:100%;height:100%;fill:none;stroke:var(--env);stroke-width:1.5;opacity:0;transition:opacity 600ms}
 .hz svg.on{opacity:.7}
 .hz path{vector-effect:non-scaling-stroke}
-.pg{display:flex;gap:3px;margin-top:10px;height:4px}
-.sg{position:relative;height:4px;border-radius:2px;padding:0;min-width:6px}
-.sg i{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
-.sg:after{content:"";position:absolute;inset:-20px 0}
+.pg{margin-top:10px}
+.bars{display:flex;gap:3px}
+.sg{display:block;min-width:0;padding:6px 0 2px;text-align:left}
+.sg .tr{display:block;position:relative;height:4px;border-radius:2px;overflow:hidden}
+.sg .tr i{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
+.sg .nm{display:block;margin-top:5px;font:600 11px var(--sans);letter-spacing:.04em;white-space:nowrap;color:var(--text-3)}
+.pcap{margin-top:6px;font-size:13px;color:var(--text-3);display:flex;justify-content:space-between;gap:4px 12px;flex-wrap:wrap}
+.pcap b{color:var(--text);font-weight:600}
 @media (prefers-reduced-motion:reduce){.hz,.hz svg{transition:none}}
 
 main{display:flex;flex-direction:column;gap:20px;padding-top:20px}
@@ -583,12 +587,16 @@ function renderTop(st,tgt){
   prEl.textContent='bbc26 ~/'+env+(UI.ov?' (preview)':'');
   whoEl.replaceChildren(...(w?[pdot(w),'You’re '+NAME[w]]:['Pick who you are']));
   hzEl.querySelectorAll('svg').forEach(s=>s.classList.toggle('on',s.dataset.env===env));
-  const L=legs(ev),tot=Math.max(1,ev.length);
-  pgEl.replaceChildren(...L.map(l=>{
-    const cnt=Math.max(1,l.to-l.from),dn=ev.slice(l.from,l.to).filter(isDone).length;
-    return h('button',{type:'button',class:'sg','aria-label':'Jump to '+l.env,style:'flex:'+cnt+' 1 0;background:'+ENVS[l.env]+'33',onclick:()=>{const t=l.sid&&document.getElementById('S-'+l.sid);if(UI.tab!=='plan'){UI.tab='plan';LS.set('bbc26.tab','plan');UI.focus=l.sid;render()}else if(t)t.scrollIntoView({block:'center',behavior:'smooth'})}},
-      h('i',{style:'width:'+Math.round(dn/cnt*100)+'%;background:'+ENVS[l.env]}));
-  }));
+  const L=legs(ev),tot=Math.max(1,ev.length),ti=tgt?ev.indexOf(tgt):-1;
+  const dnAll=ev.filter(isDone).length;
+  let ci=L.findIndex(l=>ti>=l.from&&ti<l.to);if(ci<0)ci=ti<0?L.length-1:0;
+  const cap=h('div',{class:'pcap'},h('span',null,h('b',null,dnAll+' of '+tot),' stops done'),tgt?h('span',null,'Next: ',h('b',null,tgt.title+(tgt.start?', '+timeStr(tgt):''))):h('span',null,'All stops done'));
+  pgEl.replaceChildren(h('div',{class:'bars'},L.map((l,k)=>{
+    const cnt=Math.max(1,l.to-l.from),dn=ev.slice(l.from,l.to).filter(isDone).length,fin=dn>=cnt,col=ENVS[l.env];
+    return h('button',{type:'button',class:'sg','aria-label':'Jump to '+l.env+' stage, '+dn+' of '+cnt+' done',style:'flex:'+(cnt+2)+' 1 0',onclick:()=>{const t=l.sid&&document.getElementById('S-'+l.sid);if(UI.tab!=='plan'){UI.tab='plan';LS.set('bbc26.tab','plan');UI.focus=l.sid;render()}else if(t)t.scrollIntoView({block:'center',behavior:'smooth'})}},
+      h('span',{class:'tr',style:'background:'+col+'33'},h('i',{style:'width:'+Math.round(dn/cnt*100)+'%;background:'+col})),
+      h('span',{class:'nm',style:'color:'+(k===ci?col:fin?'var(--text-2)':'var(--text-3)')},(fin?'\u2713 ':'')+l.env.charAt(0).toUpperCase()+l.env.slice(1)));
+  })),cap);
   pgEl.hidden=!ev.length;
 }
 
