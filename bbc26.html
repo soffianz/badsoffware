@@ -325,7 +325,6 @@ const CREW=[{c:'SF',n:'Soff'},{c:'AR',n:'Curry'},{c:'SH',n:'Sandy'}];
 const CODES=CREW.map(x=>x.c);
 const NAME=Object.fromEntries(CREW.map(x=>[x.c,x.n]));
 const GROUPS=['Getting there','Stay','Dive day','Getting home','People','Flights','Bookings'];
-const KINDS=[['text','Text'],['address','Address'],['phone','Phone'],['ref','Reference'],['time','Time']];
 const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYOFF=[-1,0,1,2,5];
@@ -336,7 +335,6 @@ const TABS=[['today','Today'],['plan','Plan'],['money','Money'],['info','Info']]
 const CH={today:'now',plan:'now',money:'ledger',info:'intel'};
 const ACC={today:'var(--a-today)',plan:'var(--a-plan)',money:'var(--a-money)',info:'var(--a-info)'};
 const ICONS={today:'<circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',plan:'<path d="M4 6h16M4 12h16M4 18h10"/><circle cx="19" cy="18" r="1.5"/>',money:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1 1-1.7 2.5-1.7s2.5.7 2.5 1.7-1 1.5-2.5 1.7-2.5.7-2.5 1.7 1 1.7 2.5 1.7 2.5-.7 2.5-1.7"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>'};
-const BARS=['lime','rose','blue','amber','teal'];
 const CACHE_KEY='bbc26.cache.v1';
 
 function put(e,kids){for(const k of kids.flat(Infinity)){if(k==null||k===false)continue;e.append(k.nodeType?k:document.createTextNode(fmtT(String(k))))}}
@@ -670,7 +668,6 @@ function renderTop(st,tgt){
 const PPOS={airport:42,pub:50,divers:50,beach:60,default:52,riverbank:38,car:55};
 const photoEl=(s,cls)=>s&&s.photo&&/^[a-z0-9-]+$/i.test(s.photo)?h('img',{class:'ph'+(cls?' '+cls:''),src:'img/'+s.photo+'.webp',style:'object-position:50% '+(PPOS[s.photo]||50)+'%',alt:'The three of us, '+(s.title||''),loading:'lazy',decoding:'async',onerror:e=>e.target.remove()}):null;
 const nav=q=>'https://waze.com/ul?q='+encodeURIComponent(q)+'&navigate=yes';
-const mapA=(q,label)=>h('a',{class:'lk',href:mapsUrl(q),target:'_blank',rel:'noopener',onclick:e=>e.stopPropagation()},label||'Map');
 function attentionBlock(){
   const items=attentionItems();
   if(!items.length)return null;
@@ -817,7 +814,6 @@ function feedbackSheet(){
 }
 
 /* ---------- itinerary ---------- */
-const COMPACT_N=3;
 function stopRow(s,state,ev){
   const q=s.mapsQuery||s.place,open=UI.open['s'+s.id];
   const w=s.assignee&&NAME[sealOf(s.assignee)||s.assignee];
@@ -1030,31 +1026,51 @@ function writeDoc(path,data){
   const p=(Q[path]||Promise.resolve()).then(run);
   Q[path]=p.catch(()=>{});return p;
 }
-const strip=d=>{const o={};for(const k in d){if(k==='updatedBy'||k==='updatedAt'||k==='confirmedBy'||k==='mapsQuery')continue;if(d[k]!=null&&d[k]!=='')o[k]=d[k]}return o};
-function chatState(){
-  return JSON.stringify({trip:strip(S.trip||{}),itinerary:events().map(strip),intel:list('intel').sort(byOrder).map(strip),decisions:list('decisions').map(strip),ledgerLines:list('ledgerLines').sort(byOrder).map(strip),ledgerSpends:list('ledgerSpends').sort((a,b)=>(a.at||0)-(b.at||0)).map(strip),settlements:list('settlements').map(strip)});
+const HIDE={itinerary:['order','key','env','milestone','critical','deadline','deadlineLabel','callLabel','photo'],intel:['order','mapsQuery','photo'],decisions:['order'],ledgerLines:['order'],ledgerSpends:['at']};
+const strip=(d,col)=>{
+  const hide=HIDE[col]||[],o={};
+  for(const k in d){
+    if(k==='updatedBy'||k==='updatedAt'||k==='confirmedBy'||k==='mapsQuery'||hide.indexOf(k)>=0)continue;
+    const v=d[k];
+    if(v==null||v===''||v===false)continue;
+    if(k==='kind'&&v==='text')continue;
+    if(k==='splitBetween'&&Array.isArray(v)&&v.length===3)continue;
+    o[k]=v;
+  }
+  return o;
+};
+const MONEYQ=/\b(rm|myr|paid|pay|paying|owe|owes|owed|spend|spent|cost|costs|price|budget|split|bill|receipt|cash|transfer|settle|settled|balance|charge|fee|ticket|bought|buy|toll|tolls|petrol|fuel|food|meal|lunch|dinner|breakfast|snack|tip|deposit|ledger|money|expensive|cheap|total)\b|\$|\d+\s*(ringgit|bucks)/i;
+function ledgerState(){
+  return JSON.stringify({ledgerLines:list('ledgerLines').sort(byOrder).map(d=>strip(d,'ledgerLines')),ledgerSpends:list('ledgerSpends').sort((a,b)=>(a.at||0)-(b.at||0)).map(d=>strip(d,'ledgerSpends')),settlements:list('settlements').map(d=>strip(d,'settlements'))});
 }
-function chatRules(){
+function chatState(withLedger){
+  const o={trip:strip(S.trip||{},'trip'),itinerary:events().map(d=>strip(d,'itinerary')),intel:list('intel').sort(byOrder).map(d=>strip(d,'intel')),decisions:list('decisions').map(d=>strip(d,'decisions'))};
+  let t=JSON.stringify(o);
+  t+='\n'+(withLedger?ledgerState():'(Budget, spends and settlements are left out unless the message is about money. Call get_ledger if you need them.)');
+  return t;
+}
+function chatRules(withLedger){
   const w=me(),now=new Date(clock()).toISOString().slice(0,16).replace('T',' ');
-  return ['You are the assistant inside BBCGPT, the shared trip dashboard for Soff (SF), Arif (AR) and Shereef (SH): a road trip, hike and Tenggol Island dive trip, Wed 7 to Fri 9 Oct 2026. Malaysia time (MYT), money in MYR.',
-  'Speaking now: '+(w?NAME[w]+' ('+w+')':'unknown. Ask which of SF, AR or SH when it matters, for example who paid')+'. Current date and time: '+now+' MYT.',
-  chatTools?'You can answer questions from the data below and change the data with the save_doc tool. The dashboard updates straight away.':'You can only answer questions in this view. You cannot change the data, so say so if asked to.',
+  return ['You are the assistant in BBCGPT, the shared trip dashboard for Soff (SF), Curry (AR, also called Arif) and Sandy (SH, also called Shereef): road trip, hike and Tenggol Island dive trip, 7 to 9 Oct 2026. Malaysia time (MYT), money in MYR. Use Curry and Sandy in replies and understand both names.',
+  'Speaking now: '+(w?NAME[w]+' ('+w+')':'unknown. Ask which of SF, AR or SH when it matters, for example who paid')+'. Now: '+now+' MYT.',
+  chatTools?'Answer from the data below and change it with save_doc. The dashboard updates at once.':'You can only answer questions here. You cannot change data, so say so if asked to.',
   'Rules:',
-  '- Answer questions plainly from the data. If the data does not say, say so.',
-  '- Unplanned events: if the user reports something that was not in the plan (an accident, a breakdown, meeting someone new, an impromptu detour, an extra stop, a long unexpected wait), add it to the itinerary with save_doc using a new id that starts with x- (for example x-detour-1), unplanned true, a clear short title, the correct day number from the current date, start as 24-hour HH:MM (the time it happened or starts, default to now), place if given and a short note. If it already happened or is happening now also set done true and actualAt to the current time in ms. If it will push the rest of the day back, tell the user and offer to update the Day 1 delay. Never mark planned items as unplanned.',
-  '- When the user tells you something about the trip (a time, booking reference, flight, phone number, address, delay, schedule change, spend, vote, who paid whom, budget), update the matching record with save_doc straight away. Use an existing id when one fits, otherwise add a new record with a short lowercase id.',
-  '- Ignore chit-chat and anything not about the trip. If it is trip related but has nowhere to go, say so in one line.',
-  '- Ask one short question first when unsure: unclear record or budget line, unknown payer or split, a value that clashes with a Confirmed one, or an ambiguous time or number. Never delete unless the user clearly asks. delete_doc only queues a deletion and the user confirms with a button.',
-  '- Set status to Confirmed only when the user says it is confirmed or booked. Otherwise keep TBC and put the caveat in note.',
-  '- Replies: short, plain, British spelling, no em dashes. After editing, say in one line what changed.',
-  'Nicknames: Arif is called Curry and Shereef is called Sandy in this app. Use Curry and Sandy in replies, and understand both names.','Screen theme: the app is in light mode by day and switches to dark by itself at night. If the person asks for dark mode, light mode or automatic, call set_theme. Do not bring this up unless they ask.','Time format: write times of day in replies and in text fields (notes, titles, values) in 12-hour format such as 8:30 am. Keep the start, end and deadline fields as 24-hour HH:MM because the app reads them.','Data model. Day numbers: 0 Tue 6 Oct, 1 Wed 7, 2 Thu 8, 3 Fri 9, 4 Mon 12 Oct. Seal codes SF, AR, SH.',
-  '- itinerary: day, order, start/end "HH:MM", when (label if no time), approx (bool), title, place, note, flag (warning), done (bool, true when the stop has happened), env (urban, road, forest or coast) with milestone (true) on the stops where the journey enters a new environment, assignee (code of who owns the job), phone and callLabel (shows a Call button), plate (vehicle plate), photo (name of a picture in the img folder, shown as a banner), actualAt (ms, when it really happened, set together with done), unplanned (bool, true for events that were not in the plan, shown in a different colour with an Unplanned tag), critical (bool, shows on the Critical path), deadline "HH:MM" and deadlineLabel (the thing the stop must beat, gives a buffer).','- intel and decisions can have owner (code SF, AR or SH) shown as Owner. When a decision is made set decided, decidedBy (code), decidedAt (ms) and why (one short reason).',
-  '- intel (Info tab): group (Getting there, Stay, Dive day, Getting home, People, Flights, Bookings), label, value, kind (text, address, phone, ref, time), status (TBC or Confirmed), neededBy (YYYY-MM-DD), note, mapsQuery, order.',
-  '- decisions: group, question, options (array), votes (code to option index), decided (index or null), neededBy.',
-  '- ledgerLines: category, item, budget (number or null), note, order. ledgerSpends: amount, lineId, paidBy (code), splitBetween (codes, default all three), note, at (ms).',
-  '- settlements: from, to, amount, settled (true). Add one when money changed hands.',
+  '- Answer from the data. If it does not say, say so.',
+  '- Anything trip related (time, reference, flight, phone, address, delay, schedule change, spend, vote, payment, budget): update the matching record with save_doc at once. Use an existing id, or a new short lowercase id.',
+  '- Unplanned events (accident, breakdown, meeting someone, detour, extra stop, long wait): add an itinerary stop with id starting x- (x-detour-1), unplanned true, short title, right day from the current date, start as 24-hour HH:MM (default now), place and note if given. If it already happened or is happening set done true and actualAt to now in ms. If it pushes the day back, say so and offer to update the Day 1 delay. Never mark planned items unplanned.',
+  '- Ignore chit-chat. If trip related but nowhere to put it, say so in one line.',
+  '- Ask one short question first when unsure (which record or budget line, payer or split, clash with a Confirmed value, ambiguous time or number). Never delete unless clearly asked. delete_doc only queues; the user confirms with a button.',
+  '- status Confirmed only when the user says confirmed or booked, otherwise TBC with the caveat in note.',
+  '- Replies: short, plain, British spelling, no em dashes. After editing, one line on what changed.',
+  '- Write times in replies and text fields in 12-hour (8:30 am). The start, end and deadline fields stay 24-hour HH:MM.',
+  '- Theme: light by day, dark at night by itself. If asked for dark, light or automatic, call set_theme. Otherwise do not mention it.',
+  'Days: 0 Tue 6 Oct, 1 Wed 7, 2 Thu 8, 3 Fri 9, 4 Mon 12 Oct. Codes SF, AR, SH. Some fields exist but are left out of the data below to save space.',
+  '- itinerary: day, start, end, when (label if no time), approx, title, place, note, flag, done, actualAt (ms), unplanned, assignee (code), phone, callLabel, plate, photo (file name in img), critical, deadline HH:MM, deadlineLabel, env (urban, road, forest, coast), milestone, order.',
+  '- intel: group (Getting there, Stay, Dive day, Getting home, People, Flights, Bookings), label, value, kind (text, address, phone, ref, time), status (TBC or Confirmed), neededBy YYYY-MM-DD, note, mapsQuery, owner (code), photo, order.',
+  '- decisions: group, question, options (array), votes (code to option index), decided (index or null), decidedBy (code), decidedAt (ms), why, neededBy, owner.',
+  '- ledgerLines: category, item, budget (number or null), note. ledgerSpends: amount, lineId, paidBy (code), splitBetween (codes, default all three), note, at (ms). settlements: from, to, amount, settled true (add when money changed hands).',
   '- meta, id trip: lateBy (minutes, Day 1 delay), checkInTime, startDate, endDate.',
-  'Current data (JSON, ids included):',chatState()].join('\n');
+  'Data (JSON, ids included):',chatState(withLedger)].join('\n');
 }
 const CODEIN=v=>CODES.indexOf(v)>=0;
 function chatToolList(ans){
@@ -1101,6 +1117,9 @@ function chatToolList(ans){
        note((exists?'Updated ':'Added ')+col+': '+nm);
        return (exists?'Updated ':'Added ')+col+'/'+id;
      }},
+    {name:'get_ledger',description:'Return the budget lines, spends and settlements. Only call when the answer needs money data that is not in the prompt.',
+     inputSchema:{type:'object',properties:{}},
+     async execute(){return ledgerState()}},
     {name:'set_theme',description:'Set the screen theme for the person you are talking to. Use only when they ask for dark mode, light mode, or to go back to automatic.',
      inputSchema:{type:'object',properties:{mode:{type:'string',enum:['dark','light','auto']}},required:['mode']},
      async execute(input){
@@ -1148,11 +1167,13 @@ async function sendChat(text){
   TURNS.push({role:'user',content:text});MSGS.push({role:'user',text:text});
   const ans={role:'ai',text:'',log:[],pending:true};MSGS.push(ans);
   chatSync();renderChat();
-  let hist=TURNS.slice(-8);while(hist.length&&hist[0].role!=='user')hist.shift();
+  let hist=TURNS.slice(-6).map(m=>({role:m.role,content:m.content.length>500?m.content.slice(0,500)+'...':m.content}));while(hist.length&&hist[0].role!=='user')hist.shift();
+  const withLedger=hist.slice(-4).some(m=>MONEYQ.test(m.content));
+  const readOnly=/\?\s*$/.test(text)&&!/\b(add|change|update|set|remove|delete|move|make|mark|log|save|put|switch|swap|rename|paid|spent|bought|dark|light)\b/i.test(text);
   try{
-    const o={modelTier:'default',signal:chatCtl.signal,onText:u=>{ans.text=u.text;renderChat()}};
+    const o={modelTier:readOnly?'quick':'default',signal:chatCtl.signal,onText:u=>{ans.text=u.text;renderChat()}};
     if(chatTools)o.tools=chatToolList(ans);
-    const r=await sampleFn([{role:'user',content:chatRules()}].concat(hist),o);
+    const r=await sampleFn([{role:'user',content:chatRules(withLedger)}].concat(hist),o);
     ans.text=r.text;TURNS.push({role:'assistant',content:r.text});
   }catch(e){
     if(e&&e.text)ans.text=e.text;
