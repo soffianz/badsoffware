@@ -4,12 +4,21 @@
 /* Readable terminal: sans for words, mono only for times, amounts, plates and the prompt. Environment colour lives only in the horizon, progress bar, dividers and prompt path. */
 @property --env{syntax:'<color>';inherits:true;initial-value:#A7B4C8}
 :root{
-  --bg:#06110E; --surface:#0C1E19; --line:#1F3D33; --line-2:#2E5A4B;
-  --text:#E6F4EE; --text-2:#B9D6CA; --text-3:#9FC2B4;
-  --acc:#7CF2C4; --ok:#7CF2C4; --on-mint:#04130E; --amber:#FFC857; --alert:#FF9C8F;
-  --env:#A7B4C8;
+  --bg:#D3DAE4; --surface:#F2F5F9; --line:#A9B6C7; --line-2:#7F90A6; --ink:#0B1220; --shadow:#0B1220;
+  --text:#0B1220; --text-2:#2B3850; --text-3:#3F4F69;
+  --a-today:#00789A; --a-plan:#2438D8; --a-money:#7A5B00; --a-info:#6A2CD0;
+  --acc:var(--a-today); --ok:#0A7A44; --on-acc:#FFFFFF; --amber:#C4122F; --alert:#C4122F; --unp:#B0089A;
+  --env:#4A5C78;
   --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0B0F14; --surface:#131A22; --line:#243040; --line-2:#36465A; --ink:#050709; --shadow:#000;
+  --text:#F4F7FA; --text-2:#C9D3DE; --text-3:#98A6B6;
+  --a-today:#1FE5FF; --a-plan:#6A87FF; --a-money:#FFE11A; --a-info:#B07CFF;
+  --ok:#3DDC84; --on-acc:#050709; --amber:#FF4D4D; --alert:#FF5C5C; --unp:#FF2BD6;
+  --env:#9FB4C9;
   color-scheme:dark;
 }
 *{box-sizing:border-box;letter-spacing:0}
@@ -44,8 +53,8 @@ h1,h2,h3{margin:0}
 @media (prefers-reduced-motion:reduce){.hz,.hz svg{transition:none}}
 
 main{display:flex;flex-direction:column;gap:20px;padding-top:20px}
-.off{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--amber);color:var(--on-mint);padding:10px 12px;font-weight:600;text-align:center;border-radius:12px}
-.card{background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 9%,var(--surface)),var(--surface) 60%);border:1px solid var(--line);border-top:2px solid color-mix(in srgb,var(--acc) 65%,transparent);border-radius:16px;padding:20px}
+.off{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--amber);color:var(--on-acc);padding:10px 12px;font-weight:600;text-align:center;border-radius:12px}
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-top:2px solid color-mix(in srgb,var(--acc) 65%,transparent);border-radius:16px;padding:20px}
 .sect-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .sect-h h2{font:600 18px/1.3 var(--sans)}
 .sect-h .ct{font-size:14px;color:var(--text-3)}
@@ -65,7 +74,7 @@ main{display:flex;flex-direction:column;gap:20px;padding-top:20px}
 .btns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
 .btns .btn{flex:1;min-width:120px}
 .btn{min-height:48px;padding:0 16px;border-radius:12px;border:1px solid var(--line-2);color:var(--text);font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;text-align:center;background:transparent}
-.btn.p{background:var(--acc);border-color:var(--acc);color:var(--on-mint)}
+.btn.p{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
 .btn.w{width:100%}
 .btn.d{color:var(--text-2)}
 .btn.s{min-height:44px}
@@ -116,8 +125,8 @@ main{display:flex;flex-direction:column;gap:20px;padding-top:20px}
 .it .vv{font:600 17px/1.4 var(--sans);margin-top:2px;overflow-wrap:anywhere}
 .it .vv.tbc{color:var(--text-2);font-weight:500}
 .pil{font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap;border:1px solid var(--line-2);color:var(--text-2)}
-.pil.ok{background:rgba(124,242,196,.14);border-color:transparent;color:var(--ok)}
-.pil.bad{background:rgba(255,156,143,.15);border-color:transparent;color:var(--alert)}
+.pil.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);border-color:transparent;color:var(--ok)}
+.pil.bad{background:color-mix(in srgb,var(--alert) 16%,transparent);border-color:transparent;color:var(--alert)}
 .links{display:flex;flex-wrap:wrap;margin-top:2px}
 .opt{display:flex;gap:12px;align-items:center;min-height:48px;padding:6px 0;border-top:1px solid var(--line)}
 .opt .rb{width:18px;height:18px;border-radius:50%;border:2px solid var(--text-3);flex:none}
@@ -159,7 +168,7 @@ main{display:flex;flex-direction:column;gap:20px;padding-top:20px}
 .field input,.field select{font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--line-2);border-radius:12px;padding:0 14px;min-height:48px;width:100%}
 .names{display:flex;gap:10px;flex-wrap:wrap}
 .nb{min-height:48px;padding:0 18px;border:1px solid var(--line-2);border-radius:12px;font-weight:500}
-.nb[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--on-mint);font-weight:600}
+.nb[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--on-acc);font-weight:600}
 .stack{display:flex;flex-direction:column;gap:10px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0px));background:var(--text);color:var(--bg);padding:12px 16px;border-radius:12px;font-weight:500;z-index:120;max-width:calc(100% - 32px);text-align:center;display:none}
 .toast.show{display:block}
@@ -219,7 +228,7 @@ main{display:flex;flex-direction:column;gap:20px;padding-top:20px}
 .xf{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
 .dayw{margin-top:6px}
 .dayb{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:48px;padding:10px 0;border-top:1px solid var(--line);font:500 15px var(--mono);color:var(--acc)}
-.tdy{margin-left:8px;font:700 11px var(--sans);text-transform:uppercase;letter-spacing:.06em;background:var(--acc);color:var(--on-mint);border-radius:999px;padding:2px 8px}
+.tdy{margin-left:8px;font:700 11px var(--sans);text-transform:uppercase;letter-spacing:.06em;background:var(--acc);color:var(--on-acc);border-radius:999px;padding:2px 8px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .chips.scroll{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px;scrollbar-width:none}
 .chip{flex:none;display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--line-2);color:var(--text);font-weight:500;text-decoration:none;font-size:14px;white-space:nowrap;background:var(--surface)}
@@ -229,12 +238,62 @@ main{display:flex;flex-direction:column;gap:20px;padding-top:20px}
 .cat .ihd .lr{margin-bottom:6px}
 .hero .time.sm{font-size:34px}
 .sr .tm{font-size:14px}
-.unp-c{--u:#FF4FD8}
+.unp-c{--u:var(--unp)}
 .st.unp.done{opacity:.8}
-.st.unp{border-left:3px solid #FF4FD8;padding-left:10px;background:rgba(255,79,216,.07);border-radius:0 12px 12px 0}
-.st.unp .tm{color:#FF4FD8}
-.utag{display:inline-block;margin-left:8px;font:700 11px var(--sans);text-transform:uppercase;letter-spacing:.06em;color:#14171c;background:#FF4FD8;border-radius:999px;padding:2px 8px;vertical-align:middle}
-.hero.unp{border-top-color:#FF4FD8}
+.st.unp{border-left:3px solid var(--unp);padding-left:10px;background:color-mix(in srgb,var(--unp) 9%,transparent);border-radius:0 12px 12px 0}
+.st.unp .tm{color:var(--unp)}
+.utag{display:inline-block;margin-left:8px;font:700 11px var(--sans);text-transform:uppercase;letter-spacing:.06em;color:#14171c;background:var(--unp);border-radius:999px;padding:2px 8px;vertical-align:middle}
+.hero.unp{border-top-color:var(--unp)}
+.card::before{display:none;content:"";position:absolute;left:16px;right:16px;top:-1px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--acc),color-mix(in srgb,var(--acc) 0%,transparent) 75%)}
+.card.hero{background:radial-gradient(130% 100% at 100% 0%,color-mix(in srgb,var(--acc) 15%,var(--surface)),var(--surface) 62%)}
+.btn.p{box-shadow:0 8px 22px color-mix(in srgb,var(--acc) 30%,transparent);font-weight:700}
+.tabs{background:color-mix(in srgb,var(--surface) 86%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+.cpill{background:color-mix(in srgb,var(--surface) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.sect-h h2,.card h3{letter-spacing:-.01em}
+.hero .time{text-shadow:0 0 28px color-mix(in srgb,var(--acc) 35%,transparent)}
+.plate{color:#FFD43B;border-color:#FFD43B}
+:root:not([data-theme="dark"]) .plate{color:#8A6400;border-color:#8A6400}
+:root:not([data-theme="dark"]) .hero .time{text-shadow:none}
+:root:not([data-theme="dark"]) .card.hero{background:radial-gradient(130% 100% at 100% 0%,color-mix(in srgb,var(--acc) 10%,#fff),#fff 62%)}
+
+
+/* gear look: squarer, chunkier, harder */
+.card{border-radius:10px;border:1px solid var(--line);border-top:4px solid var(--acc);padding:18px 18px 20px}
+.card::before{display:none}
+.card.hero{background:radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--acc) 16%,var(--surface)),var(--surface) 60%)}
+.ph{border-radius:6px 6px 0 0}.ph.sm{border-radius:8px}
+.hero .ph{width:calc(100% + 36px);margin:-18px -18px 12px;border-radius:6px 6px 0 0}
+.sect-h h2,.card h3{text-transform:uppercase;letter-spacing:.07em;font-weight:800;font-size:14px}
+.card h3{margin-bottom:2px}
+.trow h1{font-weight:800;letter-spacing:.03em}
+.who,.btn,.chip,.nb,.pick,.cpill,.chat input,.field input,.field select{border-radius:8px}
+.pil{border-radius:5px;text-transform:uppercase;letter-spacing:.04em;font-size:11px;font-weight:800;padding:3px 8px}
+.btn{font-weight:700}
+.btn.p{border:0;box-shadow:0 4px 0 color-mix(in srgb,var(--acc) 50%,#000);transform:translateY(-1px)}
+.btn.p:active{transform:translateY(3px);box-shadow:0 1px 0 color-mix(in srgb,var(--acc) 50%,#000)}
+.tabs{border-top:2px solid var(--line-2)}
+.tab[aria-current="true"]:before{height:4px;width:40px;border-radius:0 0 4px 4px}
+.tab{font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:11px}
+.dayb,.dh{text-transform:uppercase;letter-spacing:.06em;font-weight:700;font-size:13px}
+.st.nxt{border-radius:0 8px 8px 0;border-left-width:4px}
+.st.unp{border-radius:0 8px 8px 0;border-left-width:4px}
+.utag{border-radius:4px}
+.plate{border-radius:5px;border-width:2px;color:#FFE11A;border-color:#FFE11A}
+.hero .time{text-shadow:none;font-weight:800}
+.mbig,.big{font-weight:800}
+.bar{height:8px;border-radius:2px}.bar i{border-radius:2px}
+.tile,.card.cat{border-radius:10px}
+:root:not([data-theme="dark"]) .card{border:2px solid var(--ink);border-top:6px solid var(--acc);box-shadow:4px 4px 0 var(--shadow)}
+:root:not([data-theme="dark"]) .card.hero{background:radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--acc) 12%,var(--surface)),var(--surface) 60%)}
+:root:not([data-theme="dark"]) .btn{border:2px solid var(--ink)}
+:root:not([data-theme="dark"]) .btn.p{border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);transform:none}
+:root:not([data-theme="dark"]) .btn.p:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+:root:not([data-theme="dark"]) .who,:root:not([data-theme="dark"]) .chip,:root:not([data-theme="dark"]) .nb,:root:not([data-theme="dark"]) .cpill{border:2px solid var(--ink)}
+:root:not([data-theme="dark"]) .tabs{border-top:2px solid var(--ink);background:var(--surface)}
+:root:not([data-theme="dark"]) .plate{color:#7A5B00;border-color:#7A5B00}
+:root:not([data-theme="dark"]) .pil{border:1.5px solid var(--ink)}
+:root:not([data-theme="dark"]) .st.nxt{background:color-mix(in srgb,var(--acc) 14%,transparent)}
+
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
@@ -275,7 +334,7 @@ const PH_NAME={pre:'Before the trip',d1:'Day 1, Land',d2:'Day 2, Sea',d3:'Day 3,
 const COLS=['itinerary','ledgerLines','ledgerSpends','settlements','intel','decisions','feedback'];
 const TABS=[['today','Today'],['plan','Plan'],['money','Money'],['info','Info']];
 const CH={today:'now',plan:'now',money:'ledger',info:'intel'};
-const ACC={today:'#7CF2C4',plan:'#B8A2FF',money:'#F6C85F',info:'#6FC3FF'};
+const ACC={today:'var(--a-today)',plan:'var(--a-plan)',money:'var(--a-money)',info:'var(--a-info)'};
 const ICONS={today:'<circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',plan:'<path d="M4 6h16M4 12h16M4 18h10"/><circle cx="19" cy="18" r="1.5"/>',money:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1 1-1.7 2.5-1.7s2.5.7 2.5 1.7-1 1.5-2.5 1.7-2.5.7-2.5 1.7 1 1.7 2.5 1.7 2.5-.7 2.5-1.7"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>'};
 const BARS=['lime','rose','blue','amber','teal'];
 const CACHE_KEY='bbc26.cache.v1';
@@ -543,7 +602,14 @@ function settle(){
   return {net,transfers,done};
 }
 /* ---------- journey ---------- */
-const ENVS={urban:'#A7B4C8',road:'#E0A458',forest:'#6FD08C',coast:'#5CC8E8'};
+const ENV_D={urban:'#9FB4C9',road:'#FFD23F',forest:'#3DDC84',coast:'#1FB6FF'},ENV_L={urban:'#4A5C78',road:'#8A6A00',forest:'#13804A',coast:'#0A6FB0'};
+const ENVS=Object.assign({},ENV_L);
+let themePref=LS.get('bbc26.themePref')||'';
+function applyTheme(){
+  const hr=new Date(clock()).getUTCHours(),night=hr>=19||hr<6;
+  const mode=themePref==='dark'?'dark':themePref==='light'?'light':(night?'dark':'light');
+  if(root.dataset.theme!==mode){root.dataset.theme=mode;Object.assign(ENVS,mode==='dark'?ENV_D:ENV_L)}
+}
 const ENV_ORDER=['urban','road','forest','coast'];
 const HZ={
   urban:'M0 28V16h30V8h18v8h22V12h26v16 M110 28V6h24v22 M150 28V14h34v14 M200 28V10h20V4h16v6h14v18 M270 28V15h38v13 M330 28V9h22v19 M370 28V16h30',
@@ -981,7 +1047,7 @@ function chatRules(){
   '- Ask one short question first when unsure: unclear record or budget line, unknown payer or split, a value that clashes with a Confirmed one, or an ambiguous time or number. Never delete unless the user clearly asks. delete_doc only queues a deletion and the user confirms with a button.',
   '- Set status to Confirmed only when the user says it is confirmed or booked. Otherwise keep TBC and put the caveat in note.',
   '- Replies: short, plain, British spelling, no em dashes. After editing, say in one line what changed.',
-  'Nicknames: Arif is called Curry and Shereef is called Sandy in this app. Use Curry and Sandy in replies, and understand both names.','Time format: write times of day in replies and in text fields (notes, titles, values) in 12-hour format such as 8:30 am. Keep the start, end and deadline fields as 24-hour HH:MM because the app reads them.','Data model. Day numbers: 0 Tue 6 Oct, 1 Wed 7, 2 Thu 8, 3 Fri 9, 4 Mon 12 Oct. Seal codes SF, AR, SH.',
+  'Nicknames: Arif is called Curry and Shereef is called Sandy in this app. Use Curry and Sandy in replies, and understand both names.','Screen theme: the app is in light mode by day and switches to dark by itself at night. If the person asks for dark mode, light mode or automatic, call set_theme. Do not bring this up unless they ask.','Time format: write times of day in replies and in text fields (notes, titles, values) in 12-hour format such as 8:30 am. Keep the start, end and deadline fields as 24-hour HH:MM because the app reads them.','Data model. Day numbers: 0 Tue 6 Oct, 1 Wed 7, 2 Thu 8, 3 Fri 9, 4 Mon 12 Oct. Seal codes SF, AR, SH.',
   '- itinerary: day, order, start/end "HH:MM", when (label if no time), approx (bool), title, place, note, flag (warning), done (bool, true when the stop has happened), env (urban, road, forest or coast) with milestone (true) on the stops where the journey enters a new environment, assignee (code of who owns the job), phone and callLabel (shows a Call button), plate (vehicle plate), photo (name of a picture in the img folder, shown as a banner), actualAt (ms, when it really happened, set together with done), unplanned (bool, true for events that were not in the plan, shown in a different colour with an Unplanned tag), critical (bool, shows on the Critical path), deadline "HH:MM" and deadlineLabel (the thing the stop must beat, gives a buffer).','- intel and decisions can have owner (code SF, AR or SH) shown as Owner. When a decision is made set decided, decidedBy (code), decidedAt (ms) and why (one short reason).',
   '- intel (Info tab): group (Getting there, Stay, Dive day, Getting home, People, Flights, Bookings), label, value, kind (text, address, phone, ref, time), status (TBC or Confirmed), neededBy (YYYY-MM-DD), note, mapsQuery, order.',
   '- decisions: group, question, options (array), votes (code to option index), decided (index or null), neededBy.',
@@ -1034,6 +1100,16 @@ function chatToolList(ans){
        const nm=(S[col][id]&&(S[col][id].title||S[col][id].label||S[col][id].item||S[col][id].question))||fields.title||fields.label||fields.item||fields.question||id;
        note((exists?'Updated ':'Added ')+col+': '+nm);
        return (exists?'Updated ':'Added ')+col+'/'+id;
+     }},
+    {name:'set_theme',description:'Set the screen theme for the person you are talking to. Use only when they ask for dark mode, light mode, or to go back to automatic.',
+     inputSchema:{type:'object',properties:{mode:{type:'string',enum:['dark','light','auto']}},required:['mode']},
+     async execute(input){
+       const m=String(input.mode||'');
+       if(['dark','light','auto'].indexOf(m)<0)throw new Error('mode must be dark, light or auto');
+       const v=m==='auto'?'':m;
+       themePref=v;LS.set('bbc26.themePref',v);render();
+       if(uid&&db)writeDoc('data/users/'+uid+'/prefs',{theme:v}).catch(()=>{});
+       return 'Theme set to '+m;
      }},
     {name:'delete_doc',description:'Ask to delete one record. This does not delete anything yet: the user must tap Confirm in the chat panel. Only use when the user clearly asked to remove something.',
      inputSchema:{type:'object',properties:{collection:{type:'string',enum:['itinerary','intel','decisions','ledgerLines','ledgerSpends','settlements']},id:{type:'string'}},required:['collection','id']},
@@ -1132,6 +1208,7 @@ function renderGate(){
 const VIEWS={today:viewToday,plan:viewPlan,money:viewMoney,info:viewIntel};
 function render(){
   const ph=phase(),y=window.scrollY,st=itState(),tgt=pendingStop(st);
+  applyTheme();
   root.style.setProperty('--acc',ACC[UI.tab]);
   renderTop(st,tgt);
   app.replaceChildren(...[].concat(offBar(),sampleFn?null:h('div',{class:'sub'},'Read only here. To change anything, tell Claude in your own chat.'),VIEWS[UI.tab](ph,st,tgt),h('div',{class:'foot'},h('button',{type:'button',class:'lk',onclick:aboutSheet},'About BBCGPT'),h('button',{type:'button',class:'lk',onclick:feedbackSheet},'Suggest a change'))).flat(Infinity).filter(Boolean));
@@ -1172,6 +1249,10 @@ async function boot(){
     snap.docs.forEach(d=>{m[d.id]=Object.assign({id:d.id},d.data());if(d.metadata.hasPendingWrites)S.pend.add(n+'/'+d.id)});
     S[n]=m;S.loaded[n]=true;lv(snap);sched();
   },err(n)));
+  if(uid)db.doc('data/users/'+uid+'/prefs').onSnapshot(s=>{
+    const t=s.exists?(s.data().theme||''):'';
+    if(t!==themePref){themePref=t;LS.set('bbc26.themePref',t);sched()}
+  },err('prefs'));
   if(uid)db.doc('data/users/'+uid+'/seen').onSnapshot(s=>{
     S.seen=s.exists?s.data():null;
     if(!S.seenInit){S.seenInit=true;S.loaded.seen=true;['now','ledger','intel'].forEach(k=>UI.base[k]=(S.seen&&S.seen.tabs&&S.seen.tabs[k])||0);setTimeout(markSeen,2500)}
