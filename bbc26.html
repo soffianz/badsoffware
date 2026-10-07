@@ -327,7 +327,7 @@ main{display:flex;flex-direction:column;gap:20px;padding-top:20px}
 const CREW=[{c:'SF',n:'Soff'},{c:'AR',n:'Curry'},{c:'SH',n:'Sandy'}];
 const CODES=CREW.map(x=>x.c);
 const NAME=Object.fromEntries(CREW.map(x=>[x.c,x.n]));
-const GROUPS=['Getting there','Stay','Dive day','Getting home','People','Flights','Bookings'];
+const GROUPS=['Getting there','Rest stops','Stay','Dive day','Getting home','People','Flights','Bookings'];
 const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYOFF=[-1,0,1,2,5];
@@ -733,12 +733,12 @@ function driftEl(s){
 }
 function openItems(){
   const out=[];
-  list('intel').forEach(d=>{if(d.status!=='Confirmed')out.push({id:d.id,label:d.label,neededBy:d.neededBy,s:dueOf(d),d})});
+  list('intel').forEach(d=>{if(d.status!=='Confirmed'&&d.status!=='Tip')out.push({id:d.id,label:d.label,neededBy:d.neededBy,s:dueOf(d),d})});
   list('decisions').forEach(d=>{if(d.decided==null)out.push({id:d.id,label:d.question,neededBy:d.neededBy,s:dueOf(d),d})});
   return out.sort((a,b)=>{const x=a.neededBy||'9999',y=b.neededBy||'9999';return x>y?1:x<y?-1:0});
 }
 function readinessBlock(){
-  const total=list('intel').length+list('decisions').length;
+  const total=list('intel').filter(d=>d.status!=='Tip').length+list('decisions').length;
   if(!total)return null;
   const open=openItems(),set=total-open.length;
   return h('section',{class:'card rd'},
@@ -960,17 +960,17 @@ function infoRow(d){
   const isTbc=/^tbc/i.test(val)||!val,q=d.mapsQuery||val;
   const links=[];
   if(!isTbc){
-    if(kind==='address'){links.push(h('a',{class:'lk',href:mapsUrl(q),target:'_blank',rel:'noopener'},'Map'));links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy address'))}
+    if(kind==='address'){links.push(h('a',{class:'lk',href:nav(q),target:'_blank',rel:'noopener'},'Navigate'));links.push(h('a',{class:'lk',href:mapsUrl(q),target:'_blank',rel:'noopener'},'Map'));links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy address'))}
     if(kind==='phone'){links.push(h('a',{class:'lk',href:'tel:'+val.replace(/[^\d+]/g,'')},'Call'));links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy'))}
     if(kind==='ref')links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy number'));
     else if(kind!=='address'&&kind!=='phone'&&(d.group==='Bookings'||d.group==='Flights'))links.push(h('button',{type:'button',class:'lk',onclick:()=>copy(val)},'Copy'));
   }
   const more=[photoEl(d,'sm'),d.note?h('div',{class:'sub'},d.note):null,
-    conf?null:ownerLine(d),
+    conf||d.status==='Tip'?null:ownerLine(d),
     d.neededBy&&!conf?h('div',{class:'sub'+(due==='late'?' over':'')},(due==='late'?'Overdue, was needed by ':'Needed by ')+fmtD(d.neededBy)):null,
     ].filter(Boolean);
   const k='i'+d.id,open=!!UI.open[k];
-  const head=[h('span',{class:'top'},h('span',{class:'lb'},d.label+(more.length?(open?' \u25BE':' \u25B8'):'')),h('span',{class:'pil '+(conf?'ok':due==='late'?'bad':'')},conf?'Confirmed':'TBC')),
+  const head=[h('span',{class:'top'},h('span',{class:'lb'},d.label+(more.length?(open?' \u25BE':' \u25B8'):'')),h('span',{class:'pil '+(conf?'ok':due==='late'?'bad':'')},conf?'Confirmed':d.status==='Tip'?'Tip':'TBC')),
     h('span',{class:'vv'+(isTbc?' tbc':'')+(kind==='ref'||kind==='time'||kind==='phone'?' mo':'')},val||'Not set')];
   return h('div',{class:'it',id:'S-'+d.id},
     more.length?h('button',{type:'button',class:'ihd','aria-expanded':open?'true':'false',onclick:()=>{UI.open[k]=!open;render()}},head):h('div',{class:'ihd'},head),
@@ -1069,7 +1069,7 @@ function chatRules(withLedger){
   '- Theme: light by day, dark at night by itself. If asked for dark, light or automatic, call set_theme. Otherwise do not mention it.',
   'Days: 0 Tue 6 Oct, 1 Wed 7, 2 Thu 8, 3 Fri 9, 4 Mon 12 Oct. Codes SF, AR, SH. Some fields exist but are left out of the data below to save space.',
   '- itinerary: day, start, end, when (label if no time), approx, title, place, note, flag, done, actualAt (ms), unplanned, assignee (code), phone, callLabel, plate, photo (file name in img), critical, deadline HH:MM, deadlineLabel, env (urban, road, forest, coast), milestone, order.',
-  '- intel: group (Getting there, Stay, Dive day, Getting home, People, Flights, Bookings), label, value, kind (text, address, phone, ref, time), status (TBC or Confirmed), neededBy YYYY-MM-DD, note, mapsQuery, owner (code), photo, order.',
+  '- intel: group (Getting there, Rest stops, Stay, Dive day, Getting home, People, Flights, Bookings), label, value, kind (text, address, phone, ref, time), status (TBC, Confirmed, or Tip for a suggestion that is not a booking), neededBy YYYY-MM-DD, note, mapsQuery, owner (code), photo, order.',
   '- decisions: group, question, options (array), votes (code to option index), decided (index or null), decidedBy (code), decidedAt (ms), why, neededBy, owner.',
   '- ledgerLines: category, item, budget (number or null), note. ledgerSpends: amount, lineId, paidBy (code), splitBetween (codes, default all three), note, at (ms). settlements: from, to, amount, settled true (add when money changed hands).',
   '- meta, id trip: lateBy (minutes, Day 1 delay), checkInTime, startDate, endDate.',
