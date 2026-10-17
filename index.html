@@ -271,7 +271,7 @@ button.cell:disabled{cursor:default}
 .confetti i{position:absolute;top:-24px;display:block;width:10px;height:16px;border:2px solid var(--ink);border-radius:2px;animation:fall linear infinite}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
 .crown{position:absolute;left:50%;top:-34px;width:84px;margin-left:-42px;transform:rotate(8deg);z-index:2}
-.winwrap{position:relative;display:flex;justify-content:center;padding-top:30px}
+.winwrap{position:relative;display:flex;justify-content:center;padding-top:56px}
 .win h1{font-size:3.2rem;line-height:1;color:var(--pink-hot);-webkit-text-stroke:0;text-shadow:3px 3px 0 var(--ink)}
 .loser{display:flex;align-items:center;justify-content:center;gap:10px;font-weight:600}
 .loser .avatar{transform:rotate(-8deg)}
@@ -810,23 +810,6 @@ function gearSVG() {
   return `<svg viewBox="0 0 40 40" aria-hidden="true"><polygon points="${burstPoints(20, 20, 17, 12.5, 8, .2)}" fill="${PAL.purple}" ${OL(3)}/><circle cx="20" cy="20" r="6" fill="${PAL.blush}" ${OL(3)}/></svg>`;
 }
 
-/*ART_PREVIEW_START*/
-function artPreview() {
-  const row = (title, html) => `<div class="panel" style="margin-bottom:12px"><div class="label">${title}</div><div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px">${html}</div></div>`;
-  let h = '<div class="screen still" style="gap:0">';
-  h += row('Hero', `<div style="width:100%;border:3px solid var(--ink)">${heroSVG()}</div>`);
-  h += row('Avatars 160', AVATAR_IDS.map(a => avatarSVG(a, 160)).join(''));
-  h += row('Avatars 48', AVATAR_IDS.map(a => avatarSVG(a, 48)).join(''));
-  h += row('Pout', AVATAR_IDS.map(a => avatarSVG(a, 64, 'pout')).join(''));
-  h += row('Peek', AVATAR_IDS.map(a => peekAvatarSVG(a, 150)).join(''));
-  h += row('Critters sleep', CRITTERS.map(c => `<div style="width:${c.len * 70}px">${critterSVG(c.type, c.len, 'h', 'sleep')}</div>`).join(''));
-  h += row('Critters dizzy', CRITTERS.map(c => `<div style="width:${c.len * 70}px">${critterSVG(c.type, c.len, 'h', 'dizzy')}</div>`).join(''));
-  h += row('Critters vertical', CRITTERS.map(c => `<div style="height:${c.len * 60}px;width:60px">${critterSVG(c.type, c.len, 'v', 'sleep')}</div>`).join(''));
-  h += row('Markers', `<div style="width:80px">${hitSVG()}</div><div style="width:80px">${missSVG()}</div><div style="width:40px">${hitSVG()}</div><div style="width:40px">${missSVG()}</div>`);
-  h += row('Badges', CRITTERS.map(c => `<div style="width:170px">${foundBadgeSVG(c.type)}</div>`).join('') + crownSVG());
-  return h + '</div>';
-}
-/*ART_PREVIEW_END*/
 
 /* =========================================================
    SCREENS
@@ -1030,9 +1013,6 @@ function render() {
     case 'place':  html = placeScreen(); break;
     case 'turn':   html = turnScreen(); break;
     case 'win':    html = winScreen(); break;
-    /*ART_PREVIEW_START*/
-    case 'art':    html = artPreview(); break;
-    /*ART_PREVIEW_END*/
   }
   const key = state.phase + ':' + (state.passNext ? state.passNext.phase + state.passNext.player : '') + ':' + state.currentPlayer;
   const changed = key !== lastScreenKey;
@@ -1245,9 +1225,6 @@ appEl.addEventListener('contextmenu', (e) => e.preventDefault());
 (function boot() {
   state = freshState();
   ui.hasSave = !!readSave();
-  /*ART_PREVIEW_START*/
-  if (location.hash === '#art') { state.phase = 'art'; }
-  /*ART_PREVIEW_END*/
   render();
 })();
 </script>
