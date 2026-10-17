@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#8B5CF6">
+<title>Cute Battle Sil's</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%90%B0%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#2B1638;
+  --purple:#8B5CF6;
+  --purple-deep:#4C1D95;
+  --lilac:#E9D5FF;
+  --pink:#FF5FA2;
+  --pink-hot:#FF2E88;
+  --blush:#FFE4F0;
+  --sun:#FFD84D;
+  --mint:#7CE0C3;
+  --white:#FFFFFF;
+  --font-head:Bangers, Impact, "Arial Black", sans-serif;
+  --font-body:Fredoka, "Trebuchet MS", system-ui, sans-serif;
+  --safe-t:env(safe-area-inset-top, 0px);
+  --safe-b:env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none !important}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--font-body);
+  color:var(--ink);
+  background-color:var(--purple);
+  background-image:radial-gradient(var(--purple-deep) 2px, transparent 2.4px);
+  background-size:16px 16px;
+  min-height:100vh;min-height:100dvh;
+  touch-action:manipulation;
+  -webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none;
+  overflow-x:hidden;
+}
+button{font-family:inherit;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+svg{display:block}
+#app{
+  position:relative;
+  max-width:480px;margin:0 auto;
+  min-height:100vh;min-height:100dvh;
+  background-color:var(--blush);
+  background-image:radial-gradient(rgba(255,95,162,.30) 1.8px, transparent 2.2px);
+  background-size:16px 16px;
+  overflow-x:hidden;
+}
+@media (min-width:520px){ #app{border-left:4px solid var(--ink);border-right:4px solid var(--ink)} }
+
+/* ---------- screens ---------- */
+.screen{
+  min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;align-items:stretch;
+  padding:calc(var(--safe-t) + 10px) 12px calc(var(--safe-b) + 12px);
+  gap:12px;
+  animation:screenIn .25s ease-out both;
+}
+.screen.still{animation:none}
+@keyframes screenIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.grow{flex:1 1 auto}
+.center{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+h1,h2,h3{font-family:var(--font-head);font-weight:400;letter-spacing:.04em;margin:0}
+h2.head{font-size:2rem;line-height:1.05;color:var(--purple-deep);text-shadow:2px 2px 0 var(--pink);text-align:center}
+.muted{color:var(--purple-deep);opacity:.75;font-weight:500}
+
+/* ---------- buttons ---------- */
+.btn{
+  font-family:var(--font-head);font-size:1.6rem;letter-spacing:.05em;line-height:1;
+  min-height:52px;min-width:44px;padding:.6rem 1.4rem;
+  color:var(--white);background:var(--pink-hot);
+  border:3px solid var(--ink);border-radius:16px;
+  box-shadow:4px 4px 0 var(--ink);
+  text-shadow:2px 2px 0 var(--ink);
+  cursor:pointer;
+  transition:transform .06s ease, box-shadow .06s ease;
+}
+.btn:active:not(:disabled){transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink)}
+.btn:disabled{background:#CFC3DD;color:#8a7a9b;text-shadow:none;box-shadow:2px 2px 0 var(--ink);cursor:not-allowed;opacity:.9}
+.btn.purple{background:var(--purple)}
+.btn.sun{background:var(--sun);color:var(--ink);text-shadow:none}
+.btn.white{background:var(--white);color:var(--ink);text-shadow:none}
+.btn.big{font-size:2.4rem;min-height:68px;padding:.5rem 2.4rem}
+.btn.small{font-size:1.2rem;min-height:46px;padding:.45rem 1rem}
+.btn.block{width:100%}
+.row{display:flex;gap:10px}
+.row > *{flex:1}
+.actionbar{
+  position:sticky;bottom:0;z-index:5;
+  margin:auto -12px calc(var(--safe-b) * -1);
+  padding:10px 12px calc(var(--safe-b) + 10px);
+  background:linear-gradient(to bottom, rgba(255,228,240,0), var(--blush) 24%);
+  display:flex;flex-direction:column;gap:8px;
+}
+
+/* ---------- title ---------- */
+.title{padding:0;gap:0}
+.hero{border-bottom:4px solid var(--ink);box-shadow:0 5px 0 var(--pink-hot);background:var(--blush);padding-top:var(--safe-t);background-color:var(--blush)}
+.hero svg{width:100%;height:auto}
+.title-actions{display:flex;flex-direction:column;align-items:center;gap:14px;padding:26px 16px calc(var(--safe-b) + 20px)}
+.cog{
+  position:absolute;top:calc(var(--safe-t) + 8px);right:8px;z-index:3;
+  width:46px;height:46px;border-radius:50%;padding:0;
+  background:var(--white);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.cog:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.cog svg{width:28px;height:28px}
+
+/* ---------- speech bubbles ---------- */
+.bubble{
+  position:relative;background:var(--white);border:3px solid var(--ink);border-radius:18px;
+  padding:.5rem .9rem;font-weight:600;font-size:1.05rem;line-height:1.2;
+  box-shadow:3px 3px 0 var(--ink);
+}
+.bubble.left::before{
+  content:"";position:absolute;left:-11px;top:50%;margin-top:-8px;width:16px;height:16px;
+  background:var(--white);border-left:3px solid var(--ink);border-bottom:3px solid var(--ink);
+  transform:rotate(45deg);
+}
+.bubble.up::before{
+  content:"";position:absolute;top:-11px;left:50%;margin-left:-8px;width:16px;height:16px;
+  background:var(--white);border-left:3px solid var(--ink);border-top:3px solid var(--ink);
+  transform:rotate(45deg);
+}
+.bubble.pink{background:var(--pink);color:var(--white);text-shadow:1px 1px 0 var(--ink)}
+.bubble.pink.left::before,.bubble.pink.up::before{background:var(--pink)}
+.bubble.sun{background:var(--sun)}
+.bubble.sun.left::before,.bubble.sun.up::before{background:var(--sun)}
+.bubble h3{font-size:1.5rem;color:var(--purple-deep);line-height:1}
+
+/* ---------- panels ---------- */
+.panel{background:var(--white);border:3px solid var(--ink);border-radius:18px;box-shadow:4px 4px 0 var(--ink);padding:12px}
+.panel.tilt{transform:rotate(-1.5deg)}
+.panel.tilt2{transform:rotate(1.2deg)}
+.label{font-family:var(--font-head);letter-spacing:.05em;font-size:1.15rem;color:var(--purple-deep)}
+
+/* ---------- avatars ---------- */
+.avatar{max-width:100%;height:auto;overflow:visible}
+.banner{display:flex;align-items:center;gap:14px;padding-left:2px}
+.banner .av{flex:0 0 auto;filter:drop-shadow(3px 3px 0 var(--ink))}
+.banner .bubble{flex:1}
+.banner .bubble h3{font-size:1.7rem}
+.score{display:flex;gap:8px}
+.score .chip{
+  flex:1;display:flex;align-items:center;gap:7px;padding:4px 8px 4px 5px;
+  background:var(--white);border:3px solid var(--ink);border-radius:999px;font-weight:600;font-size:.95rem;
+  box-shadow:2px 2px 0 var(--ink);
+}
+.score .chip.me{background:var(--lilac)}
+.score .chip b{font-family:var(--font-head);font-weight:400;font-size:1.25rem;margin-left:auto;letter-spacing:.04em;color:var(--purple-deep)}
+.avgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 10px;padding:6px 4px 10px}
+.avbtn{
+  position:relative;border:0;background:none;padding:0;cursor:pointer;aspect-ratio:1;min-width:44px;min-height:44px;border-radius:50%;
+}
+.avbtn svg{width:100%;height:100%}
+.avbtn .tag{
+  position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);
+  font-family:var(--font-head);font-size:.85rem;letter-spacing:.05em;white-space:nowrap;
+  background:var(--white);border:2px solid var(--ink);border-radius:8px;padding:0 6px;color:var(--ink);
+}
+.avbtn.sel{box-shadow:0 0 0 3px var(--white),0 0 0 8px var(--pink-hot);}
+.avbtn.bounce{animation:bounce .5s cubic-bezier(.3,1.6,.5,1)}
+.avbtn:disabled{cursor:not-allowed;filter:grayscale(1) opacity(.45)}
+@keyframes bounce{0%{transform:scale(1)}30%{transform:scale(1.22) translateY(-6px)}60%{transform:scale(.94)}100%{transform:scale(1)}}
+.big-av{display:flex;justify-content:center}
+.big-av .avatar{filter:drop-shadow(5px 5px 0 var(--ink))}
+
+/* ---------- pass screen ---------- */
+.pass{
+  background-color:var(--purple);
+  background-image:radial-gradient(rgba(255,255,255,.22) 2.4px, transparent 2.8px);
+  background-size:18px 18px;
+  color:var(--white);text-align:center;justify-content:center;gap:16px;
+}
+.pass .sticker{
+  font-family:var(--font-head);font-size:3rem;letter-spacing:.06em;line-height:1;
+  color:var(--sun);-webkit-text-stroke:0;text-shadow:3px 3px 0 var(--ink), -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink);
+  transform:rotate(-4deg);
+}
+.pass .big-line{font-family:var(--font-head);font-size:2.1rem;letter-spacing:.05em;text-shadow:3px 3px 0 var(--ink)}
+.pass .hint{font-weight:500;opacity:.85;min-height:1.4em}
+
+/* ---------- boards ---------- */
+.bwrap{display:grid;grid-template-columns:18px 1fr;grid-template-rows:18px 1fr;width:100%}
+.bcols,.brows{display:grid;font-family:var(--font-head);font-size:.95rem;color:var(--purple-deep);text-align:center;align-items:center;justify-items:center}
+.bcols{grid-template-columns:repeat(8,1fr)}
+.brows{grid-template-rows:repeat(8,1fr)}
+.board{
+  position:relative;aspect-ratio:1;
+  background-color:var(--lilac);
+  background-image:radial-gradient(rgba(139,92,246,.22) 1.5px, transparent 2px);
+  background-size:10px 10px;
+  border:3px solid var(--ink);border-radius:12px;box-shadow:4px 4px 0 var(--ink);overflow:hidden;
+}
+.cells{position:absolute;inset:0;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr)}
+.cell{
+  display:block;position:relative;border:0;padding:0;margin:0;background:transparent;
+  box-shadow:inset 0 0 0 1px rgba(76,29,149,.22);cursor:pointer;border-radius:0;
+}
+button.cell:disabled{cursor:default}
+.cell.sel{outline:3px solid var(--pink-hot);outline-offset:-3px;background:rgba(255,95,162,.28);animation:pulse .9s ease-in-out infinite;z-index:2}
+@keyframes pulse{0%,100%{outline-color:var(--pink-hot);background:rgba(255,95,162,.18)}50%{outline-color:var(--white);background:rgba(255,95,162,.45)}}
+.layer{position:absolute;inset:0;pointer-events:none}
+.crit,.mk,.ghost{position:absolute}
+.crit svg,.mk svg{width:100%;height:100%;overflow:visible}
+.mk{width:12.5%;height:12.5%;padding:1px}
+.mk.new{animation:popIn .55s cubic-bezier(.3,1.8,.5,1) both}
+@keyframes popIn{0%{transform:scale(0) rotate(-30deg)}60%{transform:scale(1.35) rotate(8deg)}100%{transform:scale(1) rotate(0)}}
+.crit.wiggle{animation:wiggle .5s ease-in-out}
+@keyframes wiggle{0%,100%{transform:rotate(0)}20%{transform:rotate(-5deg) scale(1.05)}45%{transform:rotate(5deg)}70%{transform:rotate(-3deg)}}
+.ghost{border:3px dashed var(--purple-deep);border-radius:10px;z-index:3;pointer-events:none}
+.ghost.ok{background:rgba(167,139,250,.55)}
+.ghost.bad{background:rgba(255,46,136,.45);border-color:var(--pink-hot);animation:nope .3s}
+@keyframes nope{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.board.mini-board{box-shadow:3px 3px 0 var(--ink);border-width:2px;border-radius:9px}
+.mini{width:56%;margin:0 auto}
+.mini .bwrap{grid-template-columns:12px 1fr;grid-template-rows:12px 1fr}
+.mini .bcols,.mini .brows{font-size:.6rem}
+.boardbox{position:relative}
+.badge-pop{
+  position:absolute;left:50%;top:50%;width:92%;margin:-30% 0 0 -46%;z-index:6;pointer-events:none;
+  animation:badge 1.4s ease both;
+}
+@keyframes badge{0%{transform:scale(0) rotate(-14deg);opacity:0}16%{transform:scale(1.15) rotate(4deg);opacity:1}26%{transform:scale(1) rotate(-3deg)}82%{transform:scale(1) rotate(-3deg);opacity:1}100%{transform:scale(.9) rotate(-3deg);opacity:0}}
+.badge-pop svg{width:100%;height:auto;filter:drop-shadow(4px 4px 0 var(--ink))}
+#app.shake{animation:shake .45s linear}
+@keyframes shake{0%,100%{transform:translate(0,0)}15%{transform:translate(-4px,2px)}30%{transform:translate(4px,-2px)}45%{transform:translate(-4px,-2px)}60%{transform:translate(4px,2px)}75%{transform:translate(-2px,0)}}
+.msgwrap{min-height:52px;display:flex;align-items:center;justify-content:center}
+.msgwrap .bubble{width:100%;text-align:center}
+.hit-msg{background:var(--sun)}
+.sectitle{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+
+/* tray + tracker */
+.tray{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.chipc{
+  position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:2px;
+  min-height:60px;min-width:44px;padding:6px 3px 4px;
+  background:var(--white);border:3px solid var(--ink);border-radius:12px;box-shadow:2px 2px 0 var(--ink);cursor:pointer;
+  font-size:.7rem;font-weight:600;color:var(--ink);line-height:1.1;
+}
+.chipc .ic{width:100%;display:flex;align-items:center;justify-content:center;flex:1}
+.chipc .ic > div{width:100%}
+.chipc .ic svg{width:100%;height:auto;overflow:visible}
+.chipc.sel{background:var(--blush);box-shadow:0 0 0 3px var(--white),0 0 0 6px var(--pink-hot)}
+.chipc.placed{background:var(--lilac)}
+.chipc.placed::after{content:"\2713";position:absolute;top:-8px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--mint);border:2px solid var(--ink);font-size:.8rem;display:flex;align-items:center;justify-content:center;font-weight:700}
+.trk{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 3px 4px;min-height:56px;font-size:.68rem;font-weight:600;text-align:center;line-height:1.1}
+.trk .ic{width:100%;display:flex;align-items:center;justify-content:center;flex:1}
+.trk .ic > div{width:100%}
+.trk .ic svg{width:100%;height:auto;overflow:visible}
+.trk.found .ic{opacity:.45;filter:grayscale(.4)}
+.trk .stamp{
+  position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) rotate(-14deg);
+  font-family:var(--font-head);font-weight:400;font-size:.95rem;letter-spacing:.05em;color:var(--pink-hot);
+  border:2px solid var(--pink-hot);border-radius:6px;padding:0 4px;background:rgba(255,255,255,.85);
+  animation:stamp .35s cubic-bezier(.3,1.8,.5,1) both;
+}
+@keyframes stamp{from{transform:translate(-50%,-50%) rotate(-14deg) scale(2.4);opacity:0}to{transform:translate(-50%,-50%) rotate(-14deg) scale(1);opacity:1}}
+.hintline{text-align:center;font-weight:500;color:var(--purple-deep);min-height:1.3em;font-size:.95rem}
+
+/* ---------- win ---------- */
+.win{overflow:hidden;text-align:center;justify-content:center;gap:14px;position:relative}
+.confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.confetti i{position:absolute;top:-24px;display:block;width:10px;height:16px;border:2px solid var(--ink);border-radius:2px;animation:fall linear infinite}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+.crown{position:absolute;left:50%;top:-34px;width:84px;margin-left:-42px;transform:rotate(8deg);z-index:2}
+.winwrap{position:relative;display:flex;justify-content:center;padding-top:56px}
+.win h1{font-size:3.2rem;line-height:1;color:var(--pink-hot);-webkit-text-stroke:0;text-shadow:3px 3px 0 var(--ink)}
+.loser{display:flex;align-items:center;justify-content:center;gap:10px;font-weight:600}
+.loser .avatar{transform:rotate(-8deg)}
+
+/* ---------- modal ---------- */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(43,22,56,.6);display:flex;align-items:center;justify-content:center;padding:16px;animation:fade .15s ease-out}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal .sheet{width:100%;max-width:420px;background:var(--blush);border:4px solid var(--ink);border-radius:22px;box-shadow:6px 6px 0 var(--ink);padding:16px;display:flex;flex-direction:column;gap:12px;max-height:92vh;overflow:auto}
+.modal h2{font-size:2.2rem;color:var(--purple-deep);text-shadow:2px 2px 0 var(--pink);text-align:center}
+.tgl{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:56px;padding:6px 12px;
+  background:var(--white);border:3px solid var(--ink);border-radius:14px;box-shadow:3px 3px 0 var(--ink);cursor:pointer;
+  font-size:1.05rem;font-weight:600;color:var(--ink);text-align:left;
+}
+.tgl small{display:block;font-weight:400;opacity:.7;font-size:.8rem}
+.tgl .pill{flex:0 0 auto;position:relative;width:58px;height:32px;border:3px solid var(--ink);border-radius:999px;background:#CFC3DD;transition:background .15s}
+.tgl .pill::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:var(--white);border:3px solid var(--ink);transition:transform .15s}
+.tgl[aria-checked="true"] .pill{background:var(--pink-hot)}
+.tgl[aria-checked="true"] .pill::after{transform:translateX(26px)}
+.tgl:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+
+@media (prefers-reduced-motion: reduce){
+  #app.shake,.avbtn.bounce,.crit.wiggle,.cell.sel,.confetti i{animation:none !important}
+  .screen{animation:none}
+  .confetti i{top:auto}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+/* =========================================================
+   CONFIG
+   ========================================================= */
+const CONFIG = {
+  players: [
+    { name: 'Papa', defaultAvatar: 'bear' },
+    { name: 'Sil',  defaultAvatar: 'bunny' }
+  ],
+  saveKey: 'cbs_save_v1',
+  settingsKey: 'cbs_settings_v1',
+  passDelay: 1000
+};
+const N = 8;
+const COLS = 'ABCDEFGH';
+const CRITTERS = [
+  { type: 'whale',   name: 'Whale',      len: 4 },
+  { type: 'octopus', name: 'Octopus',    len: 3 },
+  { type: 'turtle',  name: 'Sea Turtle', len: 3 },
+  { type: 'puffer',  name: 'Pufferfish', len: 2 },
+  { type: 'seal',    name: 'Seal',       len: 2 }
+];
+const CRIT = {}; CRITTERS.forEach(c => CRIT[c.type] = c);
+const AVATAR_IDS = ['bunny','cat','bear','panda','fox','frog','penguin','axolotl'];
+
+/* =========================================================
+   PALETTE (single source of truth: the CSS variables)
+   ========================================================= */
+const PAL = (function () {
+  const d = { ink:'#2B1638', purple:'#8B5CF6', purpleDeep:'#4C1D95', lilac:'#E9D5FF', pink:'#FF5FA2',
+              pinkHot:'#FF2E88', blush:'#FFE4F0', sun:'#FFD84D', mint:'#7CE0C3', white:'#FFFFFF' };
+  try {
+    const cs = getComputedStyle(document.documentElement);
+    Object.keys(d).forEach(k => {
+      const v = cs.getPropertyValue('--' + k.replace(/[A-Z]/g, m => '-' + m.toLowerCase())).trim();
+      if (v) d[k] = v;
+    });
+  } catch (e) {}
+  return d;
+})();
+const FONT_HEAD = "Bangers, Impact, 'Arial Black', sans-serif";
+const FONT_BODY = "Fredoka, 'Trebuchet MS', system-ui, sans-serif";
+const OL = (w) => `stroke="${PAL.ink}" stroke-width="${w || 4}" stroke-linejoin="round" stroke-linecap="round"`;
+let uid = 0;
+
+/* =========================================================
+   STORAGE (always wrapped)
+   ========================================================= */
+const store = {
+  get(k) { try { const v = window.localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
+  set(k, v) { try { window.localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  del(k) { try { window.localStorage.removeItem(k); } catch (e) {} }
+};
+function loadSettings() {
+  const d = { mute: false, bonus: false, random: false };
+  const s = store.get(CONFIG.settingsKey);
+  if (s && typeof s === 'object') { ['mute','bonus','random'].forEach(k => { if (typeof s[k] === 'boolean') d[k] = s[k]; }); }
+  return d;
+}
+function saveSettings() { store.set(CONFIG.settingsKey, state.settings); }
+
+/* =========================================================
+   STATE
+   ========================================================= */
+function newPlayer(i) { return { name: CONFIG.players[i].name, avatar: null, critters: [], shotsReceived: [] }; }
+function freshState(settings) {
+  return {
+    phase: 'title', currentPlayer: 0, passNext: null,
+    players: [newPlayer(0), newPlayer(1)],
+    first: 0, lastShot: null, nextPlayer: null, winner: null,
+    settings: settings || loadSettings()
+  };
+}
+let state = freshState();
+let ui = { pick: null, selType: null, orient: 'h', target: null, resultPhase: null, resultToken: 0,
+           msg: null, modal: null, hasSave: false, justPlaced: null, justPicked: null, passAt: 0, confirmReset: false };
+const cur = () => state.players[state.currentPlayer];
+const opp = () => state.players[1 - state.currentPlayer];
+
+function saveGame() {
+  if (state.phase === 'title' || state.phase === 'art') return;
+  const copy = Object.assign({}, state); delete copy.settings;
+  store.set(CONFIG.saveKey, copy);
+}
+function readSave() {
+  const s = store.get(CONFIG.saveKey);
+  if (!s || typeof s !== 'object' || !Array.isArray(s.players) || s.players.length !== 2) return null;
+  if (!['avatar','pass','place','turn','win'].includes(s.phase)) return null;
+  for (const p of s.players) {
+    if (!p || !Array.isArray(p.critters) || !Array.isArray(p.shotsReceived)) return null;
+  }
+  return s;
+}
+
+/* =========================================================
+   GAME LOGIC
+   ========================================================= */
+function cellsOf(c) {
+  const len = CRIT[c.type].len, out = [];
+  for (let i = 0; i < len; i++) out.push({ x: c.x + (c.o === 'h' ? i : 0), y: c.y + (c.o === 'v' ? i : 0) });
+  return out;
+}
+function canPlace(list, type, x, y, o) {
+  const len = CRIT[type].len;
+  const w = o === 'h' ? len : 1, h = o === 'v' ? len : 1;
+  if (x < 0 || y < 0 || x + w > N || y + h > N) return false;
+  const mine = cellsOf({ type, x, y, o });
+  for (const c of list) {
+    if (c.type === type) continue;
+    for (const a of cellsOf(c)) for (const b of mine) if (a.x === b.x && a.y === b.y) return false;
+  }
+  return true;
+}
+function critterAtCell(list, x, y) {
+  for (const c of list) if (cellsOf(c).some(k => k.x === x && k.y === y)) return c;
+  return null;
+}
+const shotAt = (p, x, y) => p.shotsReceived.find(s => s.x === x && s.y === y);
+const isFound = (p, c) => cellsOf(c).every(k => shotAt(p, k.x, k.y));
+const foundCount = (p) => p.critters.filter(c => isFound(p, c)).length;
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+
+function randomLayout() {
+  for (let attempt = 0; attempt < 300; attempt++) {
+    const placed = []; let ok = true;
+    for (const c of CRITTERS) {
+      let done = false;
+      for (let t = 0; t < 120 && !done; t++) {
+        const o = Math.random() < .5 ? 'h' : 'v';
+        const x = rnd(0, N - (o === 'h' ? c.len : 1)), y = rnd(0, N - (o === 'v' ? c.len : 1));
+        if (canPlace(placed, c.type, x, y, o)) { placed.push({ type: c.type, x, y, o }); done = true; }
+      }
+      if (!done) { ok = false; break; }
+    }
+    if (ok) return placed;
+  }
+  return [ { type:'whale', x:0, y:0, o:'h' }, { type:'octopus', x:0, y:2, o:'h' }, { type:'turtle', x:0, y:4, o:'h' },
+           { type:'puffer', x:0, y:6, o:'h' }, { type:'seal', x:4, y:6, o:'h' } ];
+}
+const nextUnplaced = () => { const p = cur(); const c = CRITTERS.find(k => !p.critters.some(x => x.type === k.type)); return c ? c.type : null; };
+
+/* =========================================================
+   SOUND + HAPTICS
+   ========================================================= */
+let actx = null;
+function audio() {
+  if (state.settings.mute) return null;
+  try {
+    if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; actx = new AC(); }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  } catch (e) { return null; }
+}
+function tone(freq, t0, dur, type, vol, slideTo) {
+  const a = audio(); if (!a) return;
+  try {
+    const t = a.currentTime + t0, o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol || .18, t + .012);
+    g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t); o.stop(t + dur + .05);
+  } catch (e) {}
+}
+const sfx = {
+  tap()   { tone(740, 0, .05, 'triangle', .07); },
+  boop()  { tone(520, 0, .16, 'sine', .22, 940); tone(1040, .05, .1, 'sine', .08); },
+  plop()  { tone(260, 0, .24, 'sine', .25, 70); },
+  found() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i * .09, .22, 'triangle', .16)); },
+  win()   { [[523,0],[659,.14],[784,.28],[1047,.42],[784,.62],[1047,.76],[1319,.9],[1568,1.1]].forEach(([f, t]) => tone(f, t, .3, 'triangle', .17)); },
+  place() { tone(330, 0, .09, 'sine', .15, 480); }
+};
+function vib(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+
+/* =========================================================
+   SVG ART
+   ========================================================= */
+function burstPoints(cx, cy, ro, ri, n, rot) {
+  const pts = [];
+  for (let i = 0; i < n * 2; i++) {
+    const r = i % 2 ? ri : ro, a = (rot || 0) + Math.PI * i / n;
+    pts.push((cx + r * Math.cos(a)).toFixed(1) + ',' + (cy + r * Math.sin(a)).toFixed(1));
+  }
+  return pts.join(' ');
+}
+function spiral(cx, cy, R) {
+  let d = '';
+  for (let i = 0; i <= 36; i++) {
+    const t = i / 36, a = t * 2.4 * 2 * Math.PI, r = R * t;
+    d += (i ? 'L' : 'M') + (cx + r * Math.cos(a)).toFixed(1) + ' ' + (cy + r * Math.sin(a)).toFixed(1);
+  }
+  return d;
+}
+function wavePath(y, amp, period, phase, bottom) {
+  let d = `M-10 ${y}`;
+  for (let x = -10; x < 420; x += period) {
+    d += ` q${period / 4} ${-amp} ${period / 2} 0 t${period / 2} 0`;
+  }
+  return d + ` L420 ${bottom} L-10 ${bottom} Z`;
+}
+
+/* ----- avatars: all drawn in a 100x100 box, head centre x=50 ----- */
+function faceBits(o) {
+  // o: eyeY, eyeDx, cheekY, cheekDx, mouthY, mouthW, mood, noEyes, noMouth
+  const ink = PAL.ink; let s = '';
+  if (!o.noEyes) {
+    [50 - o.eyeDx, 50 + o.eyeDx].forEach(x => {
+      s += `<circle cx="${x}" cy="${o.eyeY}" r="4.6" fill="${ink}"/><circle cx="${x + 1.6}" cy="${o.eyeY - 1.7}" r="1.5" fill="#fff"/>`;
+    });
+  }
+  if (o.mood === 'pout') {
+    s += `<path d="M${50 - o.eyeDx - 6} ${o.eyeY - 9} l11 3 M${50 + o.eyeDx + 6} ${o.eyeY - 9} l-11 3" fill="none" ${OL(3)}/>`;
+  }
+  if (o.cheekY) {
+    [50 - o.cheekDx, 50 + o.cheekDx].forEach(x => {
+      s += `<ellipse cx="${x}" cy="${o.cheekY}" rx="6.5" ry="4.2" fill="${PAL.pink}" opacity=".8"/>`;
+    });
+  }
+  if (!o.noMouth) {
+    const y = o.mouthY, w = o.mouthW || 6;
+    if (o.mood === 'pout') s += `<path d="M${50 - w} ${y + 3} Q50 ${y - 4} ${50 + w} ${y + 3}" fill="none" ${OL(3)}/>`;
+    else {
+      s += `<path d="M${50 - w} ${y} Q${50 - w / 2} ${y + 5} 50 ${y} Q${50 + w / 2} ${y + 5} ${50 + w} ${y}" fill="none" ${OL(3)}/>`;
+      if (o.mood === 'cheeky') s += `<path d="M47 ${y + 2.5} q3 9 7 0 z" fill="${PAL.pinkHot}" ${OL(2.5)}/>`;
+    }
+  }
+  return s;
+}
+const ANIMALS = {
+  bunny: { label: 'Bunny', bg: 'purple', eyeY: 56, eyeDx: 14,
+    body: () => `<ellipse cx="50" cy="106" rx="36" ry="27" fill="${PAL.pink}" ${OL()}/>`,
+    head: (m) => `
+      <ellipse cx="35" cy="26" rx="9.5" ry="23" fill="#fff" ${OL()}/><ellipse cx="35" cy="28" rx="4.5" ry="15" fill="${PAL.pink}"/>
+      <ellipse cx="65" cy="26" rx="9.5" ry="23" fill="#fff" ${OL()}/><ellipse cx="65" cy="28" rx="4.5" ry="15" fill="${PAL.pink}"/>
+      <ellipse cx="50" cy="58" rx="29" ry="26" fill="#fff" ${OL()}/>
+      <path d="M46 62 h8 l-4 5 z" fill="${PAL.pinkHot}" ${OL(2.5)}/>
+      ${faceBits({ eyeY: 54, eyeDx: 14, cheekY: 65, cheekDx: 20, mouthY: 71, mouthW: 5, mood: m })}` },
+  cat: { label: 'Cat', bg: 'pink', eyeY: 54, eyeDx: 14,
+    body: () => `<ellipse cx="50" cy="106" rx="36" ry="27" fill="${PAL.purple}" ${OL()}/>`,
+    head: (m) => `
+      <polygon points="21,48 25,13 47,33" fill="#FFA94D" ${OL()}/><polygon points="79,48 75,13 53,33" fill="#FFA94D" ${OL()}/>
+      <polygon points="28,38 29,23 40,33" fill="${PAL.pink}"/><polygon points="72,38 71,23 60,33" fill="${PAL.pink}"/>
+      <ellipse cx="50" cy="58" rx="31" ry="26" fill="#FFA94D" ${OL()}/>
+      <path d="M50 34 v9 M41 36 l2 7 M59 36 l-2 7" fill="none" stroke="#D9731A" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M12 60 l14 2 M12 69 l14-3 M88 60 l-14 2 M88 69 l-14-3" fill="none" stroke="${PAL.ink}" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M46 62 h8 l-4 5 z" fill="${PAL.pink}" ${OL(2.5)}/>
+      ${faceBits({ eyeY: 53, eyeDx: 14, cheekY: 65, cheekDx: 21, mouthY: 70, mouthW: 6, mood: m })}` },
+  bear: { label: 'Bear', bg: 'lilac', eyeY: 52, eyeDx: 15,
+    body: () => `<ellipse cx="50" cy="106" rx="36" ry="27" fill="${PAL.pink}" ${OL()}/>`,
+    head: (m) => `
+      <circle cx="24" cy="30" r="12.5" fill="#B9835A" ${OL()}/><circle cx="24" cy="30" r="6" fill="#E8C39E"/>
+      <circle cx="76" cy="30" r="12.5" fill="#B9835A" ${OL()}/><circle cx="76" cy="30" r="6" fill="#E8C39E"/>
+      <ellipse cx="50" cy="56" rx="30" ry="27" fill="#B9835A" ${OL()}/>
+      <ellipse cx="50" cy="66" rx="13" ry="10" fill="#EBCBA6"/>
+      <ellipse cx="50" cy="62" rx="5.5" ry="3.8" fill="${PAL.ink}"/>
+      ${faceBits({ eyeY: 51, eyeDx: 15, cheekY: 62, cheekDx: 25, mouthY: 69, mouthW: 5, mood: m })}` },
+  panda: { label: 'Panda', bg: 'purple', eyeY: 53, eyeDx: 15,
+    body: () => `<ellipse cx="50" cy="106" rx="36" ry="27" fill="${PAL.ink}" ${OL()}/><ellipse cx="50" cy="104" rx="20" ry="17" fill="#fff"/>`,
+    head: (m) => `
+      <circle cx="24" cy="30" r="12.5" fill="${PAL.ink}" ${OL()}/><circle cx="76" cy="30" r="12.5" fill="${PAL.ink}" ${OL()}/>
+      <ellipse cx="50" cy="56" rx="30" ry="27" fill="#fff" ${OL()}/>
+      <ellipse cx="35" cy="53" rx="8.5" ry="11" fill="${PAL.ink}" transform="rotate(22 35 53)"/>
+      <ellipse cx="65" cy="53" rx="8.5" ry="11" fill="${PAL.ink}" transform="rotate(-22 65 53)"/>
+      <circle cx="35" cy="53" r="3.6" fill="#fff"/><circle cx="65" cy="53" r="3.6" fill="#fff"/>
+      <circle cx="35.4" cy="53.4" r="1.9" fill="${PAL.ink}"/><circle cx="64.6" cy="53.4" r="1.9" fill="${PAL.ink}"/>
+      <ellipse cx="50" cy="64" rx="5.5" ry="3.8" fill="${PAL.ink}"/>
+      ${faceBits({ eyeY: 53, eyeDx: 15, cheekY: 66, cheekDx: 24, mouthY: 70, mouthW: 5, mood: m, noEyes: true })}
+      ${m === 'pout' ? `<path d="M24 44 l11 4 M76 44 l-11 4" fill="none" stroke="${PAL.ink}" stroke-width="3" stroke-linecap="round"/>` : ''}` },
+  fox: { label: 'Fox', bg: 'pink', eyeY: 54, eyeDx: 15,
+    body: () => `<ellipse cx="50" cy="106" rx="36" ry="27" fill="#FF8A3D" ${OL()}/><path d="M36 84 L50 104 L64 84 Z" fill="#fff"/>`,
+    head: (m) => `
+      <polygon points="20,46 22,10 46,34" fill="#FF8A3D" ${OL()}/><polygon points="80,46 78,10 54,34" fill="#FF8A3D" ${OL()}/>
+      <polygon points="26,34 26,20 37,31" fill="${PAL.ink}"/><polygon points="74,34 74,20 63,31" fill="${PAL.ink}"/>
+      <path d="M50 84 C38 84 22 74 12 56 L18 38 C26 44 34 46 38 44 C45 41 55 41 62 44 C66 46 74 44 82 38 L88 56 C78 74 62 84 50 84 Z" fill="#FF8A3D" ${OL()}/>
+      <path d="M13 57 C24 68 38 70 50 64 C62 70 76 68 87 57 C77 75 62 84 50 84 C38 84 23 75 13 57 Z" fill="#fff"/>
+      <path d="M50 84 C38 84 22 74 12 56 L18 38 C26 44 34 46 38 44 C45 41 55 41 62 44 C66 46 74 44 82 38 L88 56 C78 74 62 84 50 84 Z" fill="none" ${OL()}/>
+      <ellipse cx="50" cy="69" rx="5" ry="3.6" fill="${PAL.ink}"/>
+      ${faceBits({ eyeY: 53, eyeDx: 15, cheekY: 64, cheekDx: 27, mouthY: 75, mouthW: 5, mood: m })}` },
+  frog: { label: 'Frog', bg: 'lilac', eyeY: 38, eyeDx: 18, handScale: 1.3,
+    body: () => `<ellipse cx="50" cy="106" rx="36" ry="27" fill="#8EDB6A" ${OL()}/><ellipse cx="50" cy="106" rx="20" ry="15" fill="#D7F5B8"/>`,
+    head: (m) => `
+      <ellipse cx="50" cy="62" rx="34" ry="24" fill="#8EDB6A" ${OL()}/>
+      <circle cx="32" cy="40" r="14" fill="#8EDB6A" ${OL()}/><circle cx="68" cy="40" r="14" fill="#8EDB6A" ${OL()}/>
+      <circle cx="32" cy="40" r="8.5" fill="#fff"/><circle cx="68" cy="40" r="8.5" fill="#fff"/>
+      <circle cx="33.5" cy="40.5" r="4.8" fill="${PAL.ink}"/><circle cx="66.5" cy="40.5" r="4.8" fill="${PAL.ink}"/>
+      <circle cx="35" cy="38.5" r="1.5" fill="#fff"/><circle cx="68" cy="38.5" r="1.5" fill="#fff"/>
+      <circle cx="45" cy="55" r="1.6" fill="${PAL.ink}"/><circle cx="55" cy="55" r="1.6" fill="${PAL.ink}"/>
+      ${m === 'pout' ? `<path d="M30 74 Q50 62 70 74" fill="none" ${OL(3)}/>` : `<path d="M28 64 Q50 82 72 64" fill="none" ${OL(3)}/>${m === 'cheeky' ? `<path d="M46 74 q4 9 8 0z" fill="${PAL.pinkHot}" ${OL(2.5)}/>` : ''}`}
+      <ellipse cx="26" cy="68" rx="6" ry="4" fill="${PAL.pink}" opacity=".8"/><ellipse cx="74" cy="68" rx="6" ry="4" fill="${PAL.pink}" opacity=".8"/>
+      ${m === 'pout' ? `<path d="M20 28 l12 4 M80 28 l-12 4" fill="none" ${OL(3)}/>` : ''}` },
+  penguin: { label: 'Penguin', bg: 'purple', eyeY: 50, eyeDx: 12,
+    body: () => `<ellipse cx="50" cy="106" rx="36" ry="27" fill="#3A2C63" ${OL()}/><ellipse cx="50" cy="108" rx="19" ry="20" fill="#fff"/>`,
+    head: (m) => `
+      <ellipse cx="50" cy="54" rx="30" ry="30" fill="#3A2C63" ${OL()}/>
+      <path d="M50 43 C42 29 25 39 28 56 C30 69 42 79 50 81 C58 79 70 69 72 56 C75 39 58 29 50 43 Z" fill="#fff" ${OL(3)}/>
+      <polygon points="43,60 57,60 50,70" fill="#FFB02E" ${OL(3)}/>
+      ${faceBits({ eyeY: 50, eyeDx: 12, cheekY: 62, cheekDx: 19, mood: m, noMouth: true })}` },
+  axolotl: { label: 'Axolotl', bg: 'pink', eyeY: 54, eyeDx: 13,
+    body: () => `<ellipse cx="50" cy="106" rx="36" ry="27" fill="#FFC2DC" ${OL()}/>`,
+    head: (m) => {
+      const gill = (cx, cy, rot, side) => `<ellipse cx="${cx}" cy="${cy}" rx="12" ry="4.6" fill="${PAL.pinkHot}" ${OL(3)} transform="rotate(${rot} ${cx} ${cy})"/>`;
+      return `
+      ${gill(17, 44, -28)}${gill(13, 56, 0)}${gill(17, 68, 28)}
+      ${gill(83, 44, 28)}${gill(87, 56, 0)}${gill(83, 68, -28)}
+      <ellipse cx="50" cy="57" rx="30" ry="26" fill="#FFC2DC" ${OL()}/>
+      <circle cx="46" cy="62" r="1.2" fill="${PAL.ink}"/><circle cx="54" cy="62" r="1.2" fill="${PAL.ink}"/>
+      ${faceBits({ eyeY: 53, eyeDx: 13, cheekY: 63, cheekDx: 21, mouthY: 67, mouthW: 8, mood: m })}`; } }
+};
+function avatarSVG(id, size, mood) {
+  const A = ANIMALS[id], cid = 'avc' + (++uid);
+  const dim = size ? `width="${size}" height="${size}"` : '';
+  return `<svg class="avatar" ${dim} viewBox="0 0 100 100" role="img" aria-label="${A.label}">
+    <defs><clipPath id="${cid}"><circle cx="50" cy="50" r="46"/></clipPath></defs>
+    <circle cx="50" cy="50" r="46" fill="${PAL[A.bg]}"/>
+    <g clip-path="url(#${cid})">${A.body()}${A.head(mood || 'happy')}</g>
+    <circle cx="50" cy="50" r="46" fill="none" stroke="${PAL.ink}" stroke-width="5"/></svg>`;
+}
+/* avatar with hands over eyes, peeking */
+function peekAvatarSVG(id, size) {
+  const A = ANIMALS[id], cid = 'avc' + (++uid), k = A.handScale || 1;
+  const hand = (cx, cy, rot, peek) => {
+    const w = 27 * k, h = 20 * k, x = cx - w / 2, y = cy - h / 2;
+    return `<g transform="rotate(${rot} ${cx} ${cy})">
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${9 * k}" fill="#FFC9A3" ${OL(3.5)}/>
+      <path d="M${x + w * .34} ${y + 3} v${h * .45} M${x + w * .66} ${y + 3} v${h * .45}" fill="none" stroke="#D98F66" stroke-width="2.2" stroke-linecap="round"/>
+      ${peek ? `<circle cx="${x + 3}" cy="${cy + 1}" r="1.7" fill="${PAL.ink}"/>` : ''}</g>`;
+  };
+  const dx = A.eyeDx, y = A.eyeY;
+  return `<svg class="avatar" width="${size}" height="${size}" viewBox="0 0 100 100" role="img" aria-label="${A.label} covering eyes">
+    <defs><clipPath id="${cid}"><circle cx="50" cy="50" r="46"/></clipPath></defs>
+    <circle cx="50" cy="50" r="46" fill="${PAL[A.bg]}"/>
+    <g clip-path="url(#${cid})">${A.body()}${A.head('happy')}</g>
+    <circle cx="50" cy="50" r="46" fill="none" stroke="${PAL.ink}" stroke-width="5"/>
+    ${hand(50 - dx, y, -6, false)}${hand(50 + dx + 4, y - 1, 7, false)}
+    <path d="M${50 + dx - 5} ${y + 2} q4 2 6 0" fill="none" stroke="${PAL.ink}" stroke-width="2" stroke-linecap="round" opacity="0"/>
+  </svg>`;
+}
+function crownSVG() {
+  return `<svg class="crown" viewBox="0 0 100 70" aria-hidden="true">
+    <path d="M10 60 L4 14 L30 34 L50 6 L70 34 L96 14 L90 60 Z" fill="${PAL.sun}" ${OL(5)}/>
+    <circle cx="4" cy="14" r="6" fill="${PAL.pinkHot}" ${OL(3)}/><circle cx="50" cy="6" r="6" fill="${PAL.pinkHot}" ${OL(3)}/><circle cx="96" cy="14" r="6" fill="${PAL.pinkHot}" ${OL(3)}/>
+    <circle cx="50" cy="44" r="6" fill="${PAL.purple}" ${OL(3)}/></svg>`;
+}
+
+/* ----- markers ----- */
+function hitInner(label) {
+  return `<polygon points="${burstPoints(50, 50, 47, 27, 9, .2)}" fill="${PAL.sun}" ${OL(4)}/>` +
+    (label ? `<text x="50" y="57" text-anchor="middle" font-family="${FONT_HEAD}" font-size="25" letter-spacing="1" fill="${PAL.pinkHot}" stroke="${PAL.ink}" stroke-width="5" paint-order="stroke" stroke-linejoin="round">BOOP!</text>`
+            : `<circle cx="50" cy="50" r="9" fill="${PAL.pinkHot}" ${OL(3)}/>`);
+}
+function hitSVG(label) { return `<svg viewBox="0 0 100 100" aria-label="Hit">${hitInner(label !== false)}</svg>`; }
+function missSVG(label) {
+  return `<svg viewBox="0 0 100 100" aria-label="Miss">
+    <ellipse cx="50" cy="52" rx="41" ry="30" fill="#fff" fill-opacity=".55" stroke="${PAL.purple}" stroke-width="5"/>
+    <ellipse cx="50" cy="52" rx="24" ry="17" fill="none" stroke="${PAL.purple}" stroke-width="4"/>
+    ${label !== false ? `<text x="50" y="57" text-anchor="middle" font-family="${FONT_BODY}" font-weight="600" font-size="17" fill="${PAL.purpleDeep}">splish</text>`
+      : `<ellipse cx="50" cy="52" rx="7" ry="5" fill="${PAL.purple}" opacity=".6"/>`}</svg>`;
+}
+
+/* ----- critters (drawn horizontal in L*100 x 100, head to the right) ----- */
+function eyeC(st, x, y, r) {
+  r = r || 7;
+  if (st === 'dizzy') return `<circle cx="${x}" cy="${y}" r="${r * 1.45}" fill="#fff" stroke="${PAL.ink}" stroke-width="2.6"/><path d="${spiral(x, y, r * 1.1)}" fill="none" stroke="${PAL.ink}" stroke-width="2.2" stroke-linecap="round"/>`;
+  if (st === 'sleep') return `<path d="M${x - r} ${y - 1} Q${x} ${y + r * 1.15} ${x + r} ${y - 1}" fill="none" stroke="${PAL.ink}" stroke-width="3.8" stroke-linecap="round"/>`;
+  return `<circle cx="${x}" cy="${y}" r="${r * .55}" fill="${PAL.ink}"/>`;
+}
+function mouthC(st, x, y, w) {
+  w = w || 8;
+  if (st === 'dizzy') return `<path d="M${x - w} ${y} q${w / 2} -5 ${w} 0 t${w} 0" fill="none" stroke="${PAL.ink}" stroke-width="3" stroke-linecap="round"/>`;
+  return `<path d="M${x - w} ${y} Q${x} ${y + 7} ${x + w} ${y}" fill="none" stroke="${PAL.ink}" stroke-width="3" stroke-linecap="round"/>`;
+}
+const cheekC = (x, y) => `<ellipse cx="${x}" cy="${y}" rx="8" ry="5" fill="${PAL.pink}" opacity=".85"/>`;
+const zzz = (st, x, y) => st === 'sleep' ? `<text x="${x}" y="${y}" font-family="${FONT_HEAD}" font-size="22" fill="${PAL.purpleDeep}" stroke="#fff" stroke-width="3" paint-order="stroke">z</text>` : '';
+
+const CRIT_ART = {
+  whale(st) {
+    return `
+    <path d="M70 60 C52 56 38 44 16 30 C12 48 18 66 38 74 C22 80 14 90 20 98 C42 94 58 84 78 76 Z" fill="${PAL.purple}" ${OL()}/>
+    <path d="M58 62 C58 30 118 16 220 16 C320 16 392 36 392 66 C392 90 330 94 220 94 C118 94 58 90 58 62 Z" fill="${PAL.purple}"/>
+    <path d="M100 80 C160 90 300 92 378 76 C364 90 330 94 220 94 C150 94 112 90 100 80 Z" fill="${PAL.lilac}"/>
+    <path d="M58 62 C58 30 118 16 220 16 C320 16 392 36 392 66 C392 90 330 94 220 94 C118 94 58 90 58 62 Z" fill="none" ${OL()}/>
+    <path d="M296 16 q-4 -9 -14 -11 M296 16 q4 -9 14 -11" fill="none" stroke="${PAL.pink}" stroke-width="4.5" stroke-linecap="round"/>
+    <ellipse cx="238" cy="78" rx="28" ry="10" fill="${PAL.purple}" ${OL()} transform="rotate(22 238 78)"/>
+    ${eyeC(st, 336, 52, 9)}${cheekC(318, 68)}${mouthC(st, 366, 66, 9)}${zzz(st, 360, 34)}`;
+  },
+  octopus(st) {
+    const tent = (d) => `<path d="${d}" fill="none" stroke="${PAL.ink}" stroke-width="22" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${PAL.pinkHot}" stroke-width="13" stroke-linecap="round"/>`;
+    return `
+    ${tent('M150 52 C120 38 96 66 70 52 C52 44 34 54 18 44')}
+    ${tent('M146 64 C118 62 100 84 74 74 C54 68 38 78 20 70')}
+    ${tent('M156 74 C128 82 110 98 84 90')}
+    ${tent('M168 40 C146 22 126 30 112 20')}
+    <path d="M148 56 C148 12 190 6 228 6 C276 6 294 40 288 66 C284 84 262 90 218 90 C176 90 148 82 148 56 Z" fill="${PAL.pinkHot}" ${OL()}/>
+    <circle cx="192" cy="28" r="5" fill="#FF8EC0"/><circle cx="212" cy="20" r="3.4" fill="#FF8EC0"/><circle cx="238" cy="24" r="4" fill="#FF8EC0"/>
+    ${eyeC(st, 218, 50, 8)}${eyeC(st, 256, 50, 8)}${cheekC(204, 66)}${cheekC(268, 66)}${mouthC(st, 237, 62, 6)}${zzz(st, 276, 22)}`;
+  },
+  turtle(st) {
+    return `
+    <ellipse cx="62" cy="26" rx="22" ry="11" fill="#A3EBD3" ${OL()} transform="rotate(-24 62 26)"/>
+    <ellipse cx="62" cy="76" rx="22" ry="11" fill="#A3EBD3" ${OL()} transform="rotate(24 62 76)"/>
+    <ellipse cx="196" cy="18" rx="26" ry="11" fill="#A3EBD3" ${OL()} transform="rotate(20 196 18)"/>
+    <ellipse cx="196" cy="84" rx="26" ry="11" fill="#A3EBD3" ${OL()} transform="rotate(-20 196 84)"/>
+    <path d="M52 52 L20 44 L20 60 Z" fill="#A3EBD3" ${OL()}/>
+    <ellipse cx="140" cy="50" rx="86" ry="38" fill="#4FC9A6" ${OL()}/>
+    <path d="M112 20 L92 50 L112 80 M172 20 L192 50 L172 80 M92 50 H192 M112 20 L140 12 M172 20 L140 12" fill="none" stroke="${PAL.ink}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity=".45"/>
+    <ellipse cx="140" cy="50" rx="20" ry="14" fill="#7CE0C3" opacity=".9"/>
+    <circle cx="238" cy="52" r="28" fill="#A3EBD3" ${OL()}/>
+    ${eyeC(st, 228, 46, 7)}${eyeC(st, 252, 46, 7)}${cheekC(222, 62)}${cheekC(258, 62)}${mouthC(st, 240, 60, 6)}${zzz(st, 272, 20)}`;
+  },
+  puffer(st) {
+    let sp = '';
+    for (let i = 0; i < 12; i++) {
+      const a = i / 12 * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+      const bx = 106 + c * 36, by = 52 + s * 36, tx = 106 + c * 51, ty = 52 + s * 51;
+      const px = -s * 6, py = c * 6;
+      sp += `<polygon points="${(bx + px).toFixed(1)},${(by + py).toFixed(1)} ${tx.toFixed(1)},${ty.toFixed(1)} ${(bx - px).toFixed(1)},${(by - py).toFixed(1)}" fill="#FFB02E" ${OL(3)}/>`;
+    }
+    return `
+    <path d="M62 52 L18 28 C14 44 14 60 18 76 Z" fill="#FFB02E" ${OL()}/>
+    ${sp}
+    <circle cx="106" cy="52" r="40" fill="${PAL.sun}" ${OL()}/>
+    <ellipse cx="108" cy="72" rx="24" ry="11" fill="#FFF3B0"/>
+    <ellipse cx="92" cy="64" rx="11" ry="7" fill="#FFB02E" ${OL(3)} transform="rotate(-20 92 64)"/>
+    ${eyeC(st, 100, 42, 7)}${eyeC(st, 128, 42, 7)}${cheekC(94, 54)}${cheekC(134, 54)}
+    <ellipse cx="115" cy="56" rx="4.5" ry="3.6" fill="${PAL.pinkHot}" ${OL(2.5)}/>${zzz(st, 140, 20)}`;
+  },
+  seal(st) {
+    return `
+    <path d="M40 60 L8 38 C4 54 4 68 10 82 Z" fill="#8FA8E8" ${OL()}/>
+    <path d="M24 62 C24 36 70 28 120 30 C168 32 188 44 184 66 C180 88 140 92 100 92 C54 92 24 86 24 62 Z" fill="#8FA8E8" ${OL()}/>
+    <path d="M60 82 C100 92 150 92 178 78 C170 90 140 94 100 94 C80 94 66 90 60 82 Z" fill="#D3DEFA"/>
+    <ellipse cx="96" cy="78" rx="22" ry="9" fill="#8FA8E8" ${OL()} transform="rotate(18 96 78)"/>
+    <ellipse cx="152" cy="52" rx="38" ry="31" fill="#8FA8E8" ${OL()}/>
+    <ellipse cx="170" cy="62" rx="17" ry="12" fill="#D3DEFA"/>
+    <ellipse cx="180" cy="55" rx="6.5" ry="4.6" fill="${PAL.ink}"/>
+    <path d="M168 66 l-22 -2 M170 70 l-22 5" fill="none" stroke="${PAL.ink}" stroke-width="2" stroke-linecap="round"/>
+    ${eyeC(st, 146, 42, 7)}${cheekC(140, 58)}${zzz(st, 168, 22)}`;
+  }
+};
+function critterInner(type, st) { return CRIT_ART[type](st || 'sleep'); }
+function critterSVG(type, length, orientation, st, cls) {
+  const L = length || CRIT[type].len, h = orientation !== 'v';
+  const vb = h ? `0 0 ${L * 100} 100` : `0 0 100 ${L * 100}`;
+  let inner = critterInner(type, st === 'ghost' ? 'plain' : st);
+  if (st === 'ghost') inner = `<g opacity=".55">${inner}</g>`;
+  const g = h ? inner : `<g transform="translate(100 0) rotate(90)">${inner}</g>`;
+  return `<svg class="critter ${cls || ''}" viewBox="${vb}" aria-label="${CRIT[type].name}">${g}</svg>`;
+}
+function foundBadgeSVG(type) {
+  const L = CRIT[type].len, sc = Math.min(160 / (L * 100), .6);
+  const w = L * 100 * sc, h = 100 * sc, x = 150 - w / 2;
+  return `<svg viewBox="0 0 300 240" aria-label="Found ${CRIT[type].name}">
+    <polygon points="${burstPoints(150, 110, 120, 94, 13, .1)}" fill="${PAL.ink}" transform="translate(7 8)"/>
+    <polygon points="${burstPoints(150, 110, 120, 94, 13, .1)}" fill="${PAL.pinkHot}" ${OL(5)}/>
+    <text x="150" y="108" text-anchor="middle" font-family="${FONT_HEAD}" font-size="50" letter-spacing="1" textLength="196" lengthAdjust="spacingAndGlyphs" fill="#fff" stroke="${PAL.ink}" stroke-width="9" paint-order="stroke" stroke-linejoin="round">FOUND YOU!</text>
+    <rect x="${x - 14}" y="124" width="${w + 28}" height="${h + 16}" rx="${(h + 16) / 2}" fill="${PAL.lilac}" ${OL(4)}/>
+    <g transform="translate(${x} ${132}) scale(${sc})">${critterInner(type, 'dizzy')}</g></svg>`;
+}
+
+/* ----- hero ----- */
+function heroSVG() {
+  const pid = 'dots' + (++uid);
+  const bubble = (tx, ty, rot, text, tailLeft) => `
+    <g transform="translate(${tx} ${ty}) rotate(${rot})">
+      <path d="M0 14 Q0 0 14 0 H76 Q90 0 90 14 V32 Q90 46 76 46 H${tailLeft ? 40 : 76} L${tailLeft ? 24 : 80} 62 L${tailLeft ? 28 : 64} 46 H14 Q0 46 0 32 Z" fill="#fff" ${OL(4)}/>
+      <text x="45" y="32" text-anchor="middle" font-family="${FONT_HEAD}" font-size="27" letter-spacing="1" fill="${PAL.ink}">${text}</text>
+    </g>`;
+  const boat = (x0, col) => `
+    <path d="M${x0} 268 H${x0 + 110} C${x0 + 106} 300 ${x0 + 86} 318 ${x0 + 55} 318 C${x0 + 24} 318 ${x0 + 4} 300 ${x0} 268 Z" fill="${col}" ${OL(5)}/>
+    <path d="M${x0 - 5} 268 H${x0 + 115}" stroke="${PAL.ink}" stroke-width="8" stroke-linecap="round"/>
+    <path d="M${x0 + 14} 285 H${x0 + 96}" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".75"/>`;
+  const sparkle = (x, y, s) => `<path d="M${x} ${y - s} Q${x} ${y} ${x + s} ${y} Q${x} ${y} ${x} ${y + s} Q${x} ${y} ${x - s} ${y} Q${x} ${y} ${x} ${y - s} Z" fill="${PAL.sun}" ${OL(2.5)}/>`;
+  return `<svg viewBox="0 0 400 380" role="img" aria-label="Cute Battle Sil's. A bear and a bunny in little boats.">
+    <defs><pattern id="${pid}" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="2.8" fill="${PAL.pink}"/></pattern></defs>
+    <rect width="400" height="380" fill="${PAL.blush}"/>
+    <rect width="400" height="380" fill="url(#${pid})" opacity=".6"/>
+    <polygon points="${burstPoints(200, 132, 156, 122, 15, .08)}" fill="${PAL.ink}" transform="translate(8 9)"/>
+    <polygon points="${burstPoints(200, 132, 156, 122, 15, .08)}" fill="${PAL.purple}" ${OL(5)}/>
+    <polygon points="${burstPoints(200, 132, 128, 104, 15, .08)}" fill="${PAL.purpleDeep}" opacity=".35"/>
+    <g transform="rotate(-5 200 120)">
+      <text x="203" y="104" text-anchor="middle" font-family="${FONT_HEAD}" font-size="52" letter-spacing="2" textLength="274" lengthAdjust="spacingAndGlyphs" fill="${PAL.pinkHot}" stroke="${PAL.pinkHot}" stroke-width="12" stroke-linejoin="round">CUTE BATTLE</text>
+      <text x="200" y="100" text-anchor="middle" font-family="${FONT_HEAD}" font-size="52" letter-spacing="2" textLength="274" lengthAdjust="spacingAndGlyphs" fill="#fff" stroke="${PAL.ink}" stroke-width="11" paint-order="stroke" stroke-linejoin="round">CUTE BATTLE</text>
+      <text x="204" y="188" text-anchor="middle" font-family="${FONT_HEAD}" font-size="104" letter-spacing="3" textLength="214" lengthAdjust="spacingAndGlyphs" fill="${PAL.purpleDeep}" stroke="${PAL.purpleDeep}" stroke-width="14" stroke-linejoin="round">SIL'S</text>
+      <text x="200" y="183" text-anchor="middle" font-family="${FONT_HEAD}" font-size="104" letter-spacing="3" textLength="214" lengthAdjust="spacingAndGlyphs" fill="${PAL.pinkHot}" stroke="${PAL.ink}" stroke-width="13" paint-order="stroke" stroke-linejoin="round">SIL'S</text>
+    </g>
+    ${sparkle(34, 62, 12)}${sparkle(372, 78, 14)}${sparkle(60, 230, 8)}${sparkle(348, 236, 9)}
+    <path d="${wavePath(296, 9, 36, 0, 380)}" fill="#C4A5FA" ${OL(4)}/>
+    ${boat(40, PAL.pinkHot)}
+    <g transform="translate(52 196) scale(.82) rotate(9 50 50)">${ANIMALS.bear.head('happy')}</g>
+    <circle cx="146" cy="254" r="11" fill="#B9835A" ${OL(4)}/>
+    ${boat(250, PAL.purple)}
+    <g transform="translate(260 186) scale(.82) rotate(-9 50 50)">${ANIMALS.bunny.head('cheeky')}</g>
+    <g transform="translate(166 214) scale(.68) rotate(-8 50 50)">${hitInner(false)}</g>
+    ${bubble(14, 150, -6, 'Boop?', true)}
+    ${bubble(296, 150, 5, 'Nope!', false)}
+    <path d="${wavePath(310, 10, 40, 0, 380)}" fill="${PAL.lilac}" ${OL(4)}/>
+    <path d="${wavePath(336, 8, 32, 0, 380)}" fill="#D9BEFB" ${OL(4)}/>
+    <path d="${wavePath(362, 7, 28, 0, 380)}" fill="${PAL.lilac}" ${OL(4)}/>
+  </svg>`;
+}
+function gearSVG() {
+  return `<svg viewBox="0 0 40 40" aria-hidden="true"><polygon points="${burstPoints(20, 20, 17, 12.5, 8, .2)}" fill="${PAL.purple}" ${OL(3)}/><circle cx="20" cy="20" r="6" fill="${PAL.blush}" ${OL(3)}/></svg>`;
+}
+
+
+/* =========================================================
+   SCREENS
+   ========================================================= */
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const poss = (n) => n + "'s";
+const cellName = (x, y) => COLS[x] + (y + 1);
+
+function titleScreen() {
+  return `<div class="screen title still">
+    <button class="cog" data-act="settings" aria-label="Settings">${gearSVG()}</button>
+    <div class="hero">${heroSVG()}</div>
+    <div class="title-actions">
+      <button class="btn big" data-act="play">PLAY</button>
+      ${ui.hasSave ? `<button class="btn purple" data-act="continue">CONTINUE GAME</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function avatarScreen() {
+  const p = cur(), other = state.players[1 - state.currentPlayer];
+  const taken = other.avatar;
+  const tiles = AVATAR_IDS.map(id => {
+    const dis = id === taken, sel = id === ui.pick;
+    return `<button class="avbtn ${sel ? 'sel' : ''} ${sel && ui.justPicked === id ? 'bounce' : ''}" data-act="avatar" data-id="${id}" ${dis ? 'disabled' : ''} aria-label="${ANIMALS[id].label}${dis ? ' (taken)' : ''}" aria-pressed="${sel}">
+      ${avatarSVG(id)}${dis ? '<span class="tag">TAKEN</span>' : ''}</button>`;
+  }).join('');
+  return `<div class="screen">
+    <h2 class="head" style="margin-top:6px">${esc(p.name)}, pick<br>your critter!</h2>
+    <div class="big-av">${ui.pick ? avatarSVG(ui.pick, 150) : ''}</div>
+    <div class="center" style="min-height:2rem"><span class="label" style="font-size:1.6rem">${ui.pick ? ANIMALS[ui.pick].label : ''}</span></div>
+    <div class="avgrid">${tiles}</div>
+    <div class="actionbar"><button class="btn block" data-act="avconfirm" ${ui.pick ? '' : 'disabled'}>CONFIRM</button></div>
+  </div>`;
+}
+
+function passScreen() {
+  const to = state.passNext ? state.players[state.passNext.player] : state.players[0];
+  const nm = esc(to.name);
+  const art = to.avatar ? peekAvatarSVG(to.avatar, 190) : '';
+  return `<div class="screen pass">
+    <div class="sticker">No peeking!</div>
+    <div class="big-av" style="margin:4px 0">${art}</div>
+    <div class="big-line">Pass the phone to ${nm}</div>
+    <div class="hint" id="passHint">Hold tight...</div>
+    <button class="btn sun block" id="passGo" data-act="passgo" disabled>I'm ${nm}, start my turn</button>
+  </div>`;
+}
+
+/* ----- board builder ----- */
+function boardHTML(o) {
+  const mini = !!o.mini;
+  let h = `<div class="bwrap"><div></div><div class="bcols">${COLS.split('').map(l => `<span>${l}</span>`).join('')}</div>`;
+  h += `<div class="brows">${[1,2,3,4,5,6,7,8].map(n => `<span>${n}</span>`).join('')}</div>`;
+  h += `<div class="board ${mini ? 'mini-board' : ''}" id="board${o.id || ''}"><div class="cells">`;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const shot = o.shots && shotAt(o.p, x, y);
+    if (o.interactive) {
+      const sel = o.target && o.target.x === x && o.target.y === y;
+      h += `<button class="cell ${sel ? 'sel' : ''}" data-act="cell" data-x="${x}" data-y="${y}" ${shot ? 'disabled' : ''} aria-label="${cellName(x, y)}${shot ? (shot.hit ? ' hit' : ' miss') : ''}"></button>`;
+    } else h += `<div class="cell"></div>`;
+  }
+  h += `</div><div class="layer">`;
+  (o.critters || []).forEach(c => {
+    const len = CRIT[c.type].len, hz = c.o === 'h';
+    const found = o.p && isFound(o.p, c);
+    h += `<div class="crit ${o.justPlaced === c.type ? 'wiggle' : ''}" style="left:${c.x * 12.5}%;top:${c.y * 12.5}%;width:${(hz ? len : 1) * 12.5}%;height:${(hz ? 1 : len) * 12.5}%">${critterSVG(c.type, len, c.o, found ? 'dizzy' : 'sleep')}</div>`;
+  });
+  if (o.shots) {
+    const foundCells = new Set();
+    (o.critters || []).forEach(c => { if (isFound(o.p, c)) cellsOf(c).forEach(k => foundCells.add(k.x + ',' + k.y)); });
+    o.p.shotsReceived.forEach((s, i) => {
+      if (s.hit && foundCells.has(s.x + ',' + s.y)) return;
+      const isNew = o.newShot && i === o.p.shotsReceived.length - 1;
+      h += `<div class="mk ${isNew ? 'new' : ''}" style="left:${s.x * 12.5}%;top:${s.y * 12.5}%">${s.hit ? hitSVG(!mini) : missSVG(!mini)}</div>`;
+    });
+  }
+  h += `</div>`;
+  if (o.ghost) h += `<div class="ghost" id="ghost" hidden></div>`;
+  h += `</div></div>`;
+  return h;
+}
+
+function placeScreen() {
+  const p = cur();
+  const o = ui.orient;
+  const tray = CRITTERS.map(c => {
+    const placed = p.critters.some(x => x.type === c.type), sel = ui.selType === c.type;
+    return `<button class="chipc ${placed ? 'placed' : ''} ${sel ? 'sel' : ''}" data-act="tray" data-type="${c.type}" aria-label="${c.name}, length ${c.len}${placed ? ', placed' : ''}">
+      <div class="ic"><div style="width:${c.len / 4 * 100}%">${critterSVG(c.type, c.len, 'h', 'sleep')}</div></div>
+      <span>${c.name.replace('Sea ', '')} ${c.len}</span></button>`;
+  }).join('');
+  const all = p.critters.length === CRITTERS.length;
+  const hint = ui.selType
+    ? `Tap a square to put the ${CRIT[ui.selType].name} there (top/left end)`
+    : (all ? 'All tucked in! Tap a critter to move it.' : 'Pick a critter below, or tap a placed one to lift it.');
+  return `<div class="screen place">
+    <div class="banner"><div class="av">${avatarSVG(p.avatar, 56)}</div>
+      <div class="bubble left"><h3>${esc(p.name)}, hide your critters!</h3></div></div>
+    ${boardHTML({ p, critters: p.critters, interactive: true, ghost: true, justPlaced: ui.justPlaced })}
+    <div class="hintline">${hint}</div>
+    <div class="tray">${tray}</div>
+    <div class="row">
+      <button class="btn purple small" data-act="rotate">ROTATE ${o === 'h' ? '&#8596;' : '&#8597;'}</button>
+      <button class="btn white small" data-act="shuffle">SHUFFLE</button>
+    </div>
+    <div class="actionbar"><button class="btn block" data-act="ready" ${all ? '' : 'disabled'}>READY!</button></div>
+  </div>`;
+}
+
+function turnScreen() {
+  const me = cur(), op = opp(), shot = state.lastShot;
+  const anim = shot && ui.resultPhase === 'anim', done = shot && ui.resultPhase === 'done';
+  const msg = ui.msg || (ui.target ? `Aim at ${cellName(ui.target.x, ui.target.y)}? Hit BOOP!` : `Your turn, ${esc(me.name)}! Pick a square.`);
+  const foundNow = shot && shot.found ? shot.found : null;
+  const target = boardHTML({ p: op, critters: op.critters.filter(c => isFound(op, c)), shots: true, interactive: !shot,
+    target: ui.target, newShot: anim, id: 'T' });
+  const mini = boardHTML({ p: me, critters: me.critters, shots: true, mini: true, id: 'M' });
+  const tracker = CRITTERS.map(c => {
+    const oc = op.critters.find(k => k.type === c.type), f = oc && isFound(op, oc);
+    return `<div class="trk ${f ? 'found' : ''}"><div class="ic"><div style="width:${c.len / 4 * 100}%">${critterSVG(c.type, c.len, 'h', f ? 'dizzy' : 'sleep')}</div></div><span>${c.name.replace('Sea ', '')}</span>${f ? '<b class="stamp">FOUND</b>' : ''}</div>`;
+  }).join('');
+  const chip = (i) => {
+    const p = state.players[i];
+    return `<div class="chip ${i === state.currentPlayer ? 'me' : ''}">${avatarSVG(p.avatar, 30)}<span>${esc(p.name)}</span><b>${foundCount(state.players[1 - i])}/5</b></div>`;
+  };
+  let bar;
+  if (!shot) bar = `<button class="btn block" data-act="fire" ${ui.target ? '' : 'disabled'}>BOOP!</button>`;
+  else if (anim) bar = `<button class="btn block" disabled>...</button>`;
+  else {
+    const label = shot.won ? 'SEE WINNER!' : (state.nextPlayer === state.currentPlayer ? 'BOOP AGAIN!' : 'END TURN');
+    bar = `<button class="btn block ${shot.won ? 'sun' : ''}" data-act="endturn">${label}</button>`;
+  }
+  return `<div class="screen turn still">
+    <div class="banner"><div class="av">${avatarSVG(me.avatar, 56)}</div><div class="bubble left"><h3>${esc(poss(me.name))} turn</h3></div></div>
+    <div class="score">${chip(0)}${chip(1)}</div>
+    <div class="sectitle"><span class="label">Find ${esc(poss(op.name))} critters</span></div>
+    <div class="boardbox">${target}${anim && foundNow ? `<div class="badge-pop">${foundBadgeSVG(foundNow)}</div>` : ''}</div>
+    <div class="msgwrap"><div class="bubble up ${shot && shot.hit ? 'sun' : ''}" style="width:100%;text-align:center">${msg}</div></div>
+    <div class="sectitle" style="margin-top:4px"><span class="label">${esc(poss(me.name))} critters</span><span class="muted" style="font-size:.8rem">what ${esc(op.name)} has tried</span></div>
+    <div class="mini">${mini}</div>
+    <div class="panel tilt2" style="margin-top:6px"><div class="label" style="margin-bottom:4px">${esc(poss(op.name))} critters to find</div><div class="tray" style="gap:0">${tracker}</div></div>
+    <div class="actionbar">${bar}</div>
+  </div>`;
+}
+
+function winScreen() {
+  const w = state.players[state.winner], l = state.players[1 - state.winner];
+  const colors = [PAL.pink, PAL.purple, PAL.sun, PAL.pinkHot, PAL.lilac];
+  let conf = '';
+  for (let i = 0; i < 44; i++) {
+    conf += `<i style="left:${Math.random() * 100}%;background:${colors[i % colors.length]};animation-duration:${(2.4 + Math.random() * 2.4).toFixed(2)}s;animation-delay:${(-Math.random() * 4).toFixed(2)}s;transform:rotate(${rnd(0, 180)}deg)"></i>`;
+  }
+  return `<div class="screen win">
+    <div class="confetti" aria-hidden="true">${conf}</div>
+    <div class="winwrap">${crownSVG()}${avatarSVG(w.avatar, 190)}</div>
+    <h1>${esc(w.name)} wins!</h1>
+    <div style="font-weight:500">Found all 5 critters. Very sneaky.</div>
+    <div class="loser">${avatarSVG(l.avatar, 64, 'pout')}<span>${esc(l.name)} is pouting</span></div>
+    <div class="grow"></div>
+    <div class="row" style="position:relative;z-index:2"><button class="btn" data-act="rematch">REMATCH</button><button class="btn purple" data-act="home">HOME</button></div>
+  </div>`;
+}
+
+function modalHTML() {
+  if (!ui.modal) return '';
+  const s = state.settings;
+  const tg = (key, title, sub, on) => `<button class="tgl" role="switch" aria-checked="${on}" data-act="tgl" data-key="${key}"><span>${title}<small>${sub}</small></span><span class="pill"></span></button>`;
+  if (ui.modal === 'settings') {
+    return `<div class="modal" data-act="closeIfBg"><div class="sheet" role="dialog" aria-label="Settings">
+      <h2>Settings</h2>
+      ${tg('sound', 'Sound', 'Boops, plops and a tiny jingle', !s.mute)}
+      ${tg('bonus', 'Bonus boop', 'A hit lets you shoot again', s.bonus)}
+      ${tg('random', 'Random first player', 'Otherwise Papa goes first', s.random)}
+      ${ui.confirmReset
+        ? `<div class="panel"><div style="font-weight:600;margin-bottom:8px">Delete the saved game for good?</div><div class="row"><button class="btn small" data-act="resetyes">YES, DELETE</button><button class="btn small white" data-act="resetno">KEEP IT</button></div></div>`
+        : `<button class="btn white small block" data-act="resetask" ${ui.hasSave ? '' : 'disabled'}>RESET SAVED GAME</button>`}
+      <button class="btn block" data-act="closemodal">DONE</button></div></div>`;
+  }
+  if (ui.modal === 'newgame') {
+    return `<div class="modal"><div class="sheet" role="dialog" aria-label="Start a new game">
+      <h2>New game?</h2><div style="text-align:center;font-weight:500">You have a saved game. Starting fresh will replace it.</div>
+      <button class="btn block" data-act="newyes">START FRESH</button>
+      <button class="btn white block" data-act="closemodal">NEVER MIND</button></div></div>`;
+  }
+  return '';
+}
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+let lastScreenKey = '', passTimer = null;
+function render() {
+  const app = $('#app');
+  let html = '';
+  switch (state.phase) {
+    case 'title':  html = titleScreen(); break;
+    case 'avatar': html = avatarScreen(); break;
+    case 'pass':   html = passScreen(); break;
+    case 'place':  html = placeScreen(); break;
+    case 'turn':   html = turnScreen(); break;
+    case 'win':    html = winScreen(); break;
+  }
+  const key = state.phase + ':' + (state.passNext ? state.passNext.phase + state.passNext.player : '') + ':' + state.currentPlayer;
+  const changed = key !== lastScreenKey;
+  app.innerHTML = html + modalHTML();
+  if (changed) { lastScreenKey = key; window.scrollTo(0, 0); }
+  else { const sc = app.querySelector('.screen'); if (sc) sc.classList.add('still'); }
+  clearTimeout(passTimer);
+  if (state.phase === 'pass') {
+    ui.passAt = Date.now();
+    passTimer = setTimeout(() => {
+      const b = document.getElementById('passGo'), hn = document.getElementById('passHint');
+      if (b && state.phase === 'pass') { b.disabled = false; if (hn) hn.textContent = 'Eyes on me only. Tap when you have the phone.'; }
+    }, CONFIG.passDelay);
+  }
+  ui.justPlaced = null; ui.justPicked = null;
+}
+
+/* =========================================================
+   FLOW
+   ========================================================= */
+function goPass(player, phase) {
+  state.phase = 'pass'; state.passNext = { phase, player }; state.currentPlayer = player;
+  state.lastShot = null;
+  ui.msg = null; ui.target = null; ui.resultPhase = null; ui.selType = null;
+  saveGame(); render();
+}
+function enterPhase(phase, player) {
+  state.phase = phase; state.currentPlayer = player; state.passNext = null;
+  ui.msg = null; ui.target = null; ui.resultPhase = null; ui.orient = 'h';
+  if (phase === 'avatar') {
+    const other = state.players[1 - player].avatar;
+    const want = state.players[player].avatar || CONFIG.players[player].defaultAvatar;
+    ui.pick = want !== other ? want : AVATAR_IDS.find(a => a !== other);
+  }
+  if (phase === 'place') ui.selType = nextUnplaced();
+  saveGame(); render();
+}
+function startNewGame() {
+  state = freshState(state.settings);
+  ui.modal = null;
+  enterPhase('avatar', 0);
+}
+function resumeGame(s) {
+  state = Object.assign(freshState(state.settings), s, { settings: state.settings });
+  const p = state.phase;
+  if (p === 'avatar') goPass(state.currentPlayer, 'avatar');
+  else if (p === 'place') goPass(state.currentPlayer, 'place');
+  else if (p === 'turn') {
+    if (state.winner !== null && state.winner !== undefined) { state.phase = 'win'; saveGame(); render(); }
+    else if (state.lastShot) goPass(state.nextPlayer !== null && state.nextPlayer !== undefined ? state.nextPlayer : 1 - state.currentPlayer, 'turn');
+    else goPass(state.currentPlayer, 'turn');
+  } else if (p === 'pass') {
+    const pn = state.passNext || { phase: 'turn', player: state.currentPlayer };
+    goPass(pn.player, pn.phase);
+  } else if (p === 'win') { render(); }
+  else { state = freshState(state.settings); render(); }
+}
+function fire() {
+  const t = ui.target; if (!t || state.lastShot) return;
+  const me = cur(), op = opp(), cp = state.currentPlayer;
+  if (shotAt(op, t.x, t.y)) return;
+  const c = critterAtCell(op.critters, t.x, t.y), hit = !!c;
+  op.shotsReceived.push({ x: t.x, y: t.y, hit });
+  const found = c && isFound(op, c) ? c : null;
+  const won = foundCount(op) === CRITTERS.length;
+  state.lastShot = { x: t.x, y: t.y, hit, found: found ? found.type : null, won, by: cp };
+  state.winner = won ? cp : null;
+  state.nextPlayer = won ? cp : (hit && state.settings.bonus ? cp : 1 - cp);
+  ui.target = null; ui.resultPhase = 'anim';
+  ui.msg = found ? `FOUND YOU, ${CRIT[found.type].name}!` : (hit ? 'BOOP! You found something!' : 'Splish. Just water.');
+  saveGame();
+  if (found) { sfx.found(); vib([40, 40, 80]); } else if (hit) { sfx.boop(); vib(30); } else sfx.plop();
+  render();
+  if (found) { const a = $('#app'); a.classList.remove('shake'); void a.offsetWidth; a.classList.add('shake'); setTimeout(() => a.classList.remove('shake'), 500); }
+  const token = ++ui.resultToken;
+  setTimeout(() => { if (ui.resultToken === token && state.phase === 'turn' && state.lastShot) { ui.resultPhase = 'done'; render(); } }, found ? 1400 : 700);
+}
+function endTurn() {
+  const s = state.lastShot; if (!s || ui.resultPhase !== 'done') return;
+  if (s.won) { state.phase = 'win'; saveGame(); render(); sfx.win(); return; }
+  if (state.nextPlayer === state.currentPlayer) {
+    state.lastShot = null; ui.msg = `Bonus boop! Go again, ${cur().name}.`; ui.target = null; ui.resultPhase = null;
+    saveGame(); render(); return;
+  }
+  goPass(state.nextPlayer, 'turn');
+}
+function finishPlacement() {
+  const p = cur();
+  if (p.critters.length !== CRITTERS.length) return;
+  if (state.currentPlayer === 0) goPass(1, 'place');
+  else {
+    state.first = state.settings.random ? (Math.random() < .5 ? 0 : 1) : 0;
+    goPass(state.first, 'turn');
+  }
+}
+function rematch() {
+  state.players.forEach(p => { p.critters = []; p.shotsReceived = []; });
+  state.winner = null; state.lastShot = null; state.nextPlayer = null;
+  goPass(0, 'place');
+}
+function goHome() {
+  store.del(CONFIG.saveKey); ui.hasSave = false;
+  state = freshState(state.settings); ui.modal = null; render();
+}
+
+/* ----- placement helpers ----- */
+function placeAt(x, y) {
+  const p = cur();
+  if (ui.selType && canPlace(p.critters, ui.selType, x, y, ui.orient)) {
+    const type = ui.selType;
+    p.critters = p.critters.filter(c => c.type !== type);
+    p.critters.push({ type, x, y, o: ui.orient });
+    ui.justPlaced = type; ui.selType = nextUnplaced();
+    sfx.place(); saveGame(); render(); return;
+  }
+  const hitC = critterAtCell(p.critters, x, y);
+  if (hitC) {
+    p.critters = p.critters.filter(c => c !== hitC);
+    ui.selType = hitC.type; ui.orient = hitC.o;
+    sfx.tap(); saveGame(); render(); return;
+  }
+  if (ui.selType) { setGhost(x, y); const g = $('#ghost'); if (g) setTimeout(() => { g.hidden = true; }, 650); }
+}
+function setGhost(x, y) {
+  const g = $('#ghost'); if (!g || !ui.selType) return;
+  const len = CRIT[ui.selType].len, o = ui.orient;
+  const w = Math.min(o === 'h' ? len : 1, N - x), h = Math.min(o === 'v' ? len : 1, N - y);
+  const ok = canPlace(cur().critters, ui.selType, x, y, o);
+  g.style.left = x * 12.5 + '%'; g.style.top = y * 12.5 + '%';
+  g.style.width = w * 12.5 + '%'; g.style.height = h * 12.5 + '%';
+  g.className = 'ghost ' + (ok ? 'ok' : 'bad'); g.hidden = false;
+}
+
+/* =========================================================
+   EVENTS
+   ========================================================= */
+function act(a, d, el) {
+  switch (a) {
+    case 'settings': ui.modal = 'settings'; ui.confirmReset = false; render(); break;
+    case 'closemodal': ui.modal = null; ui.confirmReset = false; render(); break;
+    case 'closeIfBg': ui.modal = null; ui.confirmReset = false; render(); break;
+    case 'tgl': {
+      const s = state.settings;
+      if (d.key === 'sound') s.mute = !s.mute; else if (d.key === 'bonus') s.bonus = !s.bonus; else if (d.key === 'random') s.random = !s.random;
+      saveSettings(); render(); if (!s.mute) sfx.tap(); break;
+    }
+    case 'resetask': ui.confirmReset = true; render(); break;
+    case 'resetno': ui.confirmReset = false; render(); break;
+    case 'resetyes': store.del(CONFIG.saveKey); ui.hasSave = false; ui.confirmReset = false; render(); break;
+    case 'play': if (ui.hasSave) { ui.modal = 'newgame'; render(); } else startNewGame(); break;
+    case 'newyes': startNewGame(); break;
+    case 'continue': { const s = readSave(); if (s) resumeGame(s); else { ui.hasSave = false; render(); } break; }
+    case 'avatar': ui.pick = d.id; ui.justPicked = d.id; sfx.tap(); render(); break;
+    case 'avconfirm':
+      if (!ui.pick) break;
+      cur().avatar = ui.pick;
+      if (state.currentPlayer === 0) goPass(1, 'avatar'); else goPass(0, 'place');
+      break;
+    case 'passgo':
+      if (Date.now() - ui.passAt < CONFIG.passDelay - 50) break;
+      enterPhase(state.passNext.phase, state.passNext.player); break;
+    case 'tray': {
+      const p = cur(), c = p.critters.find(k => k.type === d.type);
+      if (c) { p.critters = p.critters.filter(k => k !== c); ui.selType = c.type; ui.orient = c.o; saveGame(); }
+      else ui.selType = d.type;
+      sfx.tap(); render(); break;
+    }
+    case 'rotate': ui.orient = ui.orient === 'h' ? 'v' : 'h'; sfx.tap(); render(); break;
+    case 'shuffle': cur().critters = randomLayout(); ui.selType = null; ui.justPlaced = null; sfx.place(); saveGame(); render(); break;
+    case 'ready': finishPlacement(); break;
+    case 'cell': {
+      const x = +d.x, y = +d.y;
+      if (state.phase === 'place') placeAt(x, y);
+      else if (state.phase === 'turn' && !state.lastShot) {
+        if (shotAt(opp(), x, y)) break;
+        ui.target = { x, y }; ui.msg = null; sfx.tap(); render();
+      }
+      break;
+    }
+    case 'fire': fire(); break;
+    case 'endturn': endTurn(); break;
+    case 'rematch': rematch(); break;
+    case 'home': goHome(); break;
+  }
+}
+const appEl = $('#app');
+appEl.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  if (el.dataset.act === 'closeIfBg' && e.target !== el) return;
+  act(el.dataset.act, Object.assign({}, el.dataset), el);
+});
+function ghostEvt(e) {
+  if (state.phase !== 'place' || !ui.selType) return;
+  const c = e.target.closest && e.target.closest('.cell[data-act="cell"]');
+  if (c) setGhost(+c.dataset.x, +c.dataset.y);
+}
+appEl.addEventListener('pointerover', ghostEvt);
+appEl.addEventListener('pointerdown', ghostEvt);
+appEl.addEventListener('pointerout', (e) => {
+  if (e.pointerType !== 'mouse' || state.phase !== 'place') return;
+  const to = e.relatedTarget;
+  if (!to || !to.closest || !to.closest('.board')) { const g = $('#ghost'); if (g) g.hidden = true; }
+});
+appEl.addEventListener('contextmenu', (e) => e.preventDefault());
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+(function boot() {
+  state = freshState();
+  ui.hasSave = !!readSave();
+  render();
+})();
+</script>
+</body>
+</html>
