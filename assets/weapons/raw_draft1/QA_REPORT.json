@@ -1,0 +1,89 @@
+{
+  "automated_checks": [
+    {
+      "filename": "patch_cable_fx.png",
+      "dimensions": [
+        1536,
+        1024
+      ],
+      "alpha_transparency_present": true,
+      "bytes": 126226,
+      "status": "created"
+    },
+    {
+      "filename": "zap_pulse_fx.png",
+      "dimensions": [
+        1536,
+        1024
+      ],
+      "alpha_transparency_present": true,
+      "bytes": 134911,
+      "status": "created"
+    },
+    {
+      "filename": "phase_blink_fx.png",
+      "dimensions": [
+        1536,
+        1024
+      ],
+      "alpha_transparency_present": true,
+      "bytes": 371738,
+      "status": "created"
+    },
+    {
+      "filename": "ground_slam_fx.png",
+      "dimensions": [
+        1536,
+        1024
+      ],
+      "alpha_transparency_present": true,
+      "bytes": 342113,
+      "status": "created"
+    },
+    {
+      "filename": "dash_burst_fx.png",
+      "dimensions": [
+        1536,
+        1024
+      ],
+      "alpha_transparency_present": true,
+      "bytes": 240029,
+      "status": "created"
+    },
+    {
+      "filename": "popup_bomb_fx.png",
+      "dimensions": [
+        1536,
+        1024
+      ],
+      "alpha_transparency_present": true,
+      "bytes": 428383,
+      "status": "created"
+    },
+    {
+      "filename": "weapon_icons.png",
+      "dimensions": [
+        1536,
+        1024
+      ],
+      "alpha_transparency_present": true,
+      "bytes": 689769,
+      "status": "created"
+    },
+    {
+      "filename": "shared_extras.png",
+      "dimensions": [
+        1536,
+        1024
+      ],
+      "alpha_transparency_present": true,
+      "bytes": 455320,
+      "status": "created"
+    }
+  ],
+  "limitations": [
+    "Visual frame boundaries have not been manually approved.",
+    "Image 1 and 2 were extracted from a multi-panel generated composite.",
+    "Some source images may not contain four/six truly distinct stages."
+  ]
+}
