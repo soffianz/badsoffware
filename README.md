@@ -26,7 +26,7 @@ Same-screen two-player debug: `?debug=2p`, then the "2P SAME SCREEN" button on t
 ## Deploy
 Needs https for fullscreen, wake lock and WebRTC.
 - Netlify Drop: drag this folder onto https://app.netlify.com/drop
-- GitHub Pages: enable Pages on the repo, serve from the root.
+- GitHub Pages: the built game lives on the `gh-pages` branch. Repo Settings > Pages > Deploy from a branch > `gh-pages` / `(root)`. Live at https://soffianz.github.io/badsoffware/ . After changing `index.html`, run `tools/deploy_pages.sh` to republish.
 
 ## Publishing as a claude.ai artifact (optional ClaudeRoom transport)
 If `window.claude.use("room")` resolves within 3 s, the game uses it instead of PeerJS and skips room codes (both players tap PLAY ONLINE). Needs the artifact published with `capabilities: {room: {}}` and every player signed in to claude.ai. Outside network calls, PeerJS included, are blocked inside published artifacts, which is why this transport exists.
