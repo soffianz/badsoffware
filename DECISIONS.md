@@ -62,3 +62,14 @@ Judgement calls where the PRD was silent or ambiguous.
 - **Art**: only the icons are used (embedded at 96 px), plus the charge pip look drawn in code. All effects are drawn in code. The animation strips from draft 1 are NOT used because they were damaged by pre-slicing; see `assets/weapons/STATUS.md`.
 - **Not verified**: balance (stun length, cooldown, charge counts), touch feel of the new button on the Reno 2F, and real network latency.
 - **Tests**: `test/weapons.mjs` covers locked state, catching a drone, all six weapons, cooldown, two-phone guest and host use. `test/net.mjs` pickup check updated for charges.
+
+## Tower mode (scrolling upwards)
+- **World**: 3 screens tall (`CONFIG.WORLD_H` 1170). `FLOOR` is now the world ground (1124), `SFLOOR` the taskbar line on screen (344). At the bottom the view is identical to the old game. Sides still wrap. No fall damage: falling is the normal physics, no stun, no freeze.
+- **Layouts**: the 5 old single-screen layouts are replaced by 5 tall ones (BRICKWORK, TWIN SHAFTS, SPIRAL, SCATTER, WIDE AND NARROW), each 12 rows of windows 86 px apart, plus 3 desktop-icon ledges and 3 pop-up window slots (rows 2, 5 and 8, placed in the row's widest gap). They are built from fixed seeds with no `Math.random`, so both phones get the identical tower. `test/tower.mjs` checks every platform is reachable, and simulates every upward hop with the game's own `stepPlayer` (it passed for all five).
+- **Camera**: each phone follows its own pilot. It anchors to the last platform you stood on, so hops do not shake the view, and catches up faster when falling. Practice mode follows you, `?debug=2p` follows the midpoint. Purely client side: nothing new on the network.
+- **Finding each other**: an arrow at the top or bottom edge shows the other pilot's side, whether they are It, and how far in screens (for example "IT 2.6 SCREENS DOWN"). The HUD shows your altitude in metres (10 px = 1 m), and the world has altitude ticks every 13 m and faint scrolling rows.
+- **Drones**: spawn within about a screen of a random pilot (so weapons are reachable), up to 4 at a time, every 8 s.
+- **Bot**: when fleeing and the other pilot is close, half the time it climbs instead of running along the floor. Chasing already handled height.
+- **Weapons**: Patch Cable reaches 230 px up (was 200).
+- **Unchanged on purpose**: round length (2 min), both pilots still start on the ground, no anti-stalemate mechanic yet. If someone can sit unreachable at the top, add one (closing top windows or a rising hazard). Needs real play to know.
+- **Tests**: `test/climb.mjs` (camera follows, arrow, free fall, bot chase) and `test/tower.mjs` added. `test/weapons.mjs` and `test/touch.mjs` now use `__bsw.FLOOR` instead of hard-coded ground heights.

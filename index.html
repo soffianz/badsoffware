@@ -279,7 +279,7 @@ font:900 24px var(--fo);color:var(--yel);letter-spacing:.1em;touch-action:none}
    Every tunable lives in CONFIG.
    ===================================================================== */
 const CONFIG = {
-  W: 844, H: 390, TASKBAR: 46, RENDER_SCALE_CAP: 2,
+  W: 844, H: 390, WORLD_H: 1170, TASKBAR: 46, RENDER_SCALE_CAP: 2,
   STEP: 1 / 60, MAX_STEPS: 5,
   // round
   ROUND_MS: 120000, COUNTDOWN_MS: 3000, GO_MS: 900,
@@ -293,14 +293,14 @@ const CONFIG = {
   // windows
   WIN_WARN_MS: 3000, WIN_FADE_MS: 300, WIN_EVENTS: [90000, 60000, 30000],
   // rogue apps
-  APP_SPAWN_MS: 10000, APP_FIRST_MS: 4000, APP_MAX: 3, APP_AVOID: 120, APP_SPEED: 34, APP_R: 13, APP_HOVER: 24,
+  APP_SPAWN_MS: 8000, APP_FIRST_MS: 4000, APP_MAX: 4, APP_AVOID: 120, APP_SPEED: 34, APP_R: 13, APP_HOVER: 24,
   APPS: [null,
     { name: 'BOPSTER',     pw: 'SPEED',  ms: 4000, col: '#ff4fa3' },
     { name: 'GRUMPULATOR', pw: 'SHIELD', ms: 5000, col: '#ff8a3d' },
     { name: 'SNEAKFOLDER', pw: 'GHOST',  ms: 4000, col: '#ffd23d' }],
   // weapons: catching a rogue app gives charges. Pilot index = weapon index. Cosmetic edge only: weapons never tag.
   WPN: { GIVE: 2, MAX: 3, CD_MS: 3000, ZAP_RANGE: 120, ZAP_MS: 900, SLAM_R: 150, SLAM_VX: 430, SLAM_VY: 400, BOMB_FUSE: 1.5, BOMB_R: 115, BOMB_VX: 470, BOMB_VY: 480,
-         DASH_V: 760, DASH_S: 0.17, BLINK_D: 130, DECOY_S: 1.4, GR_REACH: 230, GR_RISE: 200, GR_VX: 440 },
+         DASH_V: 760, DASH_S: 0.17, BLINK_D: 130, DECOY_S: 1.4, GR_REACH: 230, GR_RISE: 230, GR_VX: 440 },
   WPNS: [
     { name: 'PATCH CABLE', info: 'GRAPPLE TO THE NEAREST WINDOW' },
     { name: 'ZAP PULSE',   info: 'STUNS THE OTHER PILOT 0.9s' },
@@ -338,7 +338,8 @@ const CONFIG = {
     { id: 'havoc',  name: 'HAVOC',  code: 'P-06', frame: 'ASSAULT FRAME',  col: '#ff4d6a', stats: [3, 4, 4] }],
 };
 const CC = CONFIG.C;
-const VW = CONFIG.W, VH = CONFIG.H, FLOOR = CONFIG.H - CONFIG.TASKBAR;
+// the world is a tower WORLD_H tall; the screen shows VH of it. FLOOR is the world ground, SFLOOR is the taskbar line on screen.
+const VW = CONFIG.W, VH = CONFIG.H, FLOOR = CONFIG.WORLD_H - CONFIG.TASKBAR, SFLOOR = CONFIG.H - CONFIG.TASKBAR;
 const QS = new URLSearchParams(location.search);
 const DEBUG2P = QS.get('debug') === '2p';
 
@@ -536,28 +537,58 @@ function readInput(ctrl) {
   return _in;
 }
 
-/* ---------- layouts: [x, y(top surface), w, h, kind] kind 0 = window, 1 = desktop icon (40x40) ---------- */
+/* ---------- layouts ----------
+   The tower: 12 rows of windows, 86 px apart (one jump is 115 px, a double jump 194 px, so every row is reachable).
+   Platform format [x, y(top surface), w, h, kind]; kind 0 = window, 1 = desktop icon (40x40).
+   Built from fixed seeds with no Math.random, so both phones get the identical tower. test/tower.mjs checks reachability. */
+const ROW_GAP = 86, ROWS = 12;
+function rowY(r) { return FLOOR - 82 - r * ROW_GAP; }
+function tallLayout(name, seed, rowFn) {
+  const rg = mulberry(seed), plats = [], rows = [];
+  for (let r = 0; r < ROWS; r++) {
+    const y = rowY(r), list = [];
+    for (const q of rowFn(r, rg, rows)) { const w = Math.round(q[1]), x = clamp(Math.round(q[0] - w / 2), 10, VW - w - 10); plats.push([x, y, w, 44, 0]); list.push([x, w]); }
+    rows.push(list);
+  }
+  [3, 7, 11].forEach((r, i) => plats.push([i % 2 ? VW - 54 : 14, rowY(r) - 43, 40, 40, 1]));   // desktop-icon ledges on the edges
+  const slots = [];
+  [2, 5, 8].forEach(r => {                                            // pop-up window slots go where the row has the biggest gap
+    let bx = 30, bd = -1;
+    for (let x = 30; x < VW - 130; x += 16) {
+      let d = 1e9; for (const [px, pw] of rows[r]) d = Math.min(d, Math.max(0, px - (x + 100), x - (px + pw)));
+      if (d > bd) { bd = d; bx = x; }
+    }
+    slots.push([bx, rowY(r), 100, 40]);
+  });
+  return { name, plats, slots };
+}
 const LAYOUTS = [
-  { name: 'CLASSIC',
-    plats: [[180, 262, 140, 50, 0], [524, 262, 140, 50, 0], [340, 182, 164, 56, 0], [90, 182, 120, 50, 0], [634, 182, 120, 50, 0],
-            [330, 102, 184, 44, 0], [40, 102, 40, 40, 1], [764, 102, 40, 40, 1]],
-    slots: [[356, 262, 132, 40], [220, 102, 100, 40], [524, 102, 100, 40]] },
-  { name: 'TWO TOWERS',
-    plats: [[200, 262, 120, 44, 0], [524, 262, 120, 44, 0], [60, 182, 140, 44, 0], [644, 182, 140, 44, 0], [244, 182, 100, 44, 0], [500, 182, 100, 44, 0],
-            [150, 102, 120, 40, 0], [574, 102, 120, 40, 0], [402, 142, 40, 40, 1]],
-    slots: [[352, 262, 140, 40], [24, 102, 100, 40], [720, 102, 100, 40]] },
-  { name: 'STAIRWAY',
-    plats: [[160, 262, 120, 44, 0], [564, 262, 120, 44, 0], [290, 214, 110, 44, 0], [444, 214, 110, 44, 0], [362, 134, 120, 40, 0],
-            [30, 190, 40, 40, 1], [774, 190, 40, 40, 1], [150, 110, 110, 40, 0], [584, 110, 110, 40, 0]],
-    slots: [[372, 276, 100, 36], [20, 100, 100, 40], [724, 100, 100, 40]] },
-  { name: 'CENTRE STAGE',
-    plats: [[292, 262, 260, 44, 0], [60, 170, 130, 44, 0], [654, 170, 130, 44, 0], [232, 178, 110, 44, 0], [502, 178, 110, 44, 0],
-            [362, 106, 120, 44, 0], [20, 96, 40, 40, 1], [784, 96, 40, 40, 1]],
-    slots: [[100, 92, 100, 40], [644, 92, 100, 40]] },
-  { name: 'SCATTER',
-    plats: [[170, 268, 110, 40, 0], [590, 252, 110, 40, 0], [330, 214, 140, 44, 0], [76, 152, 110, 44, 0], [700, 140, 110, 44, 0],
-            [210, 120, 100, 40, 0], [520, 106, 130, 40, 0], [412, 138, 40, 40, 1], [20, 194, 40, 40, 1], [784, 194, 40, 40, 1]],
-    slots: [[400, 276, 100, 36], [210, 190, 100, 40], [600, 180, 90, 36]] },
+  tallLayout('BRICKWORK', 11, (r, rg) => {
+    const j = () => (rg() - 0.5) * 30;
+    return r % 2 === 0 ? [[140 + j(), 130], [422 + j(), 130], [704 + j(), 130]] : [[281 + j(), 130], [563 + j(), 130]];
+  }),
+  tallLayout('TWIN SHAFTS', 23, (r, rg) => {
+    const j = () => (rg() - 0.5) * 40, row = [[150 + j(), 130], [694 + j(), 130]];
+    if (r % 3 === 2) row.push([422, 200]);
+    return row;
+  }),
+  tallLayout('SPIRAL', 37, (r) => {
+    const c = k => 110 + ((r * 97 + k * 312) % 624);
+    return [[c(0), 130], [c(1), 130]];
+  }),
+  tallLayout('SCATTER', 41, (r, rg, rows) => {
+    if (r === 0) return [[140, 130], [422, 130], [704, 130]];
+    const prev = rows[r - 1].map(p => p[0] + p[1] / 2), out = [], n = rg() < 0.5 ? 2 : 3;
+    for (let k = 0, tries = 0; k < n && tries < 40; tries++) {
+      const cx = clamp(prev[Math.floor(rg() * prev.length)] + (rg() - 0.5) * 380, 90, VW - 90);
+      if (out.every(o => Math.abs(o[0] - cx) > 190)) { out.push([cx, 100 + rg() * 50]); k++; }
+    }
+    return out;
+  }),
+  tallLayout('WIDE AND NARROW', 53, (r) => {
+    if (r % 2 === 0) return [[(r % 4 === 0) ? 250 : 594, 420]];
+    return [[80, 100], [422, 100], [764, 100]];
+  }),
 ];
 
 /* current round geometry (built identically on both clients from S.lay + S.seed) */
@@ -580,6 +611,20 @@ function ivGap(x, p) {                      // wrap aware distance from point x 
   let best = 1e9;
   for (let k = -1; k <= 1; k++) { const xx = x + k * VW; const d = Math.max(0, p.x - xx, xx - (p.x + p.w)); if (d < best) best = d; }
   return best;
+}
+
+/* ---------- camera: scrolls up the tower. Each phone follows its own pilot; hops do not shake the view ---------- */
+const cam = { y: CONFIG.WORLD_H - CONFIG.H, ref: FLOOR };
+function camFocus() {
+  if (session.kind === '2p') return { y: (P[0].y + P[1].y) / 2, vy: 0, ground: P[0].onGround && P[1].onGround };
+  const me = P[session.kind === 'net' ? session.slot : 0]; return { y: me.y, vy: me.vy, ground: me.onGround };
+}
+function camSnap() { const f = camFocus(); cam.ref = f.y; cam.y = clamp(f.y - VH * 0.6, 0, CONFIG.WORLD_H - VH); }
+function camStep(dt) {
+  const f = camFocus();
+  if (f.ground) cam.ref = f.y; else if (f.y > cam.ref + 30) cam.ref = f.y - 30; else if (f.y < cam.ref - 150) cam.ref = f.y + 150;
+  const tgt = clamp(cam.ref - VH * 0.6 + clamp(f.vy * 0.05, -20, 40), 0, CONFIG.WORLD_H - VH);
+  cam.y += (tgt - cam.y) * (1 - Math.exp(-dt * (f.vy > 500 ? 11 : 5.5)));
 }
 
 /* ---------- pilots ---------- */
@@ -977,9 +1022,40 @@ function drawIconBox(c, x, y, col, k) {
   else { c.fillRect(x + 9, y + 20, 5, 10); c.fillRect(x + 17, y + 12, 5, 18); c.fillRect(x + 25, y + 16, 5, 14); }
   c.fillStyle = CC.t2; c.fillRect(x + 8, y + 33, 24, 2);
 }
+/* world-space decoration so climbing feels like moving: ground slab, faint rows, altitude ticks every 13 m */
+function drawWorldDeco(c, now) {
+  const y0 = Math.floor(cam.y / 48) * 48;
+  c.strokeStyle = 'rgba(77,184,255,.05)'; c.lineWidth = 1; c.beginPath();
+  for (let y = y0; y < cam.y + VH + 48; y += 48) { c.moveTo(0, y + 0.5); c.lineTo(VW, y + 0.5); }
+  c.stroke();
+  c.font = F.mo(9); c.fillStyle = 'rgba(159,179,209,.32)';
+  for (let k = Math.max(1, Math.floor((FLOOR - cam.y - VH) / 130)); k <= Math.ceil((FLOOR - cam.y) / 130); k++) {
+    const y = FLOOR - k * 130; if (y < 0) break;
+    c.fillRect(0, y, 12, 2); c.fillRect(VW - 12, y, 12, 2);
+    c.textAlign = 'left'; c.fillText(k * 13 + 'M', 16, y + 3); c.textAlign = 'right'; c.fillText(k * 13 + 'M', VW - 16, y + 3);
+  }
+  if (cam.y + VH > FLOOR) { c.fillStyle = '#0d1424'; c.fillRect(0, FLOOR, VW, CONFIG.WORLD_H - FLOOR); c.fillStyle = CC.blue; c.fillRect(0, FLOOR, VW, 2); }
+}
+/* arrow at the screen edge when the other pilot is above or below the view */
+function drawOffscreenArrow(c, now) {
+  if (session.kind === '2p' || session.kind === 'none' || S.ph === 'lobby') return;
+  const mi = session.kind === 'net' ? session.slot : 0, me = P[mi], o = P[1 - mi];
+  const sy = o.y - 24 - cam.y;
+  if (sy > 14 && sy < SFLOOR - 8) return;
+  const up = sy <= 14, col = S.it === o.slot ? CC.pink : CONFIG.PILOTS[pilotOf(o.slot)].col;
+  const x = clamp(o.x, 56, VW - 120), y = up ? 50 : SFLOOR - 20, d = ((Math.abs(o.y - me.y)) / VH).toFixed(1), bob = Math.sin(now / 160) * 3 * (up ? -1 : 1);
+  c.save(); c.translate(x, y + bob);
+  c.fillStyle = col; c.strokeStyle = '#0a0d14'; c.lineWidth = 3; c.lineJoin = 'round';
+  poly(c, up ? [0, -12, 14, 6, 0, 0, -14, 6] : [0, 12, 14, -6, 0, 0, -14, -6]); c.stroke(); c.fill();
+  c.font = F.mo(11); c.textAlign = 'left'; c.lineWidth = 4; c.strokeStyle = '#0a0d14';
+  const t = (S.it === o.slot ? 'IT ' : '') + d + ' SCREENS ' + (up ? 'UP' : 'DOWN');
+  c.strokeText(t, 20, up ? 2 : -2); c.fillStyle = col; c.fillText(t, 20, up ? 2 : -2);
+  c.restore();
+}
 function drawPlatforms(c, now) {
   for (let i = 0; i < L.plats.length; i++) {
     const p = L.plats[i];
+    if (p.y > cam.y + VH + 12 || p.y + p.h < cam.y - 12) continue;
     if (p.slot < 0) { if (p.kind === 1) drawIconBox(c, p.x, p.y, p.col, i); else drawWindowBox(c, p.x, p.y, p.w, p.h, p.col, 1); continue; }
     const w = S.win[p.slot], st = w[0], ms = w[1];
     if (st === 0) continue;
@@ -1082,7 +1158,7 @@ function resetSession(kind, slot) {
   else { P[slot].local = true; P[slot].ctrl = 'human'; }
   const mine = savedPilot();
   if (session.host) { S.pil[0] = mine; S.pil[1] = (kind === 'net') ? -1 : otherPilot(mine, -1); }
-  buildLayout(0, 1);
+  buildLayout(0, 1); camSnap();
 }
 
 function validPilot(i) { return Number.isInteger(i) && i >= 0 && i < CONFIG.PILOTS.length; }
@@ -1234,10 +1310,12 @@ function winStep(dtms) {
 /* rogue apps: spawn, wander, hop, wrap */
 function spotOk(pl) { return platActive(pl) && (pl.slot < 0 || S.win[pl.slot][0] === 2); }
 function pickSpot(self) {
-  for (let tries = 0; tries < 40; tries++) {
+  const anchor = P[Math.random() < 0.5 ? 0 : 1];                    // the tower is tall: keep new drones within about a screen of a pilot
+  for (let tries = 0; tries < 60; tries++) {
     const pi = rint(0, L.pl.length - 1), pl = L.pl[pi];
     if (!spotOk(pl)) continue;
     const x = pl.floor ? rnd(20, VW - 20) : rnd(pl.x + 12, pl.x + pl.w - 12), y = pl.y - CONFIG.APP_HOVER;
+    if (tries < 40 && Math.abs(y - anchor.y) > 330) continue;
     let ok = true;
     for (const p of P) if (Math.hypot(wdx(x, p.x), y - (p.y - 20)) < CONFIG.APP_AVOID) { ok = false; break; }
     if (ok) for (const a of HOST.apps) if (a !== self && Math.hypot(wdx(x, a.x), y - a.y) < 44) { ok = false; break; }
@@ -1374,7 +1452,7 @@ function rectOverlapsPilot(r, p) {
 function syncEffects() {
   if (S.rnd !== seen.rnd) {
     seen.rnd = S.rnd; seen.tg = S.tg; seen.pk = S.pk; seen.wn = S.wn; bombs.length = 0; decoys.length = 0; wfx.length = 0; seen.win = [0, 0, 0]; seen.wsec = [-1, -1, -1]; seen.cd = -1; seen.tick = -1;
-    buildLayout(S.lay, S.seed); for (const p of P) resetPlayer(p); AV.length = 0; part.life.fill(0); ftx.life.fill(0); fx.banner = ''; fx.bannerT = 0; fx.flash = 0; fx.shake = 0;
+    buildLayout(S.lay, S.seed); for (const p of P) resetPlayer(p); camSnap(); AV.length = 0; part.life.fill(0); ftx.life.fill(0); fx.banner = ''; fx.bannerT = 0; fx.flash = 0; fx.shake = 0;
     if (!session.host) { intent.rm = 0; }
   }
   if (S.tg !== seen.tg) {
@@ -1597,7 +1675,7 @@ function botControl(p, o, dt, now) {
     const dOpp = Math.abs(wdx(p.x, ox));
     if (iAmIt) { g.x = ox; g.y = oy; if (app && bd < 150 && S.frz[0] <= 0 && (shielded(0))) { g.x = app.rx; g.y = app.ry + CONFIG.APP_HOVER; } }
     else if (app && bd < 300 && dOpp > 150) { g.x = app.rx; g.y = app.ry + CONFIG.APP_HOVER; }
-    else { g.mode = 1; g.x = wrapX(ox + (wdx(ox, p.x) >= 0 ? 1 : -1) * 320 + VW); g.y = p.y; if (dOpp < 130 && Math.random() < 0.4) bot.hop = true; }
+    else { g.mode = 1; g.x = wrapX(ox + (wdx(ox, p.x) >= 0 ? 1 : -1) * 320 + VW); g.y = p.y; if (dOpp < 130 && Math.random() < 0.4) bot.hop = true; if (dOpp < 240 && p.y > 220 && Math.random() < 0.5) { g.mode = 0; g.y = p.y - 230; } }
     bot.step = null;
     const dy = g.y - p.y;
     if (dy < -45) {
@@ -1670,6 +1748,7 @@ function sessionStep(dt, now) {
       }
     }
     if (!session.host && play) clientDetect(dt);
+    camStep(dt);
   }
   netTick(now);
   fxStep(dt);
@@ -1907,31 +1986,31 @@ function drawHUD(c, now) {
   const pL = CONFIG.PILOTS[S.pil[sp] < 0 ? sp : S.pil[sp]], pR = CONFIG.PILOTS[S.pil[sb] < 0 ? sb : S.pil[sb]];
   const tL = pL.code + ' ' + pL.name, tR = pR.name + ' ' + pR.code;
   // taskbar
-  c.fillStyle = '#0d1424'; c.fillRect(0, FLOOR, VW, CONFIG.TASKBAR);
-  c.fillStyle = CC.blue; c.fillRect(0, FLOOR, VW, 2);
-  c.fillStyle = 'rgba(77,184,255,.07)'; c.fillRect(0, FLOOR + 2, VW, 3);
+  c.fillStyle = '#0d1424'; c.fillRect(0, SFLOOR, VW, CONFIG.TASKBAR);
+  c.fillStyle = CC.blue; c.fillRect(0, SFLOOR, VW, 2);
+  c.fillStyle = 'rgba(77,184,255,.07)'; c.fillRect(0, SFLOOR + 2, VW, 3);
   const itL = S.it === sp, itR = S.it === sb;
   c.textAlign = 'left'; c.font = F.or7(12); c.fillStyle = pL.col;
-  c.fillText(tL, 14, FLOOR + 29); const wl = c.measureText(tL).width;
-  c.font = F.or(26); c.fillText(pad2(S.sc[sp]), 14 + wl + 12, FLOOR + 33);
+  c.fillText(tL, 14, SFLOOR + 29); const wl = c.measureText(tL).width;
+  c.font = F.or(26); c.fillText(pad2(S.sc[sp]), 14 + wl + 12, SFLOOR + 33);
   c.textAlign = 'right'; c.font = F.or7(12); c.fillStyle = pR.col;
-  c.fillText(tR, VW - 14, FLOOR + 29); const wr = c.measureText(tR).width;
-  c.font = F.or(26); c.fillText(pad2(S.sc[sb]), VW - 14 - wr - 12, FLOOR + 33);
-  const chip = (x, al) => { chamfer(c, x, FLOOR + 12, 26, 20, 4); c.fillStyle = CC.pink; c.fill(); c.font = F.or(11); c.textAlign = 'center'; c.fillStyle = '#0a0d14'; c.fillText('IT', x + 13, FLOOR + 26); };
+  c.fillText(tR, VW - 14, SFLOOR + 29); const wr = c.measureText(tR).width;
+  c.font = F.or(26); c.fillText(pad2(S.sc[sb]), VW - 14 - wr - 12, SFLOOR + 33);
+  const chip = (x, al) => { chamfer(c, x, SFLOOR + 12, 26, 20, 4); c.fillStyle = CC.pink; c.fill(); c.font = F.or(11); c.textAlign = 'center'; c.fillStyle = '#0a0d14'; c.fillText('IT', x + 13, SFLOOR + 26); };
   if (itL) chip(14 + wl + 12 + 42 + 10);
   if (itR) chip(VW - 14 - wr - 12 - 42 - 36);
   // timer chip
   const hot = S.ph === 'play' && S.t <= 10000;
   const pulse = hot ? (Math.sin(now / 110) * 0.5 + 0.5) : 0;
-  chamfer(c, VW / 2 - 58, FLOOR + 7, 116, 32, 7);
+  chamfer(c, VW / 2 - 58, SFLOOR + 7, 116, 32, 7);
   c.fillStyle = hot ? (pulse > 0.5 ? CC.pink : CC.yel) : CC.yel; c.fill();
-  c.font = F.or(21); c.textAlign = 'center'; c.fillStyle = hot && pulse > 0.5 ? '#fff' : '#0a0d14'; c.fillText(fmtTime(S.t), VW / 2, FLOOR + 31);
+  c.font = F.or(21); c.textAlign = 'center'; c.fillStyle = hot && pulse > 0.5 ? '#fff' : '#0a0d14'; c.fillText(fmtTime(S.t), VW / 2, SFLOOR + 31);
   // weapon charge pips under each name
   const pips = (slot, x, al) => {
     const n = S.ch[slot], col = CONFIG.PILOTS[pilotOf(slot)].col;
     for (let i = 0; i < CONFIG.WPN.MAX; i++) {
       const px = al < 0 ? x - 5 - i * 13 : x + 5 + i * 13;
-      hexPath(c, px, FLOOR + 38, 5); c.fillStyle = i < n ? col : 'rgba(43,58,85,.9)'; c.fill(); c.strokeStyle = i < n ? '#fff' : '#2b3a55'; c.lineWidth = 1; c.stroke();
+      hexPath(c, px, SFLOOR + 38, 5); c.fillStyle = i < n ? col : 'rgba(43,58,85,.9)'; c.fill(); c.strokeStyle = i < n ? '#fff' : '#2b3a55'; c.lineWidth = 1; c.stroke();
     }
   };
   pips(sp, 14, 1); pips(sb, VW - 14, -1);
@@ -1953,6 +2032,7 @@ function drawHUD(c, now) {
   c.textAlign = 'center'; c.font = F.mo(11);
   if (AV.length) { c.fillStyle = CC.yel; c.fillText('! ' + AV.length + ' ROGUE APP' + (AV.length === 1 ? '' : 'S') + ' DETECTED', VW / 2, 16); }
   else { c.fillStyle = 'rgba(159,179,209,.55)'; c.fillText('SYS://BADSOFFWARE_v0.1', VW / 2, 16); }
+  if (session.kind !== '2p' && session.kind !== 'none') { const me2 = P[session.kind === 'net' ? session.slot : 0]; c.fillStyle = 'rgba(159,179,209,.55)'; c.font = F.mo(10); c.textAlign = 'center'; c.fillText('ALT ' + Math.max(0, Math.round((FLOOR - me2.y) / 10)) + 'M', VW / 2, 29); }
   // ping
   if (session.kind === 'net') {
     const pg = Net.getPing(); c.fillStyle = pg < 0 ? CC.t2 : pg < 80 ? '#3df57a' : pg < 150 ? CC.yel : CC.pink;
@@ -1994,12 +2074,15 @@ function renderGame(c, now) {
   drawBg(c);
   c.save();
   if (fx.shake > 0.1) c.translate(rnd(-fx.shake, fx.shake) * 0.5, rnd(-fx.shake, fx.shake) * 0.5);
+  c.translate(0, -Math.round(cam.y));
+  drawWorldDeco(c, now);
   drawPlatforms(c, now);
   drawApps(c, now);
   drawWeaponFx(c, now);
   drawPilot(c, P[0], now, app.frame); drawPilot(c, P[1], now, app.frame);
   drawParticles(c);
   c.restore();
+  drawOffscreenArrow(c, now);
   if (fx.flash > 0) {
     c.strokeStyle = fx.flashCol;
     for (let i = 0; i < 4; i++) { c.globalAlpha = fx.flash * (0.42 - i * 0.09); c.lineWidth = 8; c.strokeRect(4 + i * 8, 4 + i * 8, VW - 8 - i * 16, VH - 8 - i * 16); }
@@ -2019,14 +2102,14 @@ function renderGame(c, now) {
   drawTouch(c);
 }
 function drawTaskStrip(c) {
-  c.fillStyle = '#0d1424'; c.fillRect(0, FLOOR, VW, CONFIG.TASKBAR); c.fillStyle = CC.blue; c.fillRect(0, FLOOR, VW, 2);
+  c.fillStyle = '#0d1424'; c.fillRect(0, SFLOOR, VW, CONFIG.TASKBAR); c.fillStyle = CC.blue; c.fillRect(0, SFLOOR, VW, 2);
 }
 function renderIdle(c, now) { drawBg(c); }
 const titlePilots = (() => { const n = CONFIG.PILOTS.length, a = Math.floor(Math.random() * n); return [a, (a + 1 + Math.floor(Math.random() * (n - 1))) % n]; })();
 function renderTitle(c, now) {
   drawBg(c); drawTaskStrip(c);
   const t = now / 1000;
-  const mech = (x, pilot, f) => { c.save(); c.translate(x, FLOOR + 1); c.scale(2.5 * f, 2.5); pEnc.t = t + pilot; pEnc.a = 0; pEnc.vy = 0; pEnc.f = 1; pEnc.it = false; pEnc.dj = false; drawMech(c, pilot, pEnc); c.restore(); };
+  const mech = (x, pilot, f) => { c.save(); c.translate(x, SFLOOR + 1); c.scale(2.5 * f, 2.5); pEnc.t = t + pilot; pEnc.a = 0; pEnc.vy = 0; pEnc.f = 1; pEnc.it = false; pEnc.dj = false; drawMech(c, pilot, pEnc); c.restore(); };
   mech(120, titlePilots[0], 1); mech(724, titlePilots[1], -1);
   for (let i = 0; i < 3; i++) {
     c.save(); c.translate(300 + i * 122, 196 + Math.sin(t * 1.6 + i * 2) * 8); c.scale(1.5, 1.5); drawDrone(c, i + 1, t + i, Math.sin(t + i) > 0 ? 1 : -1); c.restore();
@@ -2380,7 +2463,7 @@ function boot() {
   updateModeScreen();
   ready.then(() => { fontsReady = true; bgDirty = true; requestAnimationFrame(frame); });
 }
-window.__bsw = { S, P, L, HOST, AV, session, Net, app, intent, CONFIG, ART, LAYOUTS, startRound, resetSession, startLocal, setScene, useWeapon, weaponReady, bombs, decoys, wfx, pilotOf, fontsReadyFn: () => fontsReady, hitGap };
+window.__bsw = { S, P, L, HOST, AV, session, Net, app, intent, CONFIG, ART, LAYOUTS, startRound, resetSession, startLocal, setScene, cam, camSnap, FLOOR, SFLOOR, useWeapon, weaponReady, bombs, decoys, wfx, pilotOf, fontsReadyFn: () => fontsReady, hitGap };
 window.addEventListener('error', e => console.error('ERR', e.message));
 boot();
 </script>

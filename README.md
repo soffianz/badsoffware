@@ -42,3 +42,6 @@ Every number (physics, timings, sizes, colours) lives in the `CONFIG` object at 
 
 ## Weapons
 Each pilot has a unique weapon. Catch a rogue app drone to get 2 charges. Touch: hex button above JUMP. Keyboard: E, F or Left Shift (Right Shift also works in solo play). See DECISIONS.md.
+
+## Tower
+The desktop is a tower three screens tall. Jump up the windows to escape; step off an edge and you drop straight down, no damage. An arrow shows where the other pilot is when they are off screen.

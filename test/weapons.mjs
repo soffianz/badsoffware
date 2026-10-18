@@ -25,13 +25,13 @@ for (let i = 0; i < 6; i++) {
   await deploy(p); await p.click('#bPrac'); await wait(300);
   await p.click('.pcard.p' + i); await p.click('#bReady'); await wait(4400);
   const st = () => p.evaluate(() => ({ ch: __bsw.S.ch.slice(), wn: __bsw.S.wn, x: __bsw.P[0].x, y: __bsw.P[0].y, vy: __bsw.P[0].vy, bx: __bsw.P[1].x, bvx: __bsw.P[1].vx, bvy: __bsw.P[1].vy, stun: __bsw.P[1].stun, dash: __bsw.P[0].dashT, bombs: __bsw.bombs.length, decoys: __bsw.decoys.length, frz: __bsw.S.frz.slice() }));
-  await p.evaluate(() => { __bsw.S.frz = [0, 0]; __bsw.P[0].x = 211; __bsw.P[0].y = 346; __bsw.P[0].vx = 0; __bsw.P[0].f = 1; __bsw.P[1].x = 281; __bsw.P[1].y = 346; __bsw.S.it = 1; });
+  await p.evaluate(() => { __bsw.S.frz = [0, 0]; __bsw.P[0].x = 211; __bsw.P[0].y = __bsw.FLOOR; __bsw.P[0].vx = 0; __bsw.P[0].f = 1; __bsw.P[1].x = 281; __bsw.P[1].y = __bsw.FLOOR; __bsw.S.it = 1; });
   ok(await p.evaluate(() => __bsw.useWeapon(0)) === false, names[i] + ': weapon locked before catching a drone');
   // catch a real drone: park one on the pilot
   await p.evaluate(() => { __bsw.HOST.apps.push({ id: 900, type: 1, plat: 0, x: __bsw.P[0].x, y: __bsw.P[0].y - 20, dir: 1, mode: 0, mt: 5, sx: 0, sy: 0, tx: 0, ty: 0, tp: -1, hp: 0, hd: 1 }); });
   await wait(250);
   let a = await st(); ok(a.ch[0] === 2, names[i] + ': catching a drone gives 2 charges (' + a.ch + ')');
-  await p.evaluate(() => { __bsw.S.frz = [0, 5000]; __bsw.P[0].x = 211; __bsw.P[0].y = 346; __bsw.P[0].vx = 0; __bsw.P[1].x = 281; __bsw.P[1].y = 346; __bsw.S.it = 1; });
+  await p.evaluate(() => { __bsw.S.frz = [0, 5000]; __bsw.P[0].x = 211; __bsw.P[0].y = __bsw.FLOOR; __bsw.P[0].vx = 0; __bsw.P[1].x = 281; __bsw.P[1].y = __bsw.FLOOR; __bsw.S.it = 1; });
   if (i === 0) await p.screenshot({ path: OUT + '/weapons-button-ready.png' });
   ok(await p.evaluate(() => __bsw.useWeapon(0)) === true, names[i] + ': weapon fires');
   await wait(160);
@@ -72,8 +72,8 @@ const guestPos = await B.evaluate(() => [__bsw.P[1].x, __bsw.P[1].y]);
 await A.evaluate(([x, y]) => { __bsw.HOST.apps.push({ id: 901, type: 2, plat: 0, x, y: y - 20, dir: 1, mode: 0, mt: 5, sx: 0, sy: 0, tx: 0, ty: 0, tp: -1, hp: 0, hd: 1 }); }, guestPos);
 await wait(1200);
 ok(await A.evaluate(() => __bsw.S.ch[1] === 2) && await B.evaluate(() => __bsw.S.ch[1] === 2), 'net: guest catch gives 2 charges, seen on both phones');
-await A.evaluate(() => { __bsw.S.frz = [0, 0]; __bsw.S.it = 0; __bsw.P[0].y = 346; });
-await B.evaluate(() => { __bsw.P[1].y = 346; __bsw.P[1].f = 1; });
+await A.evaluate(() => { __bsw.S.frz = [0, 0]; __bsw.S.it = 0; __bsw.P[0].y = __bsw.FLOOR; });
+await B.evaluate(() => { __bsw.P[1].y = __bsw.FLOOR; __bsw.P[1].f = 1; });
 await wait(300);
 const hx = await A.evaluate(() => __bsw.P[0].x);
 await B.evaluate(x => { __bsw.P[1].x = (x - 60 + 844) % 844; }, hx); await wait(500);
@@ -86,7 +86,7 @@ await A.screenshot({ path: OUT + '/weapons-net-host.png' }); await B.screenshot(
 // host zaps the guest
 await A.evaluate(() => { __bsw.S.ch[0] = 2; __bsw.S.frz = [0, 0]; __bsw.P[0].wcd = 0; });
 await wait(200);
-await A.evaluate(() => { __bsw.P[0].y = 346; __bsw.P[0].f = 1; });
+await A.evaluate(() => { __bsw.P[0].y = __bsw.FLOOR; __bsw.P[0].f = 1; });
 const gx = await B.evaluate(() => __bsw.P[1].x);
 await A.evaluate(x => { __bsw.P[0].x = (x - 60 + 844) % 844; __bsw.P[0].vx = 0; __bsw.P[0].noCtl = 0; }, gx); await wait(500);
 await A.keyboard.press('KeyE'); await wait(600);

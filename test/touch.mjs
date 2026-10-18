@@ -25,14 +25,14 @@ await wait(500);
 const vx = await page.evaluate(() => __bsw.P[0].vx); ok(vx > 150, 'joystick drives run speed (vx=' + (vx | 0) + ')');
 await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: jr.x, y: jr.y, id: 1 }, { x: jb.x, y: jb.y, id: 2 }] });
 await wait(150);
-const y1 = await page.evaluate(() => __bsw.P[0].y); ok(y1 < 330, 'jump while moving (multi-touch), y=' + (y1 | 0));
+const y1 = await page.evaluate(() => __bsw.P[0].y); const FL = await page.evaluate(() => __bsw.FLOOR); ok(y1 < FL - 14, 'jump while moving (multi-touch), y=' + (y1 | 0));
 await page.screenshot({ path: '/tmp/shots/touch-play.png' });
 await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [{ x: jr.x, y: jr.y, id: 1 }] });
 await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 await wait(900);
 const x1 = await page.evaluate(() => __bsw.P[0].x); ok(Math.abs(x1 - x0) > 60, 'moved across the map (' + (x0 | 0) + ' -> ' + (x1 | 0) + ')');
 // drop-through: stand on a platform then pull joystick down
-await page.evaluate(() => { const pl = __bsw.L.plats[0]; __bsw.P[0].x = pl.x + pl.w / 2; __bsw.P[0].y = pl.y - 1; __bsw.P[0].vy = 0; });
+await page.evaluate(() => { __bsw.S.frz = [0, 60000]; __bsw.S.it = 1; const pl = __bsw.L.plats[0]; __bsw.P[0].x = pl.x + pl.w / 2; __bsw.P[0].y = pl.y - 1; __bsw.P[0].vy = 0; });
 await wait(300);
 const standing = await page.evaluate(() => __bsw.P[0].stand); const yb = await page.evaluate(() => __bsw.P[0].y);
 const jd = L2C(78, 290 + 40);
