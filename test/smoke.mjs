@@ -1,0 +1,41 @@
+// Smoke test: node test/smoke.mjs   (needs Playwright + a server on :8123, see README)
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+let chromium;
+try { ({ chromium } = require('playwright')); } catch (e) { ({ chromium } = require('/opt/node-tools/node_modules/playwright')); }
+const URL = process.env.URL || 'http://localhost:8123/index.html';
+const OUT = process.env.OUT || '/tmp/shots';
+import fs from 'fs'; fs.mkdirSync(OUT, { recursive: true });
+const errors = [];
+const browser = await chromium.launch({ executablePath: process.env.CHROME || undefined });
+const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2 });
+await ctx.route(/fonts\.(googleapis|gstatic)\.com|cdnjs\.cloudflare\.com/, r => r.abort());
+const page = await ctx.newPage();
+page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|ERR_FAILED|net::/.test(m.text())) errors.push('console: ' + m.text()); });
+page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+await page.goto(URL + '?debug=2p'); await page.waitForTimeout(2600);
+await page.screenshot({ path: OUT + '/1-title.png' });
+await page.click('#bDeploy'); await page.waitForTimeout(300);
+await page.screenshot({ path: OUT + '/2-how.png' });
+await page.click('#bHowOk'); await page.waitForTimeout(300);
+await page.screenshot({ path: OUT + '/3-mode.png' });
+await page.click('#bPrac'); await page.waitForTimeout(500);
+await page.screenshot({ path: OUT + '/4-lobby.png' });
+await page.click('#bReady'); await page.waitForTimeout(1200);
+await page.screenshot({ path: OUT + '/5-count.png' });
+await page.waitForTimeout(3200);
+await page.keyboard.down('ArrowRight'); await page.keyboard.press('Space'); await page.waitForTimeout(500);
+await page.screenshot({ path: OUT + '/6-play.png' });
+await page.keyboard.up('ArrowRight');
+// let the bot play for a while
+await page.waitForTimeout(8000);
+await page.screenshot({ path: OUT + '/7-play2.png' });
+const st = await page.evaluate(() => JSON.stringify({ ph: __bsw.S.ph, t: __bsw.S.t, sc: __bsw.S.sc, it: __bsw.S.it, apps: __bsw.AV.length, lay: __bsw.S.lay }));
+console.log('state', st);
+await page.evaluate(() => { __bsw.S.t = 600; });
+await page.waitForTimeout(1500);
+await page.screenshot({ path: OUT + '/8-over.png' });
+console.log('phase', await page.evaluate(() => __bsw.S.ph));
+console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'NO CONSOLE ERRORS');
+await browser.close();
+process.exit(errors.length ? 1 : 0);

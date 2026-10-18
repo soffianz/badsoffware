@@ -1,0 +1,38 @@
+# Badsoffware
+
+2-player online tag game. One self-contained `index.html`, vanilla JS and Canvas 2D, no build step.
+Two mecha pilots (Patch and Bolt) chase each other round a dark computer desktop for 2 minutes. Most tags wins.
+
+## Run locally
+Never open the file directly. Serve it:
+
+    npx serve .            # or
+    python3 -m http.server 8123
+
+Then open `http://localhost:8123/` (landscape, or a wide desktop window).
+
+Keyboard: A/D or arrows move, W/Up/Space jump (double jump allowed), S/Down drops through a window, P pauses, M mutes.
+
+## Play
+- **Practice**: DEPLOY, then PRACTICE VS BOT. Works offline once the page has loaded.
+- **Two phones, same Wi-Fi**: one taps HOST GAME and reads out the 4 letter room code. The other taps JOIN GAME and types it on the on-screen keypad. Pick pilots, both tap I'M READY.
+- Peer-to-peer connects reliably on the same Wi-Fi. Between phones on different mobile networks it can fail without a TURN relay (v1 targets same-Wi-Fi play). To add a relay, fill `PEER_HOST`, `PEER_PORT` and `ICE_SERVERS` in `CONFIG`.
+
+## Testing two players with two tabs (no internet needed)
+Open `http://localhost:8123/?net=tabs` in two tabs of the same browser. Tab 1: DEPLOY, HOST GAME. Tab 2: DEPLOY, JOIN GAME, type the code (keyboard works) and press Enter. This uses a BroadcastChannel transport behind the same `Net` interface.
+
+Same-screen two-player debug: `?debug=2p`, then the "2P SAME SCREEN" button on the connect screen (P1 = WASD, P2 = arrows).
+
+## Deploy
+Needs https for fullscreen, wake lock and WebRTC.
+- Netlify Drop: drag this folder onto https://app.netlify.com/drop
+- GitHub Pages: enable Pages on the repo, serve from the root.
+
+## Publishing as a claude.ai artifact (optional ClaudeRoom transport)
+If `window.claude.use("room")` resolves within 3 s, the game uses it instead of PeerJS and skips room codes (both players tap PLAY ONLINE). Needs the artifact published with `capabilities: {room: {}}` and every player signed in to claude.ai. Outside network calls, PeerJS included, are blocked inside published artifacts, which is why this transport exists.
+
+## Automated checks (optional, need Playwright)
+With a server on :8123: `node test/smoke.mjs` (screens + bot round), `node test/net.mjs` (two-tab host/guest, tags, pickups, pause, drop and rejoin, rematch), `node test/extra.mjs` (bot, windows, pilot conflict, mocked ClaudeRoom), `node test/touch.mjs` (multi-touch, drop-through, portrait), `node test/physics.mjs`.
+
+## Tuning
+Every number (physics, timings, sizes, colours) lives in the `CONFIG` object at the top of the script.
