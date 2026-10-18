@@ -34,5 +34,8 @@ If `window.claude.use("room")` resolves within 3 s, the game uses it instead of 
 ## Automated checks (optional, need Playwright)
 With a server on :8123: `node test/smoke.mjs` (screens + bot round), `node test/net.mjs` (two-tab host/guest, tags, pickups, pause, drop and rejoin, rematch), `node test/extra.mjs` (bot, windows, pilot conflict, mocked ClaudeRoom), `node test/touch.mjs` (multi-touch, drop-through, portrait), `node test/physics.mjs`.
 
+## Art
+The prototype desktop background is embedded in `index.html`. Rebuild it with `python3 tools/make_bg.py && python3 tools/embed_art.py`. Production sprite sheets are not delivered yet: pilots and drones are code-drawn placeholders. See `assets/` and the Art section of `DECISIONS.md`.
+
 ## Tuning
 Every number (physics, timings, sizes, colours) lives in the `CONFIG` object at the top of the script.
