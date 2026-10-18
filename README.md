@@ -1,7 +1,7 @@
 # Badsoffware
 
 2-player online tag game. One self-contained `index.html`, vanilla JS and Canvas 2D, no build step.
-Two mecha pilots (Patch and Bolt) chase each other round a dark computer desktop for 2 minutes. Most tags wins.
+Two mecha pilots (pick from Patch, Bolt, Glitch, Rumble, Nova and Havoc; all handle identically) chase each other round a dark computer desktop for 2 minutes. Most tags wins.
 
 ## Run locally
 Never open the file directly. Serve it:
