@@ -39,3 +39,6 @@ The prototype desktop background is embedded in `index.html`. Rebuild it with `p
 
 ## Tuning
 Every number (physics, timings, sizes, colours) lives in the `CONFIG` object at the top of the script.
+
+## Weapons
+Each pilot has a unique weapon. Catch a rogue app drone to get 2 charges. Touch: hex button above JUMP. Keyboard: E, F or Left Shift (Right Shift also works in solo play). See DECISIONS.md.

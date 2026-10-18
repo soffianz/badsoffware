@@ -19,9 +19,11 @@ bg = 'assets/backgrounds/desktop_background.webp'
 if not os.path.exists(bg): bg = 'assets/backgrounds/desktop_background_proto.webp'
 sheets = [b64('assets/characters/%s/%s_sprites.png' % (p, p), 'image/png') for p in PILOTS]
 ports = [webp_b64('assets/ui/%s_portrait.png' % p, (128, 128)) for p in PILOTS]
+WEAPON_ICONS = ['patch_cable', 'zap_pulse', 'phase_blink', 'ground_slam', 'dash_burst', 'popup_bomb']   # same order as the pilots
+wicons = [webp_b64('assets/weapons/%s_icon.png' % n, (96, 96)) for n in WEAPON_ICONS]
 drones = [b64('assets/drones/%s.png' % n, 'image/png') for n in ('bopster', 'grumpulator', 'sneakfolder')]
 lst = lambda a: '[' + ', '.join("'%s'" % x for x in a) + ']'
-js = "const ART_DATA = { bg: '%s', sheets: %s, portraits: %s, drones: %s };" % (b64(bg, 'image/webp'), lst(sheets), lst(ports), lst(drones))
+js = "const ART_DATA = { bg: '%s', sheets: %s, portraits: %s, wicons: %s, drones: %s };" % (b64(bg, 'image/webp'), lst(sheets), lst(ports), lst(wicons), lst(drones))
 s = open('index.html').read()
 block = "/*ART_DATA_START*/\n" + js + "\n/*ART_DATA_END*/"
 s, n = re.subn(r'/\*ART_DATA_START\*/.*?/\*ART_DATA_END\*/', lambda m: block, s, flags=re.S)

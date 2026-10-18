@@ -63,8 +63,8 @@ const apps = await B.evaluate(() => __bsw.AV.length); ok(apps >= 1, 'guest sees 
 await A.evaluate(() => { const a = __bsw.HOST.apps[0]; a.mode = 1; a.mt = 99; window.__app = a; });
 await B.evaluate(() => { const v = __bsw.AV[0]; const p = __bsw.P[1]; p.x = v.rx; p.y = v.ry + 24; });
 await wait(900);
-a = await A.evaluate(() => ({ pw: __bsw.S.pw, cau: __bsw.S.cau, n: __bsw.HOST.apps.length })); console.log('after pickup', JSON.stringify(a));
-ok(a.cau[1] === 1 && a.pw[1][0] > 0, 'guest pickup claim validated');
+a = await A.evaluate(() => ({ ch: __bsw.S.ch, cau: __bsw.S.cau, n: __bsw.HOST.apps.length })); console.log('after pickup', JSON.stringify(a));
+ok(a.cau[1] === 1 && a.ch[1] === 2, 'guest pickup claim validated (2 weapon charges)');
 // pause from guest
 await B.evaluate(() => document.getElementById('bPause').click()); await wait(500);
 ok(await A.evaluate(() => __bsw.S.ph === 'pause') && await B.evaluate(() => __bsw.S.ph === 'pause'), 'guest pause pauses both');
