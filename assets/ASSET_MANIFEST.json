@@ -1,6 +1,6 @@
 {
   "project": "Badsoffware",
-  "version": "1.1-prototype",
+  "version": "1.2-generated-sprites",
   "logicalResolution": {
     "width": 844,
     "height": 390
@@ -35,7 +35,7 @@
     "patch": {
       "displayName": "Patch, P-01 Repair Frame",
       "reference": "references/character_sprite_reference_board.png",
-      "productionSpriteSheet": null,
+      "productionSpriteSheet": "characters/patch/patch_sprites.png",
       "frameWidth": 192,
       "frameHeight": 192,
       "anchor": "bottom-centre",
@@ -55,13 +55,13 @@
         "jumpDown",
         "land"
       ],
-      "status": "placeholder_code_drawn_production_sprites_required",
+      "status": "generated_from_vector_designs_not_painted_art",
       "gameHook": "CONFIG.ART.SHEETS.patch (or ?patchSheet=url): one row of 9 frames 192x192, order idle,run1-4,jumpUp,jumpPeak,jumpDown,land"
     },
     "bolt": {
       "displayName": "Bolt, P-02 Striker Frame",
       "reference": "references/character_sprite_reference_board.png",
-      "productionSpriteSheet": null,
+      "productionSpriteSheet": "characters/bolt/bolt_sprites.png",
       "frameWidth": 192,
       "frameHeight": 192,
       "anchor": "bottom-centre",
@@ -81,7 +81,7 @@
         "jumpDown",
         "land"
       ],
-      "status": "placeholder_code_drawn_production_sprites_required",
+      "status": "generated_from_vector_designs_not_painted_art",
       "gameHook": "CONFIG.ART.SHEETS.bolt (or ?boltSheet=url): one row of 9 frames 192x192, order idle,run1-4,jumpUp,jumpPeak,jumpDown,land"
     }
   },
@@ -90,19 +90,22 @@
       "reference": "references/asset_pack_reference_board.png",
       "frameWidth": 128,
       "frameHeight": 128,
-      "status": "placeholder_code_drawn_production_art_required"
+      "status": "generated_from_vector_designs_not_painted_art",
+      "file": "drones/bopster.png"
     },
     "grumpulator": {
       "reference": "references/asset_pack_reference_board.png",
       "frameWidth": 128,
       "frameHeight": 128,
-      "status": "placeholder_code_drawn_production_art_required"
+      "status": "generated_from_vector_designs_not_painted_art",
+      "file": "drones/grumpulator.png"
     },
     "sneakfolder": {
       "reference": "references/asset_pack_reference_board.png",
       "frameWidth": 128,
       "frameHeight": 128,
-      "status": "placeholder_code_drawn_production_art_required"
+      "status": "generated_from_vector_designs_not_painted_art",
+      "file": "drones/sneakfolder.png"
     }
   },
   "implementationRules": [
@@ -112,12 +115,7 @@
     "Keep all production images local and embed them in the final index.html during packaging if required."
   ],
   "missingProductionAssets": [
-    "patch_sprites.png",
-    "bolt_sprites.png",
-    "bopster.png",
-    "grumpulator.png",
-    "sneakfolder.png",
-    "final desktop background 1688x780 (no baked windows/platforms/props in play area)",
-    "optional: jet flame, speed trail, shield, frozen, tag hit, pickup, BOING, sparks effect art (all currently drawn in code, which the brief prefers)"
+    "OPTIONAL painted/illustrated replacements for the generated sprites, same filenames and frame layout (see DECISIONS.md)",
+    "final desktop background 1688x780 (current one is a dimmed concept crop)"
   ]
 }

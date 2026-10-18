@@ -9,7 +9,7 @@ await ctx.route(/fonts\.(googleapis|gstatic)\.com|cdnjs\.cloudflare\.com/, r => 
 const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(e.message));
 await page.goto('http://localhost:8123/index.html'); await page.waitForTimeout(2500);
 await page.tap('#bDeploy'); await wait(300); if (await page.isVisible('#bHowOk')) await page.tap('#bHowOk'); await wait(200);
-await page.tap('#bPrac'); await wait(300); await page.tap('#bReady'); await wait(4200);
+await page.tap('#bPrac'); await wait(300); await page.tap('#bReady'); await page.waitForFunction(() => __bsw.S.ph === 'play', null, { timeout: 15000 }); await wait(400);
 const cdp = await ctx.newCDPSession(page);
 const sc = await page.evaluate(() => ({ s: __bsw.app && document.getElementById('stage').style.transform, ph: __bsw.S.ph }));
 console.log(JSON.stringify(sc));
