@@ -63,6 +63,12 @@ const CONFIG = {
   // catch, flips It to a random other robot - never goes in the held slot)
   DASH_V: 760, DASH_S: 0.17, DASH_BOOST: 1.25, DASH_BOOST_MS: 2000,
   SLAM_R: 120, SLAM_MS: 900, BLINK_D: 110, DECOY_MS: 1400,
+  // networking: star relay, host-authoritative (section 11). One transport interface, several
+  // implementations (tabs for local/offline testing, PeerJS for real play - section 11 transport).
+  CODE_ALPHABET: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789',    // no O/0, I/1/L
+  STATE_HZ: 25, SHARED_HZ: 10, PEER_TIMEOUT_MS: 6000, RECONNECT_MS: 20000,
+  PEER_HOST: '', PEER_PORT: 443, PEER_PATH: '/', PEER_SECURE: true,
+  ICE_SERVERS: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }],
   // touch controls (logical px, panel coordinates: panel origin is y = HUD_H + playfield height)
   JOY: { x: 78, y: 150, r: 49, knob: 19, dead: 0.18, full: 0.75, drop: 0.6 },
   PWRBTN: { x: 312, y: 86, r: 36 },
@@ -465,9 +471,175 @@ function botWantsPower(p, players) {                // simple distance rules per
   return Math.hypot(wdx(p.x, itP.x), p.y - itP.y) <= 140;
 }
 
+/* ---------- networking: one transport interface, two implementations ----------
+   Star relay, host-authoritative (PRD section 11). The host owns slot 0 and shared state
+   (phase, timer, round length, layout, It holder/clocks, drones, billboards, picks, ready
+   flags, held power-ups); each phone streams its own robot (client-authoritative movement);
+   the host relays each guest's state to the others so every phone sees every robot. */
+function genCode() { let s = ''; const a = CONFIG.CODE_ALPHABET; for (let i = 0; i < 4; i++) s += a[Math.floor(Math.random() * a.length)]; return s; }
+const Net = {
+  kind: 'none', chan: null, peer: null, conns: {}, onMsg: null, clientId: Math.random().toString(36).slice(2, 10),
+  openTabs(code) { this.kind = 'tabs'; this.chan = new BroadcastChannel('bsw-net-' + code); this.chan.onmessage = e => this.onMsg && this.onMsg(e.data); },
+  send(msg) {                                       // from a guest: to the host only. from the host: to everyone.
+    msg.from = this.clientId;
+    if (this.kind === 'tabs' && this.chan) this.chan.postMessage(msg);
+    else if (this.kind === 'peer') this._peerSend(msg);
+  },
+  close() { tryDo(() => this.chan && this.chan.close()); this.chan = null; tryDo(() => this.peer && this.peer.destroy()); this.peer = null; this.conns = {}; this.kind = 'none'; },
+  // PeerJS implementation (section 11): loaded lazily from cdnjs, pinned per DECISIONS.md. Not
+  // exercised by the automated tests in this sandbox (no real network peer to dial) - the tabs
+  // transport above is what test/v2_net.mjs actually drives; this path is code-complete but
+  // unverified against a real PeerJS broker, same caveat v1's DECISIONS.md already carries.
+  _peerLib: null,
+  loadPeerLib(cb) {
+    if (window.Peer) { this._peerLib = window.Peer; return cb(true); }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js';
+    s.onload = () => { this._peerLib = window.Peer; cb(!!window.Peer); };
+    s.onerror = () => cb(false);
+    document.head.appendChild(s);
+  },
+  hostPeer(code, cb) {
+    this.loadPeerLib(ok => {
+      if (!ok) return cb(false);
+      this.kind = 'peer';
+      this.peer = new this._peerLib('bsw-' + code, { config: { iceServers: CONFIG.ICE_SERVERS } });
+      this.peer.on('open', () => cb(true));
+      this.peer.on('error', () => cb(false, 'taken'));
+      this.peer.on('connection', c => { this.conns[c.peer] = c; c.on('data', d => this.onMsg && this.onMsg(d)); });
+    });
+  },
+  joinPeer(code, cb) {
+    this.loadPeerLib(ok => {
+      if (!ok) return cb(false);
+      this.kind = 'peer';
+      this.peer = new this._peerLib(undefined, { config: { iceServers: CONFIG.ICE_SERVERS } });
+      this.peer.on('open', () => {
+        const c = this.peer.connect('bsw-' + code);
+        c.on('open', () => { this.conns.host = c; cb(true); });
+        c.on('data', d => this.onMsg && this.onMsg(d));
+        c.on('error', () => cb(false));
+      });
+      this.peer.on('error', () => cb(false));
+    });
+  },
+  _peerSend(msg) {
+    if (NET.isHost) { for (const id in this.conns) tryDo(() => this.conns[id].send(msg)); }
+    else if (this.conns.host) tryDo(() => this.conns.host.send(msg));
+  },
+};
+
+/* host/guest session bookkeeping, layered on top of the local-session state (P, S, L) */
+const NET = {
+  mode: 'local',             // 'local' | 'host' | 'guest'
+  isHost: false, mySlot: 0, code: '',
+  peers: [{ connected: true, lastSeen: 0, token: '' }, null, null, null],   // host bookkeeping, index = slot
+  tokens: {},                 // slot -> reconnect token (host-side)
+  myToken: '', lastSentT: 0, lastSharedT: 0, picks: [0, 1, 2, 3], ready: [false, false, false, false],
+  roundLenMin: 2,
+};
+function netReset() {
+  NET.mode = 'local'; NET.isHost = false; NET.mySlot = 0; NET.code = '';
+  NET.peers = [{ connected: true, lastSeen: 0, token: '' }, null, null, null];
+  NET.tokens = {}; NET.picks = [0, 1, 2, 3]; NET.ready = [false, false, false, false]; NET.roundLenMin = 2;
+  Net.close();
+}
+function sharedSnapshot() {
+  return {
+    type: 'shared', ph: S.ph, t: S.t, roundMs: S.roundMs, layoutIdx: L.idx, cdSeed: L.idx,
+    drones: S.drones.map(d => ({ id: d.id, type: d.type, x: d.x, y: d.y, bb: L.billboards.indexOf(d.billboard), age: d.age, spawnT: d.spawnT })),
+    billboardsOccupied: L.billboards.map(b => b.occupied), feed: S.feed.map(f => f.msg),
+    picks: NET.picks.slice(), ready: NET.ready.slice(), roundLenMin: NET.roundLenMin,
+    robots: P.map(p => ({ active: p.active, it: p.it, itClock: p.itClock, frozen: p.frozen, tagCd: p.tagCd, held: p.held, stun: p.stun })),
+  };
+}
+function applySharedSnapshot(m) {
+  S.ph = m.ph; S.t = m.t; S.roundMs = m.roundMs; S.feed = m.feed.map(msg => ({ msg, t: 3 }));
+  if (L.idx !== m.layoutIdx) buildLayout(m.layoutIdx);
+  L.billboards.forEach((b, i) => b.occupied = m.billboardsOccupied[i]);
+  const haveIds = new Set(S.drones.map(d => d.id));
+  S.drones = m.drones.map(d => {
+    const existing = S.drones.find(x => x.id === d.id);
+    return existing ? Object.assign(existing, { x: d.x, y: d.y, age: d.age }) : { id: d.id, type: d.type, x: d.x, y: d.y, billboard: L.billboards[d.bb], age: d.age, spawnT: d.spawnT };
+  });
+  NET.picks = m.picks.slice(); NET.ready = m.ready.slice(); NET.roundLenMin = m.roundLenMin;
+  // frozen/tagCd/held/stun are host-owned regardless of who controls movement - a client needs
+  // its own values too (stepPlayer reads them to gate control), so these are never skipped for self.
+  m.robots.forEach((r, i) => {
+    const p = P[i]; p.active = r.active; p.it = r.it; p.itClock = r.itClock;
+    p.frozen = r.frozen; p.tagCd = r.tagCd; p.held = r.held; p.stun = r.stun;
+  });
+}
+function myStateMsg() {
+  const p = P[NET.mySlot];
+  return { type: 'state', slot: NET.mySlot, x: p.x, y: p.y, f: p.f, a: p.a, onGround: p.onGround, robot: p.robot };
+}
+function applyStateMsg(m) {
+  if (m.slot === NET.mySlot) return;
+  const p = P[m.slot]; if (!p) return;
+  p.x = m.x; p.y = m.y; p.f = m.f; p.a = m.a; p.onGround = m.onGround; p.robot = m.robot;
+  if (NET.isHost && NET.peers[m.slot]) NET.peers[m.slot].lastSeen = performance.now();
+}
+function netOnMessage(m) {
+  if (m.from === Net.clientId) return;
+  if (m.to && m.to !== Net.clientId) return;    // tabs transport broadcasts to everyone; targeted messages filter here
+  if (NET.isHost) {
+    if (m.type === 'join') { hostAdmitGuest(m); return; }
+    if (m.type === 'state') { applyStateMsg(m); Net.send(Object.assign({}, m)); return; }   // relay to the others
+    if (m.type === 'ready') { NET.ready[m.slot] = m.ready; return; }
+    if (m.type === 'pick') { NET.picks[m.slot] = m.robot; return; }
+    if (m.type === 'claim_tag') { hostHandleTagClaim(m); return; }
+    if (m.type === 'claim_catch') { hostHandleCatchClaim(m); return; }
+    if (m.type === 'claim_power') { hostHandleClaimPower(m); return; }
+    if (m.type === 'start') { return; }
+    if (m.type === 'ping') { Net.send({ type: 'pong', to: m.from, t: m.t }); return; }
+  } else {
+    if (m.type === 'welcome') {
+      NET.mySlot = m.slot; NET.myToken = m.token; S.connecting = false;
+      P[NET.mySlot].active = true; P[NET.mySlot].robot = NET.mySlot;
+      tryDo(() => sessionStorage.setItem('bsw_token_' + NET.code, m.token));
+      return;
+    }
+    if (m.type === 'full') { S.connecting = false; S.connectError = 'ROOM FULL'; return; }
+    if (m.type === 'shared') { applySharedSnapshot(m); return; }
+    if (m.type === 'state') { applyStateMsg(m); return; }
+  }
+}
+Net.onMsg = netOnMessage;
+
+function hostAdmitGuest(m) {
+  let slot = -1;
+  if (m.token && NET.tokens[m.token] !== undefined) slot = NET.tokens[m.token];
+  else { for (let i = 1; i < CONFIG.MAX_SLOTS; i++) if (!NET.peers[i] || !NET.peers[i].connected) { slot = i; break; } }
+  if (slot < 0) { Net.send({ type: 'full', to: m.from }); return; }
+  const token = m.token || (Math.random().toString(36).slice(2, 10));
+  NET.tokens[token] = slot; NET.peers[slot] = { connected: true, lastSeen: performance.now(), token };
+  P[slot].active = true; P[slot].robot = slot; if (!NET.ready[slot]) NET.ready[slot] = false; NET.picks[slot] = slot;
+  Net.send({ type: 'welcome', to: m.from, slot, token, code: NET.code });
+}
+function hostHandleTagClaim(m) {
+  const by = P[m.by], target = P[m.target]; if (!by || !target) return;
+  if (!tagAllowed(by, target)) return;
+  if (hitGap(m.x, m.y, target.x, target.y) <= CONFIG.TAG_TOL) applyTag(by, target);
+}
+function hostHandleCatchClaim(m) {
+  const p = P[m.slot], d = S.drones.find(d => d.id === m.droneId); if (!p || !d) return;
+  if (Math.hypot(wdx(m.x, d.x), m.y - d.y) <= CONFIG.CATCH_R + 20) catchBadsoff(p, d);
+}
+function hostHandleClaimPower(m) {
+  // Dash Burst / Phase Blink are self-movement: the actor's own phone already applied them
+  // (section 11, "the user's phone applies self-movement at once"). Ground Slam has no self
+  // movement, so the host applies its area effect here, using the actor's reported position.
+  if (m.power !== 'grumpulator') return;
+  const p = P[m.slot]; if (!p) return;
+  const live = P.filter(o => o.active && o !== p);
+  for (const o of live) if (Math.hypot(wdx(m.x, o.x), m.y - o.y) <= CONFIG.SLAM_R) o.stun = CONFIG.SLAM_MS;
+}
+
 /* ---------- session: up to 4 players, It-clock scoring, local/practice for now ---------- */
 const P = [mkPlayer(0), mkPlayer(1), mkPlayer(2), mkPlayer(3)];
-const S = { ph: 'title', n: 0, roundMs: CONFIG.ROUND_MS, t: 0, cdT: 0, drones: [], droneSeq: 0, spawnT: 0, feed: [] };
+const S = { ph: 'title', n: 0, roundMs: CONFIG.ROUND_MS, t: 0, cdT: 0, drones: [], droneSeq: 0, spawnT: 0, feed: [],
+  codeBuf: '', connecting: false, connectError: '' };
 
 function startLocal(nBots) {
   const n = clamp(1 + (Number.isFinite(nBots) ? nBots : 2), 2, CONFIG.MAX_SLOTS);
@@ -582,6 +754,7 @@ function endRound() {
 
 function tick(dtms) {
   const dt = dtms / 1000;
+  if (NET.mode !== 'local') { netTick(dtms); return; }
   if (S.ph === 'countdown') {
     S.t -= dtms;
     if (S.t <= 0) { S.ph = 'play'; S.t = S.roundMs; Snd.play('go'); }
@@ -599,6 +772,70 @@ function tick(dtms) {
   dronesStep(dtms);
   camStep(dt);
   if (S.t <= 0) { S.t = 0; endRound(); }
+}
+
+/* ---------- networked tick: each phone steps only its own robot; the host alone runs
+   round/drone/It-clock bookkeeping and validates claims; everyone else just applies what
+   the host broadcasts (section 11) ---------- */
+function netTick(dtms) {
+  const dt = dtms / 1000, now = performance.now();
+  NET.lastSentT += dtms;
+  if (NET.lastSentT >= 1000 / CONFIG.STATE_HZ) { NET.lastSentT = 0; Net.send(myStateMsg()); }
+
+  if (S.ph === 'play') {
+    const me = P[NET.mySlot];
+    if (me && me.active) {
+      const inp = readHumanInput();
+      stepPlayer(me, inp, dt, true);
+      if (inp.pwr && me.held) {
+        if (NET.isHost) usePower(me);
+        else {
+          const type = me.held;
+          if (type === 'bopster' || type === 'sneakfolder') usePower(me);   // self-movement: client-authoritative, instant
+          else me.held = null;                                             // grumpulator: no self movement, host applies the AoE
+          Net.send({ type: 'claim_power', slot: NET.mySlot, power: type, x: me.x, y: me.y });
+        }
+      }
+      if (me.it) {
+        const others = P.filter(p => p.active && p !== me);
+        for (const o of others) {
+          if (!tagAllowed(me, o)) continue;
+          if (hitGap(me.x, me.y, o.x, o.y) <= CONFIG.LOCAL_TAG_SLACK) {
+            if (NET.isHost) applyTag(me, o); else Net.send({ type: 'claim_tag', by: NET.mySlot, target: o.slot, x: me.x, y: me.y });
+            break;
+          }
+        }
+      }
+      for (const d of S.drones) {
+        if (Math.hypot(wdx(me.x, d.x), me.y - d.y) > CONFIG.CATCH_R) continue;
+        if (NET.isHost) catchBadsoff(me, d); else Net.send({ type: 'claim_catch', slot: NET.mySlot, droneId: d.id, x: me.x, y: me.y });
+        break;
+      }
+    }
+  }
+
+  if (NET.isHost) {
+    if (S.ph === 'countdown') { S.t -= dtms; if (S.t <= 0) { S.ph = 'play'; S.t = S.roundMs; Snd.play('go'); } }
+    else if (S.ph === 'play') {
+      S.t -= dtms;
+      const itP = P.find(p => p.active && p.it); if (itP) itP.itClock += dt * 1000;
+      dronesStep(dtms);
+      if (S.t <= 0) { S.t = 0; endRound(); }
+    }
+    for (let i = 1; i < CONFIG.MAX_SLOTS; i++) {
+      const peer = NET.peers[i];
+      if (!peer || !peer.connected) continue;
+      if (now - peer.lastSeen > CONFIG.PEER_TIMEOUT_MS) {
+        peer.connected = false;
+        if (P[i].active && P[i].it && S.ph === 'play') { const pool = P.filter(p => p.active && p !== P[i]); if (pool.length) { P[i].it = false; pool[Math.floor(Math.random() * pool.length)].it = true; } }
+        P[i].active = false;
+        if (P.filter(p => p.active).length <= 1 && S.ph === 'play') endRound();
+      }
+    }
+    NET.lastSharedT += dtms;
+    if (NET.lastSharedT >= 1000 / CONFIG.SHARED_HZ) { NET.lastSharedT = 0; Net.send(sharedSnapshot()); }
+  }
+  camStep(dt);
 }
 
 /* ---------- render: greybox robots and tower (real BSWV21 sprites land in a later commit) ---------- */
@@ -718,15 +955,18 @@ function drawPanel(c) {
 }
 
 function drawPlayfield(c) {
+  const menuPh = S.ph === 'title' || S.ph === 'enterCode' || S.ph === 'lobby';
   c.save(); c.beginPath(); c.rect(0, PLAY_Y0, VW, PLAY_H); c.clip();
   c.fillStyle = CC.bg; c.fillRect(0, PLAY_Y0, VW, PLAY_H);
-  drawPlatforms(c);
-  drawDrones(c);
-  for (const p of P) drawDecoy(c, p);
-  for (const p of P) drawRobot(c, p);
-  drawOffscreenArrows(c);
+  if (!menuPh) {
+    drawPlatforms(c);
+    drawDrones(c);
+    for (const p of P) drawDecoy(c, p);
+    for (const p of P) drawRobot(c, p);
+    drawOffscreenArrows(c);
+  }
   c.restore();
-  drawMinimap(c);
+  if (!menuPh) drawMinimap(c);
   if (S.ph === 'countdown') { c.fillStyle = CC.lt; c.font = '700 48px system-ui'; c.textAlign = 'center'; c.fillText(Math.ceil(S.t / 1000) || 'GO!', VW / 2, PLAY_Y0 + PLAY_H / 2); }
   if (S.ph === 'over') {
     c.fillStyle = 'rgba(6,8,16,0.82)'; c.fillRect(0, PLAY_Y0, VW, PLAY_H);
@@ -735,17 +975,155 @@ function drawPlayfield(c) {
     c.fillText(label, VW / 2, PLAY_Y0 + 60);
     c.font = '600 13px system-ui';
     S.ranked.forEach((p, i) => { c.fillStyle = CONFIG.ROBOTS[p.robot].col; c.fillText(CONFIG.ROBOTS[p.robot].name + '  ' + fmtClock(p.itClock) + ' as It', VW / 2, PLAY_Y0 + 100 + i * 24); });
-    c.fillStyle = CC.t2; c.font = '600 12px system-ui'; c.fillText('TAP TO PLAY AGAIN', VW / 2, PLAY_Y0 + PLAY_H - 40);
+    c.fillStyle = CC.t2; c.font = '600 12px system-ui';
+    c.fillText(NET.mode === 'local' ? 'TAP TO PLAY AGAIN' : NET.isHost ? 'TAP FOR LOBBY' : 'WAITING FOR HOST', VW / 2, PLAY_Y0 + PLAY_H - 40);
   }
-  if (S.ph === 'title') {
-    c.fillStyle = CC.lt; c.font = '700 28px system-ui'; c.textAlign = 'center'; c.fillText('BADSOFFWARE', VW / 2, PLAY_Y0 + PLAY_H / 2 - 10);
-    c.font = '600 13px system-ui'; c.fillStyle = CC.t2; c.fillText('TAP TO PLAY', VW / 2, PLAY_Y0 + PLAY_H / 2 + 20);
+  if (S.ph === 'title') drawTitle(c);
+  if (S.ph === 'enterCode') drawCodeEntry(c);
+  if (S.ph === 'lobby') drawLobby(c);
+}
+function btn(c, x, y, w, h, label, sub) {
+  c.strokeStyle = CC.bd; c.lineWidth = 2; c.fillStyle = CC.pan;
+  c.beginPath(); c.roundRect(x, y, w, h, 10); c.fill(); c.stroke();
+  c.fillStyle = CC.lt; c.font = '700 15px system-ui'; c.textAlign = 'center'; c.fillText(label, x + w / 2, y + (sub ? h / 2 - 2 : h / 2 + 5));
+  if (sub) { c.fillStyle = CC.t2; c.font = '600 10px system-ui'; c.fillText(sub, x + w / 2, y + h / 2 + 16); }
+  return { x, y, w, h };
+}
+function drawTitle(c) {
+  c.fillStyle = CC.lt; c.font = '700 26px system-ui'; c.textAlign = 'center';
+  c.fillText('BADSOFFWARE', VW / 2, PLAY_Y0 + 90);
+  c.font = '600 11px system-ui'; c.fillStyle = CC.t2;
+  c.fillText('TAG ROBOTS UP A CITY TOWER', VW / 2, PLAY_Y0 + 112);
+  const bw = 280, bx = VW / 2 - bw / 2, bh = 56, gap = 16; let by = PLAY_Y0 + 170;
+  UI.title.host = btn(c, bx, by, bw, bh, 'HOST GAME', 'start a room, share the code'); by += bh + gap;
+  UI.title.join = btn(c, bx, by, bw, bh, 'JOIN GAME', 'enter a 4 letter code'); by += bh + gap;
+  UI.title.practice = btn(c, bx, by, bw, bh, 'PRACTICE VS BOTS', 'play offline, 1 to 3 bots');
+}
+function drawCodeEntry(c) {
+  c.fillStyle = CC.lt; c.font = '700 16px system-ui'; c.textAlign = 'center'; c.fillText('ENTER ROOM CODE', VW / 2, PLAY_Y0 + 40);
+  c.font = '700 34px ui-monospace, monospace'; c.fillStyle = CC.cyan;
+  c.fillText((S.codeBuf + '____').slice(0, 4).split('').join(' '), VW / 2, PLAY_Y0 + 84);
+  if (S.connectError) { c.fillStyle = '#ff4d6a'; c.font = '700 12px system-ui'; c.fillText(S.connectError, VW / 2, PLAY_Y0 + 104); }
+  const cols = 8, cw = 40, ch = 40, gap = 4, gridW = cols * cw + (cols - 1) * gap, gx = VW / 2 - gridW / 2;
+  let gy = PLAY_Y0 + 130; UI.code.keys = [];
+  KEYROWS.forEach(row => {
+    let x = gx;
+    for (const ch_ of row) { const r = { x, y: gy, w: cw, h: ch }; btn(c, x, gy, cw, ch, ch_); UI.code.keys.push({ ch: ch_, r }); x += cw + gap; }
+    gy += ch + gap;
+  });
+  const bw = 100, bx = VW / 2 - bw / 2;
+  UI.code.back = btn(c, bx, gy + 10, bw, 36, 'BACK');
+}
+function drawLobby(c) {
+  c.fillStyle = CC.lt; c.font = '700 14px system-ui'; c.textAlign = 'center';
+  c.fillText(NET.isHost ? 'ROOM CODE' : 'CONNECTED TO', VW / 2, PLAY_Y0 + 30);
+  c.font = '700 30px ui-monospace, monospace'; c.fillStyle = CC.cyan; c.fillText(NET.code.split('').join(' '), VW / 2, PLAY_Y0 + 62);
+  if (S.connecting) { c.fillStyle = CC.t2; c.font = '600 12px system-ui'; c.fillText('CONNECTING...', VW / 2, PLAY_Y0 + 86); }
+  let ry = PLAY_Y0 + 100;
+  for (let i = 0; i < CONFIG.MAX_SLOTS; i++) {
+    const p = P[i], row = { x: 30, y: ry, w: VW - 60, h: 40 };
+    c.strokeStyle = p.active ? CC.bd : CC.dk; c.lineWidth = 2; c.fillStyle = p.active ? CC.pan : 'transparent';
+    c.beginPath(); c.roundRect(row.x, row.y, row.w, row.h, 8); if (p.active) c.fill(); c.stroke();
+    if (p.active) {
+      c.fillStyle = CONFIG.ROBOTS[NET.picks[i]].col; c.font = '700 13px system-ui'; c.textAlign = 'left';
+      c.fillText((i === 0 ? 'HOST ' : 'P' + (i + 1) + ' ') + CONFIG.ROBOTS[NET.picks[i]].name, row.x + 14, row.y + 25);
+      c.textAlign = 'right'; c.fillStyle = NET.ready[i] ? '#3df5c4' : CC.t2; c.fillText(NET.ready[i] ? 'READY' : 'NOT READY', row.x + row.w - 14, row.y + 25);
+      if (i === NET.mySlot) {
+        UI.lobby.pick = { x: row.x, y: row.y, w: row.w * 0.55, h: row.h };
+        UI.lobby.ready = { x: row.x + row.w * 0.55, y: row.y, w: row.w * 0.45, h: row.h };
+      }
+    } else { c.fillStyle = CC.t2; c.font = '600 11px system-ui'; c.textAlign = 'center'; c.fillText('OPEN SLOT', row.x + row.w / 2, row.y + 25); }
+    ry += 48;
   }
+  if (NET.isHost) {
+    UI.lobby.roundLen = btn(c, 30, ry + 6, VW - 60, 40, 'ROUND LENGTH: ' + NET.roundLenMin + ' MIN');
+    ry += 56;
+    const connected = P.filter(p => p.active).length, allReady = P.filter(p => p.active).every(p => NET.ready[p.slot]);
+    UI.lobby.start = btn(c, 30, ry, VW - 60, 48, connected >= 2 && allReady ? 'START' : 'NEED 2+ PLAYERS READY');
+  } else {
+    c.fillStyle = CC.t2; c.font = '600 11px system-ui'; c.fillText('TAP YOUR ROW TO SWAP ROBOT, TAP READY', VW / 2, ry + 20);
+  }
+  c.strokeStyle = CC.bd; c.lineWidth = 1.5; c.beginPath(); c.roundRect(10, PLAY_Y0 + 6, 50, 24, 6); c.stroke();
+  c.fillStyle = CC.t2; c.font = '600 10px system-ui'; c.textAlign = 'center'; c.fillText('BACK', 35, PLAY_Y0 + 21);
+  UI.lobby.back = { x: 10, y: PLAY_Y0 + 6, w: 50, h: 24 };
 }
 
-cv.addEventListener('pointerdown', () => {
-  if (S.ph === 'title' || S.ph === 'over') startLocal(DEBUG_BOTS >= 0 ? DEBUG_BOTS : 2);
+/* ---------- lobby / title / code-entry flow (section 10) ---------- */
+function startHost() {
+  netReset(); NET.mode = 'host'; NET.isHost = true; NET.mySlot = 0; NET.code = store.get('bsw_lastcode', genCode());
+  Net.openTabs(NET.code);
+  P.forEach((p, i) => { p.active = i === 0; p.robot = i; p.isBot = false; });
+  resetPlayer(P[0], 0, 1);
+  NET.ready = [false, false, false, false]; NET.picks = [0, 1, 2, 3];
+  S.ph = 'lobby'; S.connecting = false;
+  store.set('bsw_lastcode', NET.code);
+}
+function startGuest(code) {
+  netReset(); NET.mode = 'guest'; NET.isHost = false; NET.code = code;
+  Net.openTabs(code);
+  const stored = tryDo(() => sessionStorage.getItem('bsw_token_' + code));
+  Net.send({ type: 'join', token: stored || undefined });
+  S.ph = 'lobby'; S.connecting = true;
+}
+function backToTitle() { netReset(); S.ph = 'title'; S.codeBuf = ''; }
+const KEYROWS = ['ABCDEFGH', 'JKMNPQRS', 'TUVWXYZ2', '3456789'];
+cv.addEventListener('pointerdown', e => {
+  const t = toLogical(e); Snd.init();
+  if (S.ph === 'title') {
+    if (UI.title.host && inRect(t, UI.title.host)) return startHost();
+    if (UI.title.join && inRect(t, UI.title.join)) { S.ph = 'enterCode'; S.codeBuf = ''; return; }
+    if (UI.title.practice && inRect(t, UI.title.practice)) return startLocal(DEBUG_BOTS >= 0 ? DEBUG_BOTS : 2);
+    return;
+  }
+  if (S.ph === 'enterCode') {
+    if (UI.code.back && inRect(t, UI.code.back)) { S.ph = 'title'; return; }
+    for (const k of UI.code.keys || []) {
+      if (inRect(t, k.r)) {
+        if (k.ch === '⌫') S.codeBuf = S.codeBuf.slice(0, -1);
+        else if (S.codeBuf.length < 4) S.codeBuf += k.ch;
+        if (S.codeBuf.length === 4) startGuest(S.codeBuf);
+        return;
+      }
+    }
+    return;
+  }
+  if (S.ph === 'lobby') {
+    if (UI.lobby.back && inRect(t, UI.lobby.back)) return backToTitle();
+    if (UI.lobby.ready && inRect(t, UI.lobby.ready)) {
+      NET.ready[NET.mySlot] = !NET.ready[NET.mySlot];
+      if (NET.isHost) { /* host's own ready is local, applied below on next frame */ }
+      else Net.send({ type: 'ready', slot: NET.mySlot, ready: NET.ready[NET.mySlot] });
+      return;
+    }
+    if (UI.lobby.pick && inRect(t, UI.lobby.pick)) {
+      NET.picks[NET.mySlot] = (NET.picks[NET.mySlot] + 1) % CONFIG.ROBOTS.length;
+      P[NET.mySlot].robot = NET.picks[NET.mySlot];
+      if (!NET.isHost) Net.send({ type: 'pick', slot: NET.mySlot, robot: NET.picks[NET.mySlot] });
+      return;
+    }
+    if (NET.isHost && UI.lobby.roundLen && inRect(t, UI.lobby.roundLen)) { NET.roundLenMin = NET.roundLenMin % 3 + 1; return; }
+    if (NET.isHost && UI.lobby.start && inRect(t, UI.lobby.start)) {
+      const connected = P.filter(p => p.active).length;
+      if (connected >= 2 && P.filter(p => p.active).every((p, i) => NET.ready[p.slot])) {
+        S.roundMs = NET.roundLenMin * 60000;
+        buildLayout(Math.floor(Math.random() * LAYOUTS.length));
+        P.forEach(p => { if (p.active) resetPlayer(p, p.slot, CONFIG.MAX_SLOTS); });
+        const live = P.filter(p => p.active); live[Math.floor(Math.random() * live.length)].it = true;
+        S.drones = []; S.droneSeq = 0; S.spawnT = CONFIG.SPAWN_FIRST_MS; S.feed = [];
+        L.billboards.forEach(b => b.occupied = false);
+        S.t = CONFIG.COUNTDOWN_MS; S.ph = 'countdown'; camSnap(); Snd.play('cd');
+      }
+      return;
+    }
+    return;
+  }
+  if (S.ph === 'over') {
+    if (NET.mode === 'local') return startLocal(DEBUG_BOTS >= 0 ? DEBUG_BOTS : 2);
+    if (NET.isHost) { S.ph = 'lobby'; NET.ready = NET.ready.map(() => false); }
+  }
 });
+function inRect(p, r) { return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
+const UI = { title: {}, code: {}, lobby: {} };
 
 let last = performance.now(), acc = 0;
 function frame(now) {
@@ -755,7 +1133,9 @@ function frame(now) {
   while (acc >= 1000 / 60) { tick(1000 / 60); acc -= 1000 / 60; }
   const c = cx; c.save(); c.scale(view.bs, view.bs);
   c.fillStyle = '#060810'; c.fillRect(0, 0, VW, VH);
-  drawPlayfield(c); drawHUD(c); drawPanel(c);
+  const menuPh = S.ph === 'title' || S.ph === 'enterCode' || S.ph === 'lobby';
+  drawPlayfield(c);
+  if (!menuPh) { drawHUD(c); drawPanel(c); }
   c.restore();
 }
 requestAnimationFrame(frame);
@@ -763,7 +1143,8 @@ requestAnimationFrame(frame);
 /* ---------- test hook: exposes state for automated tests only ---------- */
 window.__bsw = { CONFIG, P, S, L, cam, LAYOUTS, stepPlayer, resetPlayer, startLocal, tick, applyTag, tagAllowed, detectTags,
   endRound, hitGap, wrapX, wdx, buildLayout, checkReach, camSnap, camStep, botThink, botWantsPower,
-  trySpawnBadsoff, catchBadsoff, applyHijack, usePower, dronesStep, FLOOR, WORLD_H, VW, VH, PLAY_H };
+  trySpawnBadsoff, catchBadsoff, applyHijack, usePower, dronesStep, FLOOR, WORLD_H, VW, VH, PLAY_H,
+  Net, NET, startHost, startGuest, backToTitle, myStateMsg, applyStateMsg, sharedSnapshot, applySharedSnapshot, netTick };
 </script>
 </body>
 </html>
