@@ -48,6 +48,21 @@ const CONFIG = {
   // verified by BFS: rise <= RISE_MAX climbing, any gap <= GAP_MAX falling (test/v2_tower.mjs).
   WORLD_H: 1112, GROUND_MARGIN: 40, ROWS: 12, ROW_GAP: 86, ROOFTOP_ROWS: [9, 10, 11],
   RISE_MAX: 165, GAP_MAX: 110, PLAT_H: 10, BILLBOARD_ZONES: 2,
+  // Badsoffware power-ups (section 8). One spawns every SPAWN_MS (first at SPAWN_FIRST_MS), at
+  // most SPAWN_MAX alive and SPAWN_MAX_HIJACK Hijackers. Uncaught, one glitches out after GLITCH_MS.
+  SPAWN_FIRST_MS: 5000, SPAWN_MS: 10000, SPAWN_MAX: 3, SPAWN_MAX_HIJACK: 1, GLITCH_MS: 20000,
+  CATCH_R: 30, SPAWN_AVOID: 80,
+  BADSOFF: {
+    bopster:     { name: 'BOPSTER',     weight: 35, holdable: true,  col: '#ff5ec8' },
+    grumpulator: { name: 'GRUMPULATOR', weight: 25, holdable: true,  col: '#ff8a3d' },
+    sneakfolder: { name: 'SNEAKFOLDER', weight: 30, holdable: true,  col: '#ffc93d' },
+    hijacker:    { name: 'HIJACKER',    weight: 10, holdable: false, col: '#3de6ff' },
+  },
+  // power-up effects: Dash Burst (held, instant dash then a run-speed boost), Ground Slam (held,
+  // stuns everyone in range), Phase Blink (held, teleport + cosmetic decoy), Hijack (instant on
+  // catch, flips It to a random other robot - never goes in the held slot)
+  DASH_V: 760, DASH_S: 0.17, DASH_BOOST: 1.25, DASH_BOOST_MS: 2000,
+  SLAM_R: 120, SLAM_MS: 900, BLINK_D: 110, DECOY_MS: 1400,
   // touch controls (logical px, panel coordinates: panel origin is y = HUD_H + playfield height)
   JOY: { x: 78, y: 150, r: 49, knob: 19, dead: 0.18, full: 0.75, drop: 0.6 },
   PWRBTN: { x: 312, y: 86, r: 36 },
@@ -266,8 +281,8 @@ const SFX = {
 
 /* ---------- input: touch (multi-touch by identifier) + keyboard ---------- */
 const K = {};
-let jumpEdge = false;
-const touch = { joyId: -1, jx: 0, jy: 0, jumpId: -1 };
+let jumpEdge = false, pwrEdge = false;
+const touch = { joyId: -1, jx: 0, jy: 0, jumpId: -1, pwrId: -1 };
 function toLogical(t) { return { x: (t.clientX - view.ox) / view.s, y: (t.clientY - view.oy) / view.s }; }
 function joyUpdate(p) {
   const J = CONFIG.JOY; let dx = p.x - J.x, dy = p.y - (PANEL_Y0 + J.y); const d = Math.hypot(dx, dy);
@@ -280,6 +295,7 @@ cv.addEventListener('touchstart', e => {
     const p = toLogical(t);
     if (p.y < PANEL_Y0) continue;
     if (touch.joyId < 0 && p.x < VW / 2) { touch.joyId = t.identifier; joyUpdate(p); }
+    else if (touch.pwrId < 0 && Math.hypot(p.x - CONFIG.PWRBTN.x, p.y - (PANEL_Y0 + CONFIG.PWRBTN.y)) <= CONFIG.PWRBTN.r + 14) { touch.pwrId = t.identifier; pwrEdge = true; }
     else if (touch.jumpId < 0) { touch.jumpId = t.identifier; jumpEdge = true; }
   }
 }, { passive: false });
@@ -292,15 +308,18 @@ function tend(e) {
   for (const t of e.changedTouches) {
     if (t.identifier === touch.joyId) { touch.joyId = -1; touch.jx = 0; touch.jy = 0; }
     if (t.identifier === touch.jumpId) touch.jumpId = -1;
+    if (t.identifier === touch.pwrId) touch.pwrId = -1;
   }
 }
 cv.addEventListener('touchend', tend, { passive: false });
 cv.addEventListener('touchcancel', tend, { passive: false });
 const JUMPKEYS = { ArrowUp: 1, KeyW: 1, Space: 1 };
+const PWRKEYS = { KeyE: 1, KeyF: 1, ShiftLeft: 1, ShiftRight: 1 };
 window.addEventListener('keydown', e => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].indexOf(e.code) >= 0) e.preventDefault();
   if (!e.repeat) {
     if (JUMPKEYS[e.code]) jumpEdge = true;
+    if (PWRKEYS[e.code]) pwrEdge = true;
     if (e.code === 'KeyM') Snd.setMute(!Snd.muted);
   }
   K[e.code] = true; Snd.init();
@@ -308,7 +327,7 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => { K[e.code] = false; });
 window.addEventListener('blur', () => { for (const k in K) K[k] = false; });
 
-const _in = { move: 0, held: false, press: false, down: false };
+const _in = { move: 0, held: false, press: false, down: false, pwr: false };
 function readHumanInput() {
   let l = K.ArrowLeft || K.KeyA, r = K.ArrowRight || K.KeyD, held = K.ArrowUp || K.KeyW || K.Space, down = K.ArrowDown || K.KeyS;
   let move = (r ? 1 : 0) - (l ? 1 : 0);
@@ -320,6 +339,7 @@ function readHumanInput() {
   if (touch.jumpId >= 0) held = true;
   _in.move = move; _in.held = !!held; _in.down = !!down;
   _in.press = jumpEdge; jumpEdge = false;
+  _in.pwr = pwrEdge; pwrEdge = false;
   return _in;
 }
 
@@ -334,20 +354,33 @@ function mkPlayer(slot) {
     slot, active: false, isBot: false, robot: slot, x: SPAWN_X[slot], y: FLOOR, vx: 0, vy: 0, f: 1, a: 0,
     onGround: true, standPl: null, coyote: 0, jumpBuf: 0, canDbl: true, jumping: false, dropT: 0, noCtl: 0, t: Math.random() * 6,
     it: false, itClock: 0, frozen: 0, tagCd: 0, lastTaggedBy: -1,
+    held: null, stun: 0, dashT: 0, dashVX: 0, boostT: 0, decoy: null,
   };
 }
 function resetPlayer(p, slot, n) {
   p.x = spawnXFor(slot, n); p.y = FLOOR; p.vx = 0; p.vy = 0; p.f = 1; p.onGround = true; p.standPl = null;
   p.canDbl = true; p.jumping = false; p.coyote = 0; p.jumpBuf = 0; p.dropT = 0; p.noCtl = 0; p.a = 0;
   p.it = false; p.itClock = 0; p.frozen = 0; p.tagCd = 0; p.lastTaggedBy = -1; p._bot = null;
+  p.held = null; p.stun = 0; p.dashT = 0; p.dashVX = 0; p.boostT = 0; p.decoy = null;
 }
 function stepPlayer(p, inp, dt, active) {
   const C = CONFIG, prevY = p.y, ground = p.onGround;
   p.t += dt;
   if (p.noCtl > 0) p.noCtl -= dt;
-  const ctl = active && p.noCtl <= 0;
+  if (p.stun > 0) { p.stun -= dt * 1000; if (p.stun < 0) p.stun = 0; }
+  if (p.boostT > 0) { p.boostT -= dt; if (p.boostT < 0) p.boostT = 0; }
+  if (p.decoy) { p.decoy.t -= dt; if (p.decoy.t <= 0) p.decoy = null; }
+  if (p.frozen > 0) { p.frozen -= dt * 1000; if (p.frozen < 0) p.frozen = 0; }
+  if (p.tagCd > 0) p.tagCd -= dt * 1000;
+  if (p.it && p.active) p.itClock += dt * 1000;
+  if (p.dashT > 0) {                                // Dash Burst: no gravity, ignores input, for DASH_S seconds
+    p.dashT -= dt; p.x = wrapX(p.x + p.dashVX * dt); p.a += dt * 10;
+    return;
+  }
+  const ctl = active && p.noCtl <= 0 && p.stun <= 0;
+  const speedMul = p.boostT > 0 ? C.DASH_BOOST : 1;
   const moveX = ctl ? inp.move : 0;
-  if (moveX !== 0) { p.f = moveX > 0 ? 1 : -1; const tgt = moveX * C.RUN; const a = ground ? C.ACCEL : C.ACCEL * C.AIR_CONTROL; p.vx = approach(p.vx, tgt, a * dt); }
+  if (moveX !== 0) { p.f = moveX > 0 ? 1 : -1; const tgt = moveX * C.RUN * speedMul; const a = ground ? C.ACCEL : C.ACCEL * C.AIR_CONTROL; p.vx = approach(p.vx, tgt, a * dt); }
   else { const fr = ground ? C.FRICTION * (Math.sign(p.vx) !== 0 && Math.sign(p.vx) !== Math.sign(moveX) ? C.SKID : 1) : C.AIR_DRAG; p.vx = approach(p.vx, 0, fr * dt); }
   if (ground) { p.coyote = C.COYOTE_MS; p.canDbl = true; } else p.coyote -= dt * 1000;
   if (ctl && inp.press) p.jumpBuf = C.BUFFER_MS; else p.jumpBuf -= dt * 1000;
@@ -372,9 +405,6 @@ function stepPlayer(p, inp, dt, active) {
     }
   }
   p.a += dt * (Math.abs(p.vx) > 10 ? 10 : 4);
-  if (p.frozen > 0) { p.frozen -= dt * 1000; if (p.frozen < 0) p.frozen = 0; }
-  if (p.tagCd > 0) p.tagCd -= dt * 1000;
-  if (p.it && p.active) p.itClock += dt * 1000;
 }
 
 /* ---------- bots ----------
@@ -424,10 +454,20 @@ function botThink(p, players) {
   }
   return { move: bs.move * CONFIG.BOT.speedScale, held: bs.wantJump, press: bs.wantJump && (p.onGround || p.canDbl), down: bs.wantDown };
 }
+function botWantsPower(p, players) {                // simple distance rules per PRD section 13
+  if (!p.held || p.frozen > 0 || p.stun > 0) return false;
+  const others = players.filter(o => o !== p && o.active); if (!others.length) return false;
+  if (p.it) {
+    const nearest = others.reduce((a, b) => Math.hypot(wdx(p.x, a.x), p.y - a.y) < Math.hypot(wdx(p.x, b.x), p.y - b.y) ? a : b);
+    return Math.hypot(wdx(p.x, nearest.x), p.y - nearest.y) <= CONFIG.SLAM_R * 1.2;
+  }
+  const itP = others.find(o => o.it); if (!itP) return false;
+  return Math.hypot(wdx(p.x, itP.x), p.y - itP.y) <= 140;
+}
 
 /* ---------- session: up to 4 players, It-clock scoring, local/practice for now ---------- */
 const P = [mkPlayer(0), mkPlayer(1), mkPlayer(2), mkPlayer(3)];
-const S = { ph: 'title', n: 0, roundMs: CONFIG.ROUND_MS, t: 0, cdT: 0 };
+const S = { ph: 'title', n: 0, roundMs: CONFIG.ROUND_MS, t: 0, cdT: 0, drones: [], droneSeq: 0, spawnT: 0, feed: [] };
 
 function startLocal(nBots) {
   const n = clamp(1 + (Number.isFinite(nBots) ? nBots : 2), 2, CONFIG.MAX_SLOTS);
@@ -440,6 +480,8 @@ function startLocal(nBots) {
   }
   P[0].isBot = false;
   S.t = CONFIG.COUNTDOWN_MS; S.ph = 'countdown';
+  S.drones = []; S.droneSeq = 0; S.spawnT = CONFIG.SPAWN_FIRST_MS; S.feed = [];
+  L.billboards.forEach(b => b.occupied = false);
   const live = P.filter(p => p.active);
   live.forEach(p => p.it = false);
   live[Math.floor(Math.random() * live.length)].it = true;
@@ -462,8 +504,75 @@ function detectTags() {
   }
 }
 
+/* ---------- Badsoffware power-ups (PRD section 8) ---------- */
+const BADSOFF_IDS = Object.keys(CONFIG.BADSOFF);
+function pickWeighted(excludeHijack) {
+  const pool = BADSOFF_IDS.filter(id => !(excludeHijack && id === 'hijacker'));
+  const total = pool.reduce((s, id) => s + CONFIG.BADSOFF[id].weight, 0);
+  let r = Math.random() * total;
+  for (const id of pool) { r -= CONFIG.BADSOFF[id].weight; if (r <= 0) return id; }
+  return pool[pool.length - 1];
+}
+function pushFeed(msg) { S.feed.push({ msg, t: 3 }); if (S.feed.length > 3) S.feed.shift(); }
+function trySpawnBadsoff() {
+  if (S.drones.length >= CONFIG.SPAWN_MAX) return;
+  const hijackersAlive = S.drones.filter(d => d.type === 'hijacker').length;
+  const type = pickWeighted(hijackersAlive >= CONFIG.SPAWN_MAX_HIJACK);
+  const live = P.filter(p => p.active);
+  const free = L.billboards.filter(b => !b.occupied && live.every(p => Math.hypot(wdx(p.x, b.x), p.y - b.y) > CONFIG.SPAWN_AVOID));
+  if (!free.length) return;
+  const b = free[Math.floor(Math.random() * free.length)];
+  b.occupied = true;
+  S.drones.push({ id: ++S.droneSeq, type, x: b.x, y: b.y, billboard: b, age: 0, spawnT: 0.4 });
+}
+function applyHijack(catcher) {
+  const live = P.filter(p => p.active), oldIt = live.find(p => p.it);
+  const pool = live.filter(p => p !== oldIt); if (!pool.length) return;
+  const newIt = pool[Math.floor(Math.random() * pool.length)];
+  if (oldIt) { oldIt.it = false; oldIt.tagCd = CONFIG.TAG_COOLDOWN_MS; }
+  newIt.it = true; newIt.frozen = CONFIG.FREEZE_MS; newIt.noCtl = CONFIG.FREEZE_MS / 1000; newIt.tagCd = CONFIG.TAG_COOLDOWN_MS;
+  pushFeed(CONFIG.ROBOTS[catcher.robot].name + ' HIJACKED IT TO ' + CONFIG.ROBOTS[newIt.robot].name);
+  Snd.play('tag');
+}
+function catchBadsoff(p, d) {
+  S.drones.splice(S.drones.indexOf(d), 1); d.billboard.occupied = false;
+  const def = CONFIG.BADSOFF[d.type];
+  if (!def.holdable) { applyHijack(p); return; }
+  p.held = d.type;
+  pushFeed(CONFIG.ROBOTS[p.robot].name + ' CAUGHT ' + def.name);
+  Snd.play('ui');
+}
+function dronesStep(dtms) {
+  const dt = dtms / 1000, live = P.filter(p => p.active);
+  S.spawnT -= dtms;
+  if (S.spawnT <= 0) { trySpawnBadsoff(); S.spawnT = CONFIG.SPAWN_MS; }
+  for (let i = S.drones.length - 1; i >= 0; i--) {
+    const d = S.drones[i];
+    d.age += dtms; if (d.spawnT > 0) d.spawnT -= dt;
+    if (d.age >= CONFIG.GLITCH_MS) { S.drones.splice(i, 1); d.billboard.occupied = false; continue; }
+    d.y = d.billboard.y + Math.sin((d.age / 1000) * 2 + d.id) * 6;   // simple hover bob
+    for (const p of live) if (Math.hypot(wdx(p.x, d.x), p.y - d.y) <= CONFIG.CATCH_R) { catchBadsoff(p, d); break; }
+  }
+  for (let i = S.feed.length - 1; i >= 0; i--) { S.feed[i].t -= dt; if (S.feed[i].t <= 0) S.feed.splice(i, 1); }
+}
+function usePower(p) {
+  if (!p.held || S.ph !== 'play' || p.frozen > 0 || p.stun > 0) return;
+  const type = p.held; p.held = null; const C = CONFIG;
+  if (type === 'bopster') { p.dashT = C.DASH_S; p.dashVX = C.DASH_V * (p.f || 1); p.boostT = C.DASH_BOOST_MS / 1000; Snd.play('djump'); }
+  else if (type === 'grumpulator') {
+    const live = P.filter(o => o.active && o !== p);
+    for (const o of live) if (Math.hypot(wdx(p.x, o.x), p.y - o.y) <= C.SLAM_R) o.stun = C.SLAM_MS;
+    Snd.play('tag');
+  } else if (type === 'sneakfolder') {
+    p.decoy = { x: p.x, y: p.y, f: p.f, t: C.DECOY_MS / 1000 };
+    p.x = wrapX(p.x + C.BLINK_D * (p.f || 1));
+    Snd.play('djump');
+  }
+}
+
 function endRound() {
   S.ph = 'over';
+  P.forEach(p => p.held = null);
   const ranked = P.filter(p => p.active).slice().sort((a, b) => a.itClock - b.itClock);
   S.ranked = ranked;
   const lowest = ranked[0].itClock;
@@ -484,8 +593,10 @@ function tick(dtms) {
   for (const p of live) {
     const inp = p.isBot ? botThink(p, live) : readHumanInput();
     stepPlayer(p, inp, dt, true);
+    if (p.isBot ? botWantsPower(p, live) : inp.pwr) usePower(p);
   }
   detectTags();
+  dronesStep(dtms);
   camStep(dt);
   if (S.t <= 0) { S.t = 0; endRound(); }
 }
@@ -508,6 +619,26 @@ function drawPlatforms(c) {
   const fy = FLOOR - cam.y + PLAY_Y0;
   if (fy >= PLAY_Y0 - 4 && fy <= PLAY_Y0 + PLAY_H + 4) { c.strokeStyle = CC.dk; c.lineWidth = 2; c.beginPath(); c.moveTo(0, fy + 4); c.lineTo(VW, fy + 4); c.stroke(); }
 }
+function drawDrones(c) {
+  for (const d of S.drones) {
+    const sy = d.y - cam.y + PLAY_Y0;
+    if (sy < PLAY_Y0 - 20 || sy > PLAY_Y0 + PLAY_H + 20) continue;
+    const def = CONFIG.BADSOFF[d.type], sc = d.spawnT > 0 ? 1 - d.spawnT / 0.4 : 1;
+    c.save(); c.globalAlpha = Math.max(0.15, sc);
+    c.fillStyle = def.col; c.beginPath(); c.arc(d.x, sy, 10 * Math.max(0.3, sc), 0, 7); c.fill();
+    c.strokeStyle = CC.dk; c.lineWidth = 1.5; c.stroke();
+    c.restore();
+    if (d.age > CONFIG.GLITCH_MS - 4000) { c.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.3 * Math.sin(d.age / 80)) + ')'; c.beginPath(); c.arc(d.x, sy, 11, 0, 7); c.stroke(); }
+  }
+}
+function drawDecoy(c, p) {
+  if (!p.decoy) return;
+  const sy = p.decoy.y - cam.y + PLAY_Y0; if (sy < PLAY_Y0 - 44 || sy > PLAY_Y0 + PLAY_H + 4) return;
+  c.save(); c.globalAlpha = clamp(p.decoy.t / (CONFIG.DECOY_MS / 1000), 0, 1) * 0.5;
+  c.translate(p.decoy.x, sy - CONFIG.HIT_H); if (p.decoy.f < 0) c.scale(-1, 1);
+  c.fillStyle = CONFIG.ROBOTS[p.robot].col; c.fillRect(-CONFIG.HIT_W / 2, 0, CONFIG.HIT_W, CONFIG.HIT_H);
+  c.restore();
+}
 function drawRobot(c, p) {
   if (!p.active) return;
   const r = CONFIG.ROBOTS[p.robot] || CONFIG.ROBOTS[0];
@@ -516,7 +647,7 @@ function drawRobot(c, p) {
   c.save();
   c.translate(x, yb - h);
   if (p.f < 0) c.scale(-1, 1);
-  c.fillStyle = r.col; c.globalAlpha = p.frozen > 0 ? 0.55 : 1;
+  c.fillStyle = p.stun > 0 ? '#ffd23d' : r.col; c.globalAlpha = p.frozen > 0 ? 0.55 : 1;
   const bob = p.onGround ? Math.sin(p.a) * 2 : 0;
   c.fillRect(-w / 2, bob, w, h);
   c.strokeStyle = CC.dk; c.lineWidth = 2; c.strokeRect(-w / 2, bob, w, h);
@@ -564,6 +695,7 @@ function drawHUD(c) {
   c.textAlign = 'left'; c.font = '600 11px system-ui';
   let lx = 10;
   for (const p of P) { if (!p.active) continue; c.fillStyle = CONFIG.ROBOTS[p.robot].col; c.fillText(fmtClock(p.itClock), lx, 31); lx += 46; }
+  if (S.feed.length) { c.textAlign = 'center'; c.font = '600 9px system-ui'; c.fillStyle = CC.t3; c.fillText(S.feed[S.feed.length - 1].msg, VW / 2, 44); }
 }
 
 function drawPanel(c) {
@@ -576,12 +708,21 @@ function drawPanel(c) {
   c.fillStyle = touch.jumpId >= 0 ? CC.md : CC.dk; c.strokeStyle = CC.bd; c.lineWidth = 2;
   c.beginPath(); c.roundRect(JB.x - JB.w / 2, PANEL_Y0 + JB.y - JB.h / 2, JB.w, JB.h, 16); c.fill(); c.stroke();
   c.fillStyle = CC.t3; c.font = '700 13px system-ui'; c.textAlign = 'center'; c.fillText('JUMP', JB.x, PANEL_Y0 + JB.y + 4);
+  const PB = CONFIG.PWRBTN, me = P[0], held = me.held, def = held ? CONFIG.BADSOFF[held] : null;
+  c.beginPath(); c.arc(PB.x, PANEL_Y0 + PB.y, PB.r, 0, 7);
+  c.fillStyle = touch.pwrId >= 0 ? CC.md : CC.dk; c.fill();
+  c.strokeStyle = def ? def.col : CC.bd; c.lineWidth = 2; c.stroke();
+  c.fillStyle = def ? def.col : CC.t2; c.font = '700 9px system-ui'; c.textAlign = 'center';
+  c.fillText(def ? def.name : 'CATCH A', PB.x, PANEL_Y0 + PB.y - (def ? 0 : 3));
+  if (!def) c.fillText('BADSOFFWARE', PB.x, PANEL_Y0 + PB.y + 8);
 }
 
 function drawPlayfield(c) {
   c.save(); c.beginPath(); c.rect(0, PLAY_Y0, VW, PLAY_H); c.clip();
   c.fillStyle = CC.bg; c.fillRect(0, PLAY_Y0, VW, PLAY_H);
   drawPlatforms(c);
+  drawDrones(c);
+  for (const p of P) drawDecoy(c, p);
   for (const p of P) drawRobot(c, p);
   drawOffscreenArrows(c);
   c.restore();
@@ -621,7 +762,8 @@ requestAnimationFrame(frame);
 
 /* ---------- test hook: exposes state for automated tests only ---------- */
 window.__bsw = { CONFIG, P, S, L, cam, LAYOUTS, stepPlayer, resetPlayer, startLocal, tick, applyTag, tagAllowed, detectTags,
-  endRound, hitGap, wrapX, wdx, buildLayout, checkReach, camSnap, camStep, botThink, FLOOR, WORLD_H, VW, VH, PLAY_H };
+  endRound, hitGap, wrapX, wdx, buildLayout, checkReach, camSnap, camStep, botThink, botWantsPower,
+  trySpawnBadsoff, catchBadsoff, applyHijack, usePower, dronesStep, FLOOR, WORLD_H, VW, VH, PLAY_H };
 </script>
 </body>
 </html>
