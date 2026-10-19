@@ -339,7 +339,7 @@ function mkPlayer(slot) {
 function resetPlayer(p, slot, n) {
   p.x = spawnXFor(slot, n); p.y = FLOOR; p.vx = 0; p.vy = 0; p.f = 1; p.onGround = true; p.standPl = null;
   p.canDbl = true; p.jumping = false; p.coyote = 0; p.jumpBuf = 0; p.dropT = 0; p.noCtl = 0; p.a = 0;
-  p.it = false; p.itClock = 0; p.frozen = 0; p.tagCd = 0; p.lastTaggedBy = -1;
+  p.it = false; p.itClock = 0; p.frozen = 0; p.tagCd = 0; p.lastTaggedBy = -1; p._bot = null;
 }
 function stepPlayer(p, inp, dt, active) {
   const C = CONFIG, prevY = p.y, ground = p.onGround;
@@ -377,19 +377,52 @@ function stepPlayer(p, inp, dt, active) {
   if (p.it && p.active) p.itClock += dt * 1000;
 }
 
-/* ---------- bots: simple chase/flee stub (full AI lands in a later commit) ---------- */
+/* ---------- bots ----------
+   PRD section 13: reacts ~380ms late, runs at BOT.speedScale, re-plans every ~BOT.thinkMs.
+   When It, chases the nearest robot and climbs towards their height. When not It, keeps
+   distance from the It robot, climbing or dropping to escape (half the time when close). */
+function botState(p) { return p._bot || (p._bot = { planT: 0, move: 0, wantJump: false, wantDown: false, stepX: null }); }
+function curStandY(p) { return p.standPl ? p.standPl.y : FLOOR; }
+function nearestStepUp(p) {                        // best reachable platform above the one p is standing on, towards the top
+  const curY = curStandY(p);
+  let best = null, bestScore = -1;
+  for (const pl of L.plats) {
+    const rise = curY - pl.y; if (rise <= 0 || rise > CONFIG.RISE_MAX) continue;
+    const gap = ivGap(pl.x, pl.w, p.x, CONFIG.HIT_W); if (gap > CONFIG.GAP_MAX) continue;
+    const score = rise - gap * 0.3;
+    if (score > bestScore) { bestScore = score; best = pl; }
+  }
+  return best;
+}
 function botThink(p, players) {
+  const bs = botState(p);
   if (p.frozen > 0) return { move: 0, held: false, press: false, down: false };
-  const others = players.filter(o => o !== p && o.active);
-  if (!others.length) return { move: 0, held: false, press: false, down: false };
-  let target;
-  if (p.it) { target = others.reduce((a, b) => Math.abs(wdx(p.x, a.x)) < Math.abs(wdx(p.x, b.x)) ? a : b); }
-  else { const itP = others.find(o => o.it); target = itP || others[0]; }
-  const dx = target ? wdx(p.x, target.x) : 0;
-  const flee = !p.it;
-  let move = Math.sign(dx) * (flee ? -1 : 1);
-  if (Math.abs(dx) < 20) move = 0;
-  return { move: move * CONFIG.BOT.speedScale, held: false, press: Math.random() < 0.01, down: false };
+  bs.planT -= 1000 / 60;
+  if (bs.planT <= 0) {
+    bs.planT = CONFIG.BOT.thinkMs + rnd(-30, 30);
+    const others = players.filter(o => o !== p && o.active);
+    if (!others.length) { bs.move = 0; bs.wantJump = false; bs.wantDown = false; bs.stepX = null; }
+    else if (p.it) {
+      const target = others.reduce((a, b) => Math.abs(wdx(p.x, a.x)) + Math.abs(p.y - a.y) < Math.abs(wdx(p.x, b.x)) + Math.abs(p.y - b.y) ? a : b);
+      const dy = target.y - p.y;                   // dy<0: target is above
+      if (dy < -40) { const step = nearestStepUp(p); bs.stepX = step ? step.x + step.w / 2 : target.x; }
+      else bs.stepX = target.x;
+      const dxs = wdx(p.x, bs.stepX);
+      bs.move = Math.abs(dxs) < 14 ? 0 : Math.sign(dxs);
+      bs.wantJump = dy < -40 && Math.abs(dxs) < 50;
+      bs.wantDown = dy > 90 && p.standPl && Math.abs(dxs) < 16;
+    } else {
+      const itP = others.find(o => o.it) || others[0];
+      const dx = wdx(p.x, itP.x), dy = itP.y - p.y, close = Math.abs(dx) < 160 && Math.abs(dy) < 160;
+      if (close && dy < -20) { const step = nearestStepUp(p); bs.stepX = step ? step.x + step.w / 2 : p.x - Math.sign(dx) * 80; }
+      else bs.stepX = p.x - Math.sign(dx || 1) * 80;   // run away horizontally when not actively climbing
+      const dxs = wdx(p.x, bs.stepX);
+      bs.move = Math.abs(dxs) < 14 ? 0 : Math.sign(dxs);
+      bs.wantJump = close && dy < -20 && Math.abs(dxs) < 50;
+      bs.wantDown = close && dy < -60 && p.standPl && Math.random() < 0.5;
+    }
+  }
+  return { move: bs.move * CONFIG.BOT.speedScale, held: bs.wantJump, press: bs.wantJump && (p.onGround || p.canDbl), down: bs.wantDown };
 }
 
 /* ---------- session: up to 4 players, It-clock scoring, local/practice for now ---------- */
@@ -588,7 +621,7 @@ requestAnimationFrame(frame);
 
 /* ---------- test hook: exposes state for automated tests only ---------- */
 window.__bsw = { CONFIG, P, S, L, cam, LAYOUTS, stepPlayer, resetPlayer, startLocal, tick, applyTag, tagAllowed, detectTags,
-  endRound, hitGap, wrapX, wdx, buildLayout, checkReach, camSnap, camStep, FLOOR, WORLD_H, VW, VH, PLAY_H };
+  endRound, hitGap, wrapX, wdx, buildLayout, checkReach, camSnap, camStep, botThink, FLOOR, WORLD_H, VW, VH, PLAY_H };
 </script>
 </body>
 </html>
