@@ -285,7 +285,14 @@ const SFX = {
   tick() { Snd.tone(1500, 1500, 0.03, 'square', 0.1); },
   win() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => Snd.tone(f, f, 0.14, 'square', 0.16, i * 0.12)); },
   draw() { Snd.tone(440, 440, 0.2, 'square', 0.15); Snd.tone(440, 440, 0.3, 'square', 0.15, 0.25); },
-  ui() { Snd.tone(660, 660, 0.05, 'square', 0.1); }
+  lose() { [440, 370, 311, 262].forEach((f, i) => Snd.tone(f, f, 0.16, 'triangle', 0.2, i * 0.14)); },
+  ui() { Snd.tone(660, 660, 0.05, 'square', 0.1); },
+  catch_() { [523, 659, 784, 1047].forEach((f, i) => Snd.tone(f, f, 0.07, 'square', 0.14, i * 0.05)); },
+  dash() { Snd.tone(300, 900, 0.14, 'sawtooth', 0.14); Snd.tone(1200, 600, 0.08, 'square', 0.1, 0.12); },
+  slam() { Snd.tone(110, 40, 0.3, 'triangle', 0.35); Snd.noise(0.25, 0.25, 0, 300); },
+  blink() { Snd.noise(0.2, 0.2, 0, 3500); Snd.tone(1800, 200, 0.22, 'sawtooth', 0.16); },
+  hijack() { Snd.tone(900, 180, 0.2, 'square', 0.12); Snd.tone(220, 880, 0.2, 'square', 0.12, 0.1); Snd.noise(0.12, 0.1, 0, 5000); },
+  warn() { Snd.tone(880, 880, 0.09, 'square', 0.14); }
 };
 
 /* ---------- input: touch (multi-touch by identifier) + keyboard ---------- */
@@ -384,6 +391,7 @@ function stepPlayer(p, inp, dt, active) {
   if (p.it && p.active) p.itClock += dt * 1000;
   if (p.dashT > 0) {                                // Dash Burst: no gravity, ignores input, for DASH_S seconds
     p.dashT -= dt; p.x = wrapX(p.x + p.dashVX * dt); p.a += dt * 10;
+    spawnPart(p.x, p.y - 18, -p.dashVX * 0.25, 0, 0.18, 2.5, '#ff5ec8');
     return;
   }
   const ctl = active && p.noCtl <= 0 && p.stun <= 0;
@@ -405,11 +413,11 @@ function stepPlayer(p, inp, dt, active) {
   p.x = wrapX(p.x + p.vx * dt);
   p.y += p.vy * dt;
   p.onGround = false; p.standPl = null;
-  if (p.y >= FLOOR) { p.y = FLOOR; if (p.vy > 40) { Snd.play('land'); p.landT = 0.22; } p.vy = 0; p.onGround = true; p.jumping = false; }
+  if (p.y >= FLOOR) { p.y = FLOOR; if (p.vy > 40) { Snd.play('land'); p.landT = 0.22; burst(p.x, p.y, '#8a90b0', 4, 60); } p.vy = 0; p.onGround = true; p.jumping = false; }
   else if (p.vy >= 0 && p.dropT <= 0) {
     for (const pl of L.plats) {
       if (prevY > pl.y + 1 || p.y < pl.y || !overlapX(p.x, pl)) continue;
-      p.y = pl.y; if (p.vy > 40) { Snd.play('land'); p.landT = 0.22; } p.vy = 0; p.onGround = true; p.jumping = false; p.standPl = pl;
+      p.y = pl.y; if (p.vy > 40) { Snd.play('land'); p.landT = 0.22; burst(p.x, p.y, '#8a90b0', 4, 60); } p.vy = 0; p.onGround = true; p.jumping = false; p.standPl = pl;
       break;
     }
   }
@@ -669,7 +677,7 @@ function tagAllowed(by, target) { return by.active && target.active && by !== ta
 function applyTag(by, target) {
   by.it = false; target.it = true; target.frozen = CONFIG.FREEZE_MS; target.noCtl = CONFIG.FREEZE_MS / 1000;
   by.tagCd = target.tagCd = CONFIG.TAG_COOLDOWN_MS; target.lastTaggedBy = by.slot;
-  Snd.play('tag');
+  Snd.play('tag'); burst(target.x, target.y - 20, '#fff', 8, 140); ring(target.x, target.y - 20, '#ff4d6a', 36, 0.3); shake(4, 0.15);
 }
 function detectTags() {
   const live = P.filter(p => p.active);
@@ -708,7 +716,7 @@ function applyHijack(catcher) {
   if (oldIt) { oldIt.it = false; oldIt.tagCd = CONFIG.TAG_COOLDOWN_MS; }
   newIt.it = true; newIt.frozen = CONFIG.FREEZE_MS; newIt.noCtl = CONFIG.FREEZE_MS / 1000; newIt.tagCd = CONFIG.TAG_COOLDOWN_MS;
   pushFeed(CONFIG.ROBOTS[catcher.robot].name + ' HIJACKED IT TO ' + CONFIG.ROBOTS[newIt.robot].name);
-  Snd.play('tag');
+  Snd.play('hijack'); ring(newIt.x, newIt.y - 20, '#3de6ff', 46, 0.4); burst(newIt.x, newIt.y - 20, '#3de6ff', 10, 110); shake(5, 0.2);
 }
 function catchBadsoff(p, d) {
   S.drones.splice(S.drones.indexOf(d), 1); d.billboard.occupied = false;
@@ -716,7 +724,7 @@ function catchBadsoff(p, d) {
   if (!def.holdable) { applyHijack(p); return; }
   p.held = d.type;
   pushFeed(CONFIG.ROBOTS[p.robot].name + ' CAUGHT ' + def.name);
-  Snd.play('ui');
+  Snd.play('catch_'); burst(p.x, p.y - 20, def.col, 6, 90);
 }
 function dronesStep(dtms) {
   const dt = dtms / 1000, live = P.filter(p => p.active);
@@ -725,24 +733,56 @@ function dronesStep(dtms) {
   for (let i = S.drones.length - 1; i >= 0; i--) {
     const d = S.drones[i];
     d.age += dtms; if (d.spawnT > 0) d.spawnT -= dt;
-    if (d.age >= CONFIG.GLITCH_MS) { S.drones.splice(i, 1); d.billboard.occupied = false; continue; }
+    if (d.age >= CONFIG.GLITCH_MS) { S.drones.splice(i, 1); d.billboard.occupied = false; burst(d.x, d.y, CONFIG.BADSOFF[d.type].col, 5, 50); continue; }
     d.y = d.billboard.y + Math.sin((d.age / 1000) * 2 + d.id) * 6;   // simple hover bob
     for (const p of live) if (Math.hypot(wdx(p.x, d.x), p.y - d.y) <= CONFIG.CATCH_R) { catchBadsoff(p, d); break; }
   }
   for (let i = S.feed.length - 1; i >= 0; i--) { S.feed[i].t -= dt; if (S.feed[i].t <= 0) S.feed.splice(i, 1); }
 }
+/* ---------- effects: pooled particles, expanding rings, light screen shake ---------- */
+const FX = { parts: [], rings: [], shakeT: 0, shakeMag: 0 };
+const PART_POOL = 220;
+function spawnPart(x, y, vx, vy, life, size, col) {
+  if (FX.parts.length >= PART_POOL) FX.parts.shift();
+  FX.parts.push({ x, y, vx, vy, life, maxLife: life, size, col });
+}
+function burst(x, y, col, n, spd) {
+  for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, s = spd * (0.5 + Math.random() * 0.5); spawnPart(x, y, Math.cos(a) * s, Math.sin(a) * s, 0.35 + Math.random() * 0.3, 2 + Math.random() * 2, col); }
+}
+function ring(x, y, col, maxR, life) { FX.rings.push({ x, y, col, t: 0, life, maxR }); }
+function shake(mag, t) { FX.shakeT = Math.max(FX.shakeT, t); FX.shakeMag = Math.max(FX.shakeMag, mag); }
+function fxStep(dt) {
+  for (let i = FX.parts.length - 1; i >= 0; i--) { const p = FX.parts[i]; p.life -= dt; if (p.life <= 0) { FX.parts.splice(i, 1); continue; } p.x = wrapX(p.x + p.vx * dt); p.y += p.vy * dt; p.vy += 400 * dt; }
+  for (let i = FX.rings.length - 1; i >= 0; i--) { const r = FX.rings[i]; r.t += dt; if (r.t >= r.life) FX.rings.splice(i, 1); }
+  if (FX.shakeT > 0) { FX.shakeT -= dt; if (FX.shakeT <= 0) FX.shakeMag = 0; }
+}
+function fxDraw(c) {
+  for (const p of FX.parts) {
+    const sy = p.y - cam.y + PLAY_Y0; if (sy < PLAY_Y0 - 20 || sy > PLAY_Y0 + PLAY_H + 20) continue;
+    c.globalAlpha = clamp(p.life / p.maxLife, 0, 1); c.fillStyle = p.col; c.beginPath(); c.arc(p.x, sy, p.size, 0, 7); c.fill();
+  }
+  c.globalAlpha = 1;
+  for (const r of FX.rings) {
+    const sy = r.y - cam.y + PLAY_Y0, t = r.t / r.life;
+    c.globalAlpha = 1 - t; c.strokeStyle = r.col; c.lineWidth = 3; c.beginPath(); c.arc(r.x, sy, r.maxR * t, 0, 7); c.stroke();
+  }
+  c.globalAlpha = 1;
+}
+
 function usePower(p) {
   if (!p.held || S.ph !== 'play' || p.frozen > 0 || p.stun > 0) return;
   const type = p.held; p.held = null; const C = CONFIG;
-  if (type === 'bopster') { p.dashT = C.DASH_S; p.dashVX = C.DASH_V * (p.f || 1); p.boostT = C.DASH_BOOST_MS / 1000; Snd.play('djump'); }
+  if (type === 'bopster') { p.dashT = C.DASH_S; p.dashVX = C.DASH_V * (p.f || 1); p.boostT = C.DASH_BOOST_MS / 1000; Snd.play('dash'); burst(p.x, p.y - 18, '#ff5ec8', 6, 100); }
   else if (type === 'grumpulator') {
     const live = P.filter(o => o.active && o !== p);
-    for (const o of live) if (Math.hypot(wdx(p.x, o.x), p.y - o.y) <= C.SLAM_R) o.stun = C.SLAM_MS;
-    Snd.play('tag');
+    for (const o of live) if (Math.hypot(wdx(p.x, o.x), p.y - o.y) <= C.SLAM_R) { o.stun = C.SLAM_MS; burst(o.x, o.y - 20, '#ffd23d', 5, 70); }
+    Snd.play('slam'); ring(p.x, p.y - 10, '#ff8a3d', C.SLAM_R, 0.4); shake(6, 0.25);
   } else if (type === 'sneakfolder') {
+    burst(p.x, p.y - 18, '#ffc93d', 7, 90);
     p.decoy = { x: p.x, y: p.y, f: p.f, t: C.DECOY_MS / 1000 };
     p.x = wrapX(p.x + C.BLINK_D * (p.f || 1));
-    Snd.play('djump');
+    burst(p.x, p.y - 18, '#ffc93d', 7, 90);
+    Snd.play('blink');
   }
 }
 
@@ -753,7 +793,8 @@ function endRound() {
   S.ranked = ranked;
   const lowest = ranked[0].itClock;
   S.winners = ranked.filter(p => Math.abs(p.itClock - lowest) <= 100);
-  Snd.play(S.winners.length > 1 ? 'draw' : 'win');
+  const mySlot = NET.mode === 'local' ? 0 : NET.mySlot, iWon = S.winners.some(p => p.slot === mySlot);
+  Snd.play(S.winners.length > 1 ? 'draw' : (iWon ? 'win' : 'lose'));
 }
 
 function tick(dtms) {
@@ -774,7 +815,7 @@ function tick(dtms) {
   }
   detectTags();
   dronesStep(dtms);
-  camStep(dt);
+  camStep(dt); fxStep(dt);
   if (S.t <= 0) { S.t = 0; endRound(); }
 }
 
@@ -839,7 +880,7 @@ function netTick(dtms) {
     NET.lastSharedT += dtms;
     if (NET.lastSharedT >= 1000 / CONFIG.SHARED_HZ) { NET.lastSharedT = 0; Net.send(sharedSnapshot()); }
   }
-  camStep(dt);
+  camStep(dt); fxStep(dt);
 }
 
 /* ---------- art: the processed BSWV21 pack (tools/process_bswv21.py + embed_art_v2.py), embedded
@@ -1025,12 +1066,14 @@ function drawPanel(c) {
 function drawPlayfield(c) {
   const menuPh = S.ph === 'title' || S.ph === 'enterCode' || S.ph === 'lobby';
   c.save(); c.beginPath(); c.rect(0, PLAY_Y0, VW, PLAY_H); c.clip();
-  c.fillStyle = CC.bg; c.fillRect(0, PLAY_Y0, VW, PLAY_H);
+  if (FX.shakeMag > 0) c.translate((Math.random() - 0.5) * FX.shakeMag, (Math.random() - 0.5) * FX.shakeMag);
+  c.fillStyle = CC.bg; c.fillRect(-10, PLAY_Y0 - 10, VW + 20, PLAY_H + 20);
   if (!menuPh) {
     drawPlatforms(c);
     drawDrones(c);
     for (const p of P) drawDecoy(c, p);
     for (const p of P) drawRobot(c, p);
+    fxDraw(c);
     drawOffscreenArrows(c);
   }
   c.restore();
@@ -1213,7 +1256,7 @@ window.__bsw = { CONFIG, P, S, L, cam, LAYOUTS, stepPlayer, resetPlayer, startLo
   endRound, hitGap, wrapX, wdx, buildLayout, checkReach, camSnap, camStep, botThink, botWantsPower,
   trySpawnBadsoff, catchBadsoff, applyHijack, usePower, dronesStep, FLOOR, WORLD_H, VW, VH, PLAY_H,
   Net, NET, startHost, startGuest, backToTitle, myStateMsg, applyStateMsg, sharedSnapshot, applySharedSnapshot, netTick,
-  Art, pickRobotAnim };
+  Art, pickRobotAnim, FX, fxStep, burst, ring, shake };
 </script>
 </body>
 </html>
