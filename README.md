@@ -1,7 +1,18 @@
 # Badsoffware
 
-2-player online tag game. One self-contained `index.html`, vanilla JS and Canvas 2D, no build step.
-Two mecha pilots (pick from Patch, Bolt, Glitch, Rumble, Nova and Havoc; all handle identically) chase each other round a dark computer desktop for 2 minutes. Most tags wins.
+**V2 (current)**: 2-4 player online tag game, portrait phone screens. Robots (Patch, Bolt, Glitch,
+Havoc; Rumble and Nova benched) climb a 2-screen city tower for 1-3 minutes, It passed on by a
+touch. Least total time as It wins. Catch a Badsoffware drone (Bopster/Grumpulator/Sneakfolder/
+Hijacker) for a one-shot power-up. `docs/PRD_v2.md` has the v2 spec this was built from (the
+linked Claude Docs page it names is the source of truth; the markdown is an offline copy).
+Rebuild the art pack and run the checks:
+
+    python3 tools/process_bswv21.py <raw BSWV21 zips extracted here> art
+    python3 tools/embed_art_v2.py
+    node test/run_all.mjs   # needs a local server on :8123, see "Run locally" below
+
+**V1 (superseded by the above)**: 2-player online tag game. One self-contained `index.html`, vanilla JS and Canvas 2D, no build step.
+Two mecha pilots (pick from Patch, Bolt, Glitch, Rumble, Nova and Havoc; all handle identically) chase each other round a dark computer desktop for 2 minutes. Most tags wins. The sections below still apply to v2 unless noted (run locally, deploy, tuning).
 
 ## Run locally
 Never open the file directly. Serve it:

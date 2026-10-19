@@ -73,3 +73,54 @@ Judgement calls where the PRD was silent or ambiguous.
 - **Weapons**: Patch Cable reaches 230 px up (was 200).
 - **Unchanged on purpose**: round length (2 min), both pilots still start on the ground, no anti-stalemate mechanic yet. If someone can sit unreachable at the top, add one (closing top windows or a rising hazard). Needs real play to know.
 - **Tests**: `test/climb.mjs` (camera follows, arrow, free fall, bot chase) and `test/tower.mjs` added. `test/weapons.mjs` and `test/touch.mjs` now use `__bsw.FLOOR` instead of hard-coded ground heights.
+
+## V2: rebuilt from the v2 PRD (portrait, 4 players, Badsoffware power-ups)
+`index.html` was rewritten rather than patched in place - orientation, player count, scoring rule
+and the whole ability system all change (section "What changed", docs/PRD_v2.md), so patching
+would have touched nearly every function anyway. The v1 engine (seeded layout generator, physics
+constants, camera-follow math, input handling, audio synth) was reused by porting the algorithms,
+not the code verbatim, since the surrounding data shapes (world height, player count, platform
+list) are all different.
+
+- **Art scale normalization uses the median frame height of a character's run cycle, not the
+  max.** The raw BSWV21 sources aren't all drawn at the same zoom level (Bolt's frames run noticeably
+  larger than Patch's), and within Bolt's own run cycle individual frames vary enough that max let
+  one frame drag the whole character smaller than intended. Median is robust to both.
+- **Idle/tagged stopgaps**: Patch and Bolt's delivered "idle_4_frames" sources turned out to be two
+  mismatched reference poses, not an animation, and Havoc has no delivered tagged art at all. Each
+  stopgaps to a single real frame (the run cycle's frame 0, or the idle frame for Havoc's tagged)
+  animated in code (bob / shake) rather than block on art that doesn't exist - the PRD's own
+  Appendix A already names exactly this stopgap for Patch's idle, so it's not a new decision, just
+  applied consistently to the other three cases that turned out to need it too.
+- **Networking simplifications vs v1's weapon-era net code**: no snapshot interpolation/
+  extrapolation for remote robots (positions are applied directly from the latest message - can
+  look slightly jittery over a real network's latency) and no lag-compensation history buffer for
+  tag/Badsoffware-catch claims (a direct distance check against the claimant's reported position).
+  Both are flagged in PRD_v2.md's own risks table as needing real play to tune; they're easy to add
+  later (the claim messages already carry everything a lag-comp buffer would need) and weren't
+  worth building before there was a real device to test against.
+- **Reachability** is checked by BFS against the PRD's own stated rule (climb: rise<=165px AND
+  gap<=110px; fall: any rise, gap<=110px only) rather than by simulating real jumps the way v1's
+  tower did. Simpler to implement and verify, and it's checking the same rule the PRD states in
+  words - a real-jump simulation would be a strictly stronger test and is a reasonable thing to add
+  later, not a correctness gap found so far.
+- **Ground Slam / Dash Burst / Phase Blink networking**: Dash and Blink are self-movement, so the
+  actor's own phone applies them immediately (same model v1 used for weapons); Ground Slam has no
+  self-movement, so the actor's phone only sends a claim and the host applies the AoE using its own
+  copy of the actor's position - mirrors how v1 handled "effects on the other pilot are applied by
+  that pilot's own phone" for its weapons, adapted to an AoE that can hit several robots at once.
+- **Bots** don't explore the tower on their own; they only climb/flee vertically when the relevant
+  robot (the It robot, or a chase target) is actually close (within 160px both axes). This matches
+  PRD section 13's "when not It, keeps distance from the It robot, climbs or drops to escape" -
+  reactive, not constant tower-scaling. If play-testing finds bots feel too passive on tall
+  layouts, the fix is widening that distance threshold, not adding random exploration.
+- **Not done this pass**: the Page tileset scenery (background layers, platform skins, props) stays
+  greybox/colour-coded; the current platforms are legible and the city backdrop art would be a
+  reasonable next increment rather than something broken as shipped. PeerJS is code-complete
+  (`Net.hostPeer`/`Net.joinPeer`) but unverified - there's no real device in this build environment
+  to dial a PeerJS broker from. The tabs transport (`Net.openTabs`, used by `test/v2_net.mjs`) is
+  what's actually been exercised end to end.
+- **Tests**: `test/v2_*.mjs` (smoke, tower, bot, powerups, net, art, fx), `test/run_all.mjs` runs
+  all of them and prints a summary. The v1 `test/*.mjs` files test the v1 game (different orientation,
+  player count and ability system) and were left as-is rather than adapted - they're a record of
+  what v1 shipped with, not a suite v2 needs to keep passing.
