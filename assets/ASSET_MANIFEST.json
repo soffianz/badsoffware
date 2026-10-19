@@ -1,0 +1,121 @@
+{
+  "project": "Badsoffware",
+  "version": "1.2-generated-sprites",
+  "logicalResolution": {
+    "width": 844,
+    "height": 390
+  },
+  "palette": {
+    "background": "#0a0d14",
+    "panel": "#121a2a",
+    "panelBorder": "#2b3a55",
+    "lightTrim": "#e8f4ff",
+    "patchMint": "#3df5c4",
+    "patchEyeGlow": "#9ffcff",
+    "boltBlue": "#4db8ff",
+    "itPink": "#ff4fa3",
+    "warningYellow": "#ffd23d",
+    "orange": "#ff8a3d"
+  },
+  "references": {
+    "visualDirection": "references/badsoffware_visual_direction.png",
+    "characterSpriteReferenceBoard": "references/character_sprite_reference_board.png",
+    "assetPackReferenceBoard": "references/asset_pack_reference_board.png"
+  },
+  "background": {
+    "file": "backgrounds/desktop_background_reference.png",
+    "width": 1688,
+    "height": 780,
+    "status": "prototype_embedded_not_final",
+    "note": "Illustrative scenery crop; inspect before use. Do not bake movable platforms, gameplay windows or HUD into the final background. Final 1688x780 background still required.",
+    "prototypeFile": "backgrounds/desktop_background_proto.webp",
+    "processing": "tools/make_bg.py removes two baked floating bars; game dims it (CONFIG.ART.BG_DIM) and draws grid and scanlines in code; embedded as data URI by tools/embed_art.py"
+  },
+  "characters": {
+    "patch": {
+      "displayName": "Patch, P-01 Repair Frame",
+      "reference": "references/character_sprite_reference_board.png",
+      "productionSpriteSheet": "characters/patch/patch_sprites.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "anchor": "bottom-centre",
+      "facing": "right",
+      "hitbox": {
+        "width": 28,
+        "height": 40
+      },
+      "plannedFrames": [
+        "idle",
+        "run1",
+        "run2",
+        "run3",
+        "run4",
+        "jumpUp",
+        "jumpPeak",
+        "jumpDown",
+        "land"
+      ],
+      "status": "generated_from_vector_designs_not_painted_art",
+      "gameHook": "CONFIG.ART.SHEETS.patch (or ?patchSheet=url): one row of 9 frames 192x192, order idle,run1-4,jumpUp,jumpPeak,jumpDown,land"
+    },
+    "bolt": {
+      "displayName": "Bolt, P-02 Striker Frame",
+      "reference": "references/character_sprite_reference_board.png",
+      "productionSpriteSheet": "characters/bolt/bolt_sprites.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "anchor": "bottom-centre",
+      "facing": "right",
+      "hitbox": {
+        "width": 28,
+        "height": 40
+      },
+      "plannedFrames": [
+        "idle",
+        "run1",
+        "run2",
+        "run3",
+        "run4",
+        "jumpUp",
+        "jumpPeak",
+        "jumpDown",
+        "land"
+      ],
+      "status": "generated_from_vector_designs_not_painted_art",
+      "gameHook": "CONFIG.ART.SHEETS.bolt (or ?boltSheet=url): one row of 9 frames 192x192, order idle,run1-4,jumpUp,jumpPeak,jumpDown,land"
+    }
+  },
+  "drones": {
+    "bopster": {
+      "reference": "references/asset_pack_reference_board.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "status": "generated_from_vector_designs_not_painted_art",
+      "file": "drones/bopster.png"
+    },
+    "grumpulator": {
+      "reference": "references/asset_pack_reference_board.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "status": "generated_from_vector_designs_not_painted_art",
+      "file": "drones/grumpulator.png"
+    },
+    "sneakfolder": {
+      "reference": "references/asset_pack_reference_board.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "status": "generated_from_vector_designs_not_painted_art",
+      "file": "drones/sneakfolder.png"
+    }
+  },
+  "implementationRules": [
+    "Do not use reference boards as in-game sprites.",
+    "Do not infer collision boxes from sprite image dimensions.",
+    "Use code for the IT marker, shield bubble, speed trail, ghost opacity, particles, grid, scanlines, windows, platforms and HUD.",
+    "Keep all production images local and embed them in the final index.html during packaging if required."
+  ],
+  "missingProductionAssets": [
+    "OPTIONAL painted/illustrated replacements for the generated sprites, same filenames and frame layout (see DECISIONS.md)",
+    "final desktop background 1688x780 (current one is a dimmed concept crop)"
+  ]
+}

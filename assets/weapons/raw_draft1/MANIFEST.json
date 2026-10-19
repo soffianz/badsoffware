@@ -1,0 +1,104 @@
+{
+  "pack": "Badsoffware Weapon Effects Production Pack",
+  "version": "draft-1",
+  "canvas_policy": "Effect strips 1536x1024 (3:2); icon and extras sheets 1536x1024 (3:2 source constraint, per supplied instructions).",
+  "background": "Source magenta key approximated to alpha transparency; transparent PNG outputs.",
+  "assets": [
+    {
+      "filename": "patch_cable_fx.png",
+      "layout": "4 frames in one row",
+      "frames_or_items": "4",
+      "dimensions_px": [
+        1536,
+        1024
+      ],
+      "format": "PNG RGBA",
+      "status": "draft - requires visual QA",
+      "notes": "Source was a multi-panel composite; cable panel extracted and normalised. Frame fidelity needs visual review."
+    },
+    {
+      "filename": "zap_pulse_fx.png",
+      "layout": "4 frames in one row",
+      "frames_or_items": "4",
+      "dimensions_px": [
+        1536,
+        1024
+      ],
+      "format": "PNG RGBA",
+      "status": "draft - requires visual QA",
+      "notes": "Source was a multi-panel composite; lightning panel extracted and normalised. Frame fidelity needs visual review."
+    },
+    {
+      "filename": "phase_blink_fx.png",
+      "layout": "4 frames in one row",
+      "frames_or_items": "4",
+      "dimensions_px": [
+        1536,
+        1024
+      ],
+      "format": "PNG RGBA",
+      "status": "draft - requires visual QA",
+      "notes": "Generated image sliced into equal-width cells; stage boundaries are approximate."
+    },
+    {
+      "filename": "ground_slam_fx.png",
+      "layout": "4 frames in one row",
+      "frames_or_items": "4",
+      "dimensions_px": [
+        1536,
+        1024
+      ],
+      "format": "PNG RGBA",
+      "status": "draft - requires visual QA",
+      "notes": "Generated image sliced into equal-width cells; stage boundaries are approximate."
+    },
+    {
+      "filename": "dash_burst_fx.png",
+      "layout": "4 frames in one row",
+      "frames_or_items": "4",
+      "dimensions_px": [
+        1536,
+        1024
+      ],
+      "format": "PNG RGBA",
+      "status": "draft - requires visual QA",
+      "notes": "Generated image sliced into equal-width cells; stage boundaries are approximate."
+    },
+    {
+      "filename": "popup_bomb_fx.png",
+      "layout": "6 frames in one row",
+      "frames_or_items": "6",
+      "dimensions_px": [
+        1536,
+        1024
+      ],
+      "format": "PNG RGBA",
+      "status": "draft - requires visual QA",
+      "notes": "Generated image sliced into six equal-width cells; stage boundaries are approximate."
+    },
+    {
+      "filename": "weapon_icons.png",
+      "layout": "3 columns \u00d7 2 rows",
+      "frames_or_items": "6 icons",
+      "dimensions_px": [
+        1536,
+        1024
+      ],
+      "format": "PNG RGBA",
+      "status": "draft - requires visual QA",
+      "notes": "Generated image sliced into equal grid cells; verify icon centring before use."
+    },
+    {
+      "filename": "shared_extras.png",
+      "layout": "3 equal columns in one row",
+      "frames_or_items": "3 items",
+      "dimensions_px": [
+        1536,
+        1024
+      ],
+      "format": "PNG RGBA",
+      "status": "draft - requires visual QA",
+      "notes": "Generated image sliced into three equal columns; source layout was approximately correct."
+    }
+  ]
+}
