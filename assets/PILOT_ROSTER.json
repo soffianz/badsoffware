@@ -1,0 +1,24 @@
+{
+  "project": "Badsoffware",
+  "schema_version": "1.0",
+  "status": "AVAILABLE",
+  "notes": "Visual asset roster metadata for integration. Paths are relative to assets/. All pilots are cosmetic-only; use shared gameplay physics and hitboxes.",
+  "frame": {
+    "width": 192,
+    "height": 192,
+    "count": 9,
+    "facing": "right",
+    "anchor": "bottom-centre",
+    "baseline_y": 180,
+    "order": ["idle", "run1", "run2", "run3", "run4", "jumpUp", "jumpPeak", "jumpDown", "land"]
+  },
+  "defaults": ["patch", "bolt"],
+  "pilots": [
+    {"id":"patch","name":"Patch","designation":"Repair Frame","sprite":"characters/patch/patch_sprites.png","portrait":"ui/patch_portrait.png","dimensions":{"sheet":[1728,192],"frame":[192,192]},"colours":{"primary":"#3df5c4","eye":"#9ffcff","trim":"#e8f4ff"},"status":"AVAILABLE"},
+    {"id":"bolt","name":"Bolt","designation":"Heavy Assault Frame","sprite":"characters/bolt/bolt_sprites.png","portrait":"ui/bolt_portrait.png","dimensions":{"sheet":[1728,192],"frame":[192,192]},"colours":{"primary":"#4db8ff","accent":"#ffd23d"},"status":"AVAILABLE"},
+    {"id":"glitch","name":"Glitch","designation":"Stealth Frame","sprite":"characters/glitch/glitch_sprites.png","portrait":"ui/glitch_portrait.png","dimensions":{"sheet":[1728,192],"frame":[192,192]},"colours":{"primary":"violet","accent":"#ff4fa3"},"status":"AVAILABLE"},
+    {"id":"rumble","name":"Rumble","designation":"Industrial Heavy Frame","sprite":"characters/rumble/rumble_sprites.png","portrait":"ui/rumble_portrait.png","dimensions":{"sheet":[1728,192],"frame":[192,192]},"colours":{"primary":"#ff8a3d","accent":"#ffd23d"},"status":"AVAILABLE"},
+    {"id":"nova","name":"Nova","designation":"Scout Frame","sprite":"characters/nova/nova_sprites.png","portrait":"ui/nova_portrait.png","dimensions":{"sheet":[1728,192],"frame":[192,192]},"colours":{"primary":"#e8f4ff","accent":"cyan","secondary":"lime"},"status":"AVAILABLE"},
+    {"id":"havoc","name":"Havoc","designation":"Assault Frame","sprite":"characters/havoc/havoc_sprites.png","portrait":"ui/havoc_portrait.png","dimensions":{"sheet":[1728,192],"frame":[192,192]},"colours":{"primary":"crimson","secondary":"graphite","accent":"#ffd23d"},"status":"AVAILABLE"}
+  ]
+}

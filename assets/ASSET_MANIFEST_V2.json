@@ -1,0 +1,589 @@
+{
+  "version": "1.0",
+  "project": "Badsoffware",
+  "scope": "Visual asset production only",
+  "status_definitions": {
+    "NEEDED": "Required painted production asset not yet accepted",
+    "AVAILABLE": "File exists but requires visual review/approval",
+    "OPTIONAL": "Non-blocking optional asset",
+    "COMPLETE": "File exists and passed all acceptance checks"
+  },
+  "assets": [
+    {
+      "path": "characters/patch/patch_sprites.png",
+      "dimensions": [
+        1728,
+        192
+      ],
+      "format": "PNG",
+      "intended_use": "Nine-frame right-facing pilot animation strip",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "ui/patch_portrait.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Pilot selection portrait",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "characters/bolt/bolt_sprites.png",
+      "dimensions": [
+        1728,
+        192
+      ],
+      "format": "PNG",
+      "intended_use": "Nine-frame right-facing pilot animation strip",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "ui/bolt_portrait.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Pilot selection portrait",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "characters/glitch/glitch_sprites.png",
+      "dimensions": [
+        1728,
+        192
+      ],
+      "format": "PNG",
+      "intended_use": "Nine-frame right-facing pilot animation strip",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "ui/glitch_portrait.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Pilot selection portrait",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "characters/rumble/rumble_sprites.png",
+      "dimensions": [
+        1728,
+        192
+      ],
+      "format": "PNG",
+      "intended_use": "Nine-frame right-facing pilot animation strip",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "ui/rumble_portrait.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Pilot selection portrait",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "characters/nova/nova_sprites.png",
+      "dimensions": [
+        1728,
+        192
+      ],
+      "format": "PNG",
+      "intended_use": "Nine-frame right-facing pilot animation strip",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "ui/nova_portrait.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Pilot selection portrait",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "characters/havoc/havoc_sprites.png",
+      "dimensions": [
+        1728,
+        192
+      ],
+      "format": "PNG",
+      "intended_use": "Nine-frame right-facing pilot animation strip",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "ui/havoc_portrait.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Pilot selection portrait",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "drones/bopster.png",
+      "dimensions": [
+        128,
+        128
+      ],
+      "format": "PNG",
+      "intended_use": "Rogue-app drone sprite",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "drones/grumpulator.png",
+      "dimensions": [
+        128,
+        128
+      ],
+      "format": "PNG",
+      "intended_use": "Rogue-app drone sprite",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "drones/sneakfolder.png",
+      "dimensions": [
+        128,
+        128
+      ],
+      "format": "PNG",
+      "intended_use": "Rogue-app drone sprite",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "AVAILABLE",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "backgrounds/desktop_background.png",
+      "dimensions": [
+        1688,
+        780
+      ],
+      "format": "PNG",
+      "intended_use": "Clean futuristic desktop gameplay background",
+      "transparency": "Not applicable: opaque background",
+      "status": "AVAILABLE",
+      "notes": "Draft environment; inspect central contrast and edge details before final approval."
+    },
+    {
+      "path": "branding/app_icon_512.png",
+      "dimensions": [
+        512,
+        512
+      ],
+      "format": "PNG",
+      "intended_use": "Badsoffware web app icon",
+      "transparency": "Not applicable: icon background is opaque",
+      "status": "AVAILABLE",
+      "notes": "Draft icon; verify small-size legibility."
+    },
+    {
+      "path": "branding/app_icon_192.png",
+      "dimensions": [
+        192,
+        192
+      ],
+      "format": "PNG",
+      "intended_use": "Badsoffware web app icon",
+      "transparency": "Not applicable: icon background is opaque",
+      "status": "AVAILABLE",
+      "notes": "Draft icon; verify small-size legibility."
+    },
+    {
+      "path": "branding/favicon.png",
+      "dimensions": [
+        64,
+        64
+      ],
+      "format": "PNG",
+      "intended_use": "Browser favicon",
+      "transparency": "Not applicable: icon background is opaque",
+      "status": "AVAILABLE",
+      "notes": "64 \u00d7 64 PNG; additional ICO/manifest variants may be needed by the web project."
+    },
+    {
+      "path": "branding/social_share.png",
+      "dimensions": [
+        1200,
+        630
+      ],
+      "format": "PNG",
+      "intended_use": "Web social-sharing image featuring Patch, Bolt and Badsoffware identity",
+      "transparency": "Not applicable: opaque composition",
+      "status": "AVAILABLE",
+      "notes": "Draft composition; review typography and character presentation before launch."
+    },
+    {
+      "path": "effects/jet_flame_blue.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Optional isolated gameplay effect",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "OPTIONAL",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "effects/jet_flame_pink.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Optional isolated gameplay effect",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "OPTIONAL",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "effects/speed_trail.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Optional isolated gameplay effect",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "OPTIONAL",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "effects/shield_bubble.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Optional isolated gameplay effect",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "OPTIONAL",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "effects/frozen_fx.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Optional isolated gameplay effect",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "OPTIONAL",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "effects/tag_hit_burst.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Optional isolated gameplay effect",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "OPTIONAL",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "effects/pickup_burst.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Optional isolated gameplay effect",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "OPTIONAL",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "effects/boing_text.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Optional isolated gameplay effect",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "OPTIONAL",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "effects/sparks.png",
+      "dimensions": [
+        256,
+        256
+      ],
+      "format": "PNG",
+      "intended_use": "Optional isolated gameplay effect",
+      "transparency": "Required: genuine alpha transparency",
+      "status": "OPTIONAL",
+      "notes": "Draft generated for visual review; not yet approved as final painted art."
+    },
+    {
+      "path": "branding/badsoffware_logo.svg",
+      "dimensions": [
+        900,
+        150
+      ],
+      "format": "SVG",
+      "intended_use": "Standalone Badsoffware logo",
+      "transparency": "Transparent SVG canvas",
+      "status": "AVAILABLE",
+      "notes": "Logo colours and skew follow brief; check font substitution in target environment."
+    }
+  ],
+  "pilots": [
+    {
+      "id": "patch",
+      "display_name": "Patch",
+      "designation": "REPAIR / FIELD TECH",
+      "sprite_sheet": "characters/patch/patch_sprites.png",
+      "portrait": "ui/patch_portrait.png",
+      "image_dimensions": [
+        1728,
+        192
+      ],
+      "frame_width": 192,
+      "frame_height": 192,
+      "frame_count": 9,
+      "frame_names": [
+        "idle",
+        "run1",
+        "run2",
+        "run3",
+        "run4",
+        "jumpUp",
+        "jumpPeak",
+        "jumpDown",
+        "land"
+      ],
+      "facing": "right",
+      "anchor": "bottom-centre",
+      "baseline_y": 180,
+      "cosmetic_colours": {
+        "main": "#3df5c4",
+        "accent": "#ffd23d",
+        "eye": "#9ffcff"
+      },
+      "status": "AVAILABLE"
+    },
+    {
+      "id": "bolt",
+      "display_name": "Bolt",
+      "designation": "HEAVY / POWER UNIT",
+      "sprite_sheet": "characters/bolt/bolt_sprites.png",
+      "portrait": "ui/bolt_portrait.png",
+      "image_dimensions": [
+        1728,
+        192
+      ],
+      "frame_width": 192,
+      "frame_height": 192,
+      "frame_count": 9,
+      "frame_names": [
+        "idle",
+        "run1",
+        "run2",
+        "run3",
+        "run4",
+        "jumpUp",
+        "jumpPeak",
+        "jumpDown",
+        "land"
+      ],
+      "facing": "right",
+      "anchor": "bottom-centre",
+      "baseline_y": 180,
+      "cosmetic_colours": {
+        "main": "#4db8ff",
+        "accent": "#ffd23d",
+        "eye": "#ffd23d"
+      },
+      "status": "AVAILABLE"
+    },
+    {
+      "id": "glitch",
+      "display_name": "Glitch",
+      "designation": "STEALTH / INFILTRATOR",
+      "sprite_sheet": "characters/glitch/glitch_sprites.png",
+      "portrait": "ui/glitch_portrait.png",
+      "image_dimensions": [
+        1728,
+        192
+      ],
+      "frame_width": 192,
+      "frame_height": 192,
+      "frame_count": 9,
+      "frame_names": [
+        "idle",
+        "run1",
+        "run2",
+        "run3",
+        "run4",
+        "jumpUp",
+        "jumpPeak",
+        "jumpDown",
+        "land"
+      ],
+      "facing": "right",
+      "anchor": "bottom-centre",
+      "baseline_y": 180,
+      "cosmetic_colours": {
+        "main": "#8e63ff",
+        "accent": "#ff4fa3",
+        "eye": "#ff4fa3"
+      },
+      "status": "AVAILABLE"
+    },
+    {
+      "id": "rumble",
+      "display_name": "Rumble",
+      "designation": "INDUSTRIAL / DEMOLITION",
+      "sprite_sheet": "characters/rumble/rumble_sprites.png",
+      "portrait": "ui/rumble_portrait.png",
+      "image_dimensions": [
+        1728,
+        192
+      ],
+      "frame_width": 192,
+      "frame_height": 192,
+      "frame_count": 9,
+      "frame_names": [
+        "idle",
+        "run1",
+        "run2",
+        "run3",
+        "run4",
+        "jumpUp",
+        "jumpPeak",
+        "jumpDown",
+        "land"
+      ],
+      "facing": "right",
+      "anchor": "bottom-centre",
+      "baseline_y": 180,
+      "cosmetic_colours": {
+        "main": "#ff8a3d",
+        "accent": "#ffd23d",
+        "eye": "#ffd23d"
+      },
+      "status": "AVAILABLE"
+    },
+    {
+      "id": "nova",
+      "display_name": "Nova",
+      "designation": "SCOUT / RECON",
+      "sprite_sheet": "characters/nova/nova_sprites.png",
+      "portrait": "ui/nova_portrait.png",
+      "image_dimensions": [
+        1728,
+        192
+      ],
+      "frame_width": 192,
+      "frame_height": 192,
+      "frame_count": 9,
+      "frame_names": [
+        "idle",
+        "run1",
+        "run2",
+        "run3",
+        "run4",
+        "jumpUp",
+        "jumpPeak",
+        "jumpDown",
+        "land"
+      ],
+      "facing": "right",
+      "anchor": "bottom-centre",
+      "baseline_y": 180,
+      "cosmetic_colours": {
+        "main": "#e8f4ff",
+        "accent": "#b5ff55",
+        "eye": "#5cecff"
+      },
+      "status": "AVAILABLE"
+    },
+    {
+      "id": "havoc",
+      "display_name": "Havoc",
+      "designation": "ASSAULT / STRIKER",
+      "sprite_sheet": "characters/havoc/havoc_sprites.png",
+      "portrait": "ui/havoc_portrait.png",
+      "image_dimensions": [
+        1728,
+        192
+      ],
+      "frame_width": 192,
+      "frame_height": 192,
+      "frame_count": 9,
+      "frame_names": [
+        "idle",
+        "run1",
+        "run2",
+        "run3",
+        "run4",
+        "jumpUp",
+        "jumpPeak",
+        "jumpDown",
+        "land"
+      ],
+      "facing": "right",
+      "anchor": "bottom-centre",
+      "baseline_y": 180,
+      "cosmetic_colours": {
+        "main": "#d9344e",
+        "accent": "#ffd23d",
+        "eye": "#ffd23d"
+      },
+      "status": "AVAILABLE"
+    }
+  ],
+  "notes": [
+    "This is a draft visual asset pack generated for review. The PNGs are real files with the specified dimensions and alpha channels where required, but painted-art quality and character-design fidelity have not yet been approved by a human reviewer. Do not treat AVAILABLE assets as COMPLETE.",
+    "Game integration and multiplayer code changes are out of scope."
+  ],
+  "qa": {
+    "automated_file_checks": "passed",
+    "issues": [],
+    "human_visual_review": "not performed",
+    "game_embedding_test": "not run; game source and tools/embed_art.py were not available"
+  }
+}

@@ -1,0 +1,173 @@
+{
+  "robots": {
+    "patch": {
+      "frame": 64,
+      "scale": 0.1143,
+      "anims": {
+        "run": {
+          "frames": 8,
+          "file": "robots/patch_run.png"
+        },
+        "jump": {
+          "frames": 2,
+          "file": "robots/patch_jump.png"
+        },
+        "fall": {
+          "frames": 2,
+          "file": "robots/patch_fall.png"
+        },
+        "land": {
+          "frames": 3,
+          "file": "robots/patch_land.png"
+        },
+        "tagged": {
+          "frames": 4,
+          "file": "robots/patch_tagged.png"
+        },
+        "idle": {
+          "frames": 1,
+          "file": "robots/patch_idle.png",
+          "stopgap": "bob"
+        }
+      }
+    },
+    "bolt": {
+      "frame": 64,
+      "scale": 0.0777,
+      "anims": {
+        "run": {
+          "frames": 8,
+          "file": "robots/bolt_run.png"
+        },
+        "jump": {
+          "frames": 2,
+          "file": "robots/bolt_jump.png"
+        },
+        "fall": {
+          "frames": 2,
+          "file": "robots/bolt_fall.png"
+        },
+        "land": {
+          "frames": 3,
+          "file": "robots/bolt_land.png"
+        },
+        "tagged": {
+          "frames": 4,
+          "file": "robots/bolt_tagged.png"
+        },
+        "idle": {
+          "frames": 1,
+          "file": "robots/bolt_idle.png",
+          "stopgap": "bob"
+        }
+      }
+    },
+    "glitch": {
+      "frame": 64,
+      "scale": 0.1189,
+      "anims": {
+        "idle": {
+          "frames": 4,
+          "file": "robots/glitch_idle.png"
+        },
+        "run": {
+          "frames": 8,
+          "file": "robots/glitch_run.png"
+        },
+        "jump": {
+          "frames": 2,
+          "file": "robots/glitch_jump.png"
+        },
+        "fall": {
+          "frames": 2,
+          "file": "robots/glitch_fall.png"
+        },
+        "land": {
+          "frames": 3,
+          "file": "robots/glitch_land.png"
+        },
+        "tagged": {
+          "frames": 4,
+          "file": "robots/glitch_tagged.png"
+        }
+      }
+    },
+    "havoc": {
+      "frame": 64,
+      "scale": 0.1159,
+      "anims": {
+        "idle": {
+          "frames": 4,
+          "file": "robots/havoc_idle.png"
+        },
+        "run": {
+          "frames": 8,
+          "file": "robots/havoc_run.png"
+        },
+        "jump": {
+          "frames": 2,
+          "file": "robots/havoc_jump.png"
+        },
+        "fall": {
+          "frames": 2,
+          "file": "robots/havoc_fall.png"
+        },
+        "land": {
+          "frames": 3,
+          "file": "robots/havoc_land.png"
+        },
+        "tagged": {
+          "frames": 1,
+          "file": "robots/havoc_tagged.png",
+          "stopgap": "shake"
+        }
+      }
+    }
+  },
+  "badsoffwares": {
+    "bopster": {
+      "frame": 48,
+      "anims": {
+        "hover": {
+          "frames": 4,
+          "file": "badsoffwares/bopster_hover.png"
+        },
+        "spawn": {
+          "frames": 4,
+          "file": "badsoffwares/bopster_spawn.png"
+        }
+      }
+    },
+    "grumpulator": {
+      "frame": 48,
+      "anims": {
+        "hover": {
+          "frames": 4,
+          "file": "badsoffwares/grumpulator_hover.png"
+        }
+      }
+    },
+    "sneakfolder": {
+      "frame": 48,
+      "anims": {
+        "hover": {
+          "frames": 4,
+          "file": "badsoffwares/sneakfolder_hover.png"
+        }
+      }
+    },
+    "hijacker": {
+      "frame": 48,
+      "anims": {
+        "hover": {
+          "frames": 4,
+          "file": "badsoffwares/hijacker_hover.png"
+        },
+        "spawn": {
+          "frames": 4,
+          "file": "badsoffwares/hijacker_spawn.png"
+        }
+      }
+    }
+  }
+}
