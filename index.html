@@ -43,6 +43,11 @@ const CONFIG = {
   GRAVITY: 1800, JUMP_V: 645, DJUMP_V: 565, JUMP_CUT: 0.45, JUMP_CUT_AFTER: 0.05, MAX_FALL: 900,
   COYOTE_MS: 80, BUFFER_MS: 100, DROP_MS: 220,
   BOING_VX: 380, BOING_VY: 520, BOING_LOCK: 0.32,
+  // tower: fixed world WORLD_H tall (2 screens of PLAY_H), does not scroll on its own.
+  // 12 rows, 86 px apart (single jump is ~110 px, so every row is reachable). Reachability
+  // verified by BFS: rise <= RISE_MAX climbing, any gap <= GAP_MAX falling (test/v2_tower.mjs).
+  WORLD_H: 1112, GROUND_MARGIN: 40, ROWS: 12, ROW_GAP: 86, ROOFTOP_ROWS: [9, 10, 11],
+  RISE_MAX: 165, GAP_MAX: 110, PLAT_H: 10, BILLBOARD_ZONES: 2,
   // touch controls (logical px, panel coordinates: panel origin is y = HUD_H + playfield height)
   JOY: { x: 78, y: 150, r: 49, knob: 19, dead: 0.18, full: 0.75, drop: 0.6 },
   PWRBTN: { x: 312, y: 86, r: 36 },
@@ -61,8 +66,11 @@ const CONFIG = {
 };
 const CC = CONFIG.C;
 const VW = CONFIG.W, VH = CONFIG.H;
-const PLAY_Y0 = CONFIG.HUD_H, PLAY_H = VH - CONFIG.HUD_H - CONFIG.PANEL_H, FLOOR = PLAY_Y0 + PLAY_H - 4;
+const PLAY_Y0 = CONFIG.HUD_H, PLAY_H = VH - CONFIG.HUD_H - CONFIG.PANEL_H;
 const PANEL_Y0 = PLAY_Y0 + PLAY_H;
+// world space: a fixed tower CONFIG.WORLD_H tall (390 wide, 2 screens of PLAY_H). FLOOR is the
+// world ground (street level, where every robot spawns); the camera scrolls PLAY_H of it into view.
+const WORLD_H = CONFIG.WORLD_H, FLOOR = WORLD_H - CONFIG.GROUND_MARGIN;
 const QS = new URLSearchParams(location.search);
 const DEBUG_BOTS = parseInt(QS.get('bots'), 10);
 
@@ -81,6 +89,110 @@ function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 function fmtTime(ms) { const s = Math.max(0, Math.ceil(ms / 1000)); return pad2(Math.floor(s / 60)) + ':' + pad2(s % 60); }
 function fmtClock(ms) { return (ms / 1000).toFixed(1) + 's'; }
 function tryDo(f) { try { return f(); } catch (e) { return undefined; } }
+function ivGap(ax, aw, bx, bw) {                 // wrap-aware edge-to-edge gap between two x-intervals, 0 if overlapping
+  let best = 1e9;
+  for (let k = -1; k <= 1; k++) { const bxw = bx + k * VW; const d = Math.max(0, ax - (bxw + bw), bxw - (ax + aw)); if (d < best) best = d; }
+  return best;
+}
+function overlapX(px, pl) {                      // robot hitbox (feet x) over a platform's x-interval, wrap aware
+  const a0 = px - CONFIG.HIT_W / 2, a1 = px + CONFIG.HIT_W / 2;
+  for (let k = -1; k <= 1; k++) { const o = k * VW; if (a1 + o > pl.x && a0 + o < pl.x + pl.w) return true; }
+  return false;
+}
+
+/* ---------- tower layouts ----------
+   Platform format {x, y (top surface, world space), w, h, zone, col}. Built from fixed seeds with
+   no Math.random, so every phone builds the identical tower. Reachability (every platform gets a
+   path from the floor: climbing needs rise <= RISE_MAX and gap <= GAP_MAX; falling only needs
+   gap <= GAP_MAX, any rise) is checked by checkReach() and test/v2_tower.mjs. */
+const ROWS = CONFIG.ROWS, ROW_GAP = CONFIG.ROW_GAP;
+function rowY(r) { return FLOOR - 90 - r * ROW_GAP; }
+function zoneOf(r) { return CONFIG.ROOFTOP_ROWS.includes(r) ? 'rooftop' : 'midrise'; }
+function mkPlat(x, w, r, colIdx) {
+  const clampedW = clamp(Math.round(w), 60, 140);
+  return { x: clamp(Math.round(x - clampedW / 2), 10, VW - clampedW - 10), y: rowY(r), w: clampedW, h: CONFIG.PLAT_H, zone: zoneOf(r), row: r, colIdx: colIdx % 4 };
+}
+function tallLayout(name, seed, rowFn) {
+  const rg = mulberry(seed), plats = [];
+  for (let r = 0; r < ROWS; r++) { let ci = 0; for (const q of rowFn(r, rg)) plats.push(mkPlat(q[0], q[1], r, ci++)); }
+  const billboards = [
+    { x: 42, y: FLOOR - 74, zone: 'street' }, { x: VW - 42, y: FLOOR - 74, zone: 'street' },
+    { x: 48, y: rowY(2) - 26, zone: 'midrise' }, { x: VW - 48, y: rowY(6) - 26, zone: 'midrise' },
+    { x: 48, y: rowY(9) - 26, zone: 'rooftop' }, { x: VW - 48, y: rowY(11) - 26, zone: 'rooftop' },
+  ];
+  return { name, plats, billboards };
+}
+const LAYOUTS = [
+  tallLayout('BRICKWORK', 11, (r, rg) => {
+    const j = () => (rg() - 0.5) * 14;
+    return r % 2 === 0 ? [[80 + j(), 118], [310 + j(), 118]] : [[195 + j(), 118]];
+  }),
+  tallLayout('TWIN SHAFTS', 23, (r, rg) => {
+    const j = () => (rg() - 0.5) * 16, row = [[78 + j(), 108], [312 + j(), 108]];
+    if (r % 3 === 2) row.push([195, 110]);
+    return row;
+  }),
+  tallLayout('SPIRAL', 37, (r) => {
+    const c = k => 70 + ((r * 67 + k * 160) % 250);
+    return [[c(0), 100], [c(1), 100]];
+  }),
+  tallLayout('SCATTER', 41, (r, rg) => {
+    if (r === 0) return [[80, 110], [195, 110], [310, 110]];
+    const prev = [80, 195, 310], out = [], n = rg() < 0.5 ? 2 : 3;
+    for (let k = 0, tries = 0; k < n && tries < 40; tries++) {
+      const cx = clamp(prev[Math.floor(rg() * prev.length)] + (rg() - 0.5) * 170, 70, VW - 70);
+      if (out.every(o => Math.abs(o[0] - cx) > 90)) { out.push([cx, 90 + rg() * 30]); k++; }
+    }
+    return out;
+  }),
+  tallLayout('WIDE AND NARROW', 53, (r) => {
+    if (r % 2 === 0) return [[(r % 4 === 0) ? 120 : 270, 190]];
+    return [[55, 90], [195, 90], [335, 90]];
+  }),
+];
+/* every platform reachable from the floor: climb if rise<=RISE_MAX and gap<=GAP_MAX, or drop with
+   any rise as long as gap<=GAP_MAX (falling has no height limit, only a horizontal one) */
+function checkReach(plats) {
+  const n = plats.length, reached = new Array(n).fill(false);
+  for (let i = 0; i < n; i++) if (FLOOR - plats[i].y <= CONFIG.RISE_MAX) reached[i] = true;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < n; i++) {
+      if (reached[i]) continue;
+      for (let j = 0; j < n; j++) {
+        if (!reached[j] || i === j) continue;
+        const gap = ivGap(plats[i].x, plats[i].w, plats[j].x, plats[j].w);
+        if (gap > CONFIG.GAP_MAX) continue;
+        const rise = plats[j].y - plats[i].y;          // positive: i is above j (climbing from j to i)
+        if (rise <= 0 || rise <= CONFIG.RISE_MAX) { reached[i] = true; changed = true; break; }
+      }
+    }
+  }
+  return reached;
+}
+/* current round geometry, built identically on every client from a layout index + seed */
+const L = { idx: -1, name: '', plats: [], billboards: [] };
+function buildLayout(idx) {
+  const def = LAYOUTS[idx % LAYOUTS.length];
+  L.idx = idx; L.name = def.name; L.plats = def.plats; L.billboards = def.billboards.map(b => ({ ...b, occupied: false }));
+}
+function platformsBelow(p, maxDrop) {               // used by drop-through: the platform p is currently standing on
+  for (const pl of L.plats) if (pl === p.standPl) return pl;
+  return null;
+}
+
+/* ---------- camera: scrolls the tower. Each phone follows its own robot, anchored to the last
+   platform stood on so hops do not shake the view, catching up faster when falling ---------- */
+const cam = { y: WORLD_H - PLAY_H, ref: FLOOR };
+function camFocus() { const p = P[0]; return { y: p.y, vy: p.vy, ground: p.onGround }; }
+function camSnap() { const f = camFocus(); cam.ref = f.y; cam.y = clamp(f.y - PLAY_H * 0.6, 0, WORLD_H - PLAY_H); }
+function camStep(dt) {
+  const f = camFocus();
+  if (f.ground) cam.ref = f.y; else if (f.y > cam.ref + 30) cam.ref = f.y - 30; else if (f.y < cam.ref - 150) cam.ref = f.y + 150;
+  const tgt = clamp(cam.ref - PLAY_H * 0.6 + clamp(f.vy * 0.05, -20, 40), 0, WORLD_H - PLAY_H);
+  cam.y += (tgt - cam.y) * (1 - Math.exp(-dt * (f.vy > 500 ? 11 : 5.5)));
+}
 
 /* ---------- scaling: logical 390x844, letterboxed, DPR capped ---------- */
 const stage = $('stage'), cv = $('cv'), cx = cv.getContext('2d', { alpha: false });
@@ -212,15 +324,20 @@ function readHumanInput() {
 }
 
 /* ---------- physics for a locally controlled robot (ported unchanged from v1) ---------- */
+const SPAWN_X = [49, 146, 244, 341];              // PRD section 4: fixed street spawns for slots 0-3
+function spawnXFor(slot, n) {                      // fewer players: spread the used slots evenly across the width
+  if (n >= 4) return SPAWN_X[slot];
+  return Math.round(((slot + 0.5) / n) * (VW - 60) + 30);
+}
 function mkPlayer(slot) {
   return {
-    slot, active: false, isBot: false, robot: slot, x: 60 + slot * 90, y: FLOOR, vx: 0, vy: 0, f: 1, a: 0,
-    onGround: true, coyote: 0, jumpBuf: 0, canDbl: true, jumping: false, dropT: 0, noCtl: 0, t: Math.random() * 6,
+    slot, active: false, isBot: false, robot: slot, x: SPAWN_X[slot], y: FLOOR, vx: 0, vy: 0, f: 1, a: 0,
+    onGround: true, standPl: null, coyote: 0, jumpBuf: 0, canDbl: true, jumping: false, dropT: 0, noCtl: 0, t: Math.random() * 6,
     it: false, itClock: 0, frozen: 0, tagCd: 0, lastTaggedBy: -1,
   };
 }
 function resetPlayer(p, slot, n) {
-  p.x = ((slot + 0.5) / Math.max(1, n)) * (VW - 60) + 30; p.y = FLOOR; p.vx = 0; p.vy = 0; p.f = 1; p.onGround = true;
+  p.x = spawnXFor(slot, n); p.y = FLOOR; p.vx = 0; p.vy = 0; p.f = 1; p.onGround = true; p.standPl = null;
   p.canDbl = true; p.jumping = false; p.coyote = 0; p.jumpBuf = 0; p.dropT = 0; p.noCtl = 0; p.a = 0;
   p.it = false; p.itClock = 0; p.frozen = 0; p.tagCd = 0; p.lastTaggedBy = -1;
 }
@@ -238,13 +355,22 @@ function stepPlayer(p, inp, dt, active) {
   if (p.jumpBuf > 0 && (ground || p.coyote > 0)) { doJump = 1; p.jumpBuf = 0; p.coyote = 0; }
   else if (p.jumpBuf > 0 && !ground && p.canDbl) { doJump = 2; p.jumpBuf = 0; p.canDbl = false; }
   if (doJump) { p.vy = -(doJump === 1 ? C.JUMP_V : C.DJUMP_V); p.onGround = false; p.jumping = true; Snd.play(doJump === 1 ? 'jump' : 'djump'); }
-  if (ctl && !inp.held && p.jumping && p.vy < -C.JUMP_V * C.JUMP_CUT_AFTER * 4) { } // reserved for variable-jump release shaping
   if (p.jumping && ctl && !inp.held && p.vy < 0) p.vy = Math.max(p.vy, -Math.abs(p.vy) * C.JUMP_CUT);
+  // drop-through: holding down on a platform (never the floor) for DROP_MS of falling skips platform landings
+  if (ctl && inp.down && ground && p.standPl) { p.dropT = C.DROP_MS; p.standPl = null; }
+  if (p.dropT > 0) p.dropT -= dt * 1000;
   p.vy = Math.min(p.vy + C.GRAVITY * dt, C.MAX_FALL);
   p.x = wrapX(p.x + p.vx * dt);
   p.y += p.vy * dt;
+  p.onGround = false; p.standPl = null;
   if (p.y >= FLOOR) { p.y = FLOOR; if (p.vy > 40) Snd.play('land'); p.vy = 0; p.onGround = true; p.jumping = false; }
-  else p.onGround = false;
+  else if (p.vy >= 0 && p.dropT <= 0) {
+    for (const pl of L.plats) {
+      if (prevY > pl.y + 1 || p.y < pl.y || !overlapX(p.x, pl)) continue;
+      p.y = pl.y; if (p.vy > 40) Snd.play('land'); p.vy = 0; p.onGround = true; p.jumping = false; p.standPl = pl;
+      break;
+    }
+  }
   p.a += dt * (Math.abs(p.vx) > 10 ? 10 : 4);
   if (p.frozen > 0) { p.frozen -= dt * 1000; if (p.frozen < 0) p.frozen = 0; }
   if (p.tagCd > 0) p.tagCd -= dt * 1000;
@@ -273,6 +399,7 @@ const S = { ph: 'title', n: 0, roundMs: CONFIG.ROUND_MS, t: 0, cdT: 0 };
 function startLocal(nBots) {
   const n = clamp(1 + (Number.isFinite(nBots) ? nBots : 2), 2, CONFIG.MAX_SLOTS);
   S.n = n;
+  buildLayout(Math.floor(Math.random() * LAYOUTS.length));
   for (let i = 0; i < CONFIG.MAX_SLOTS; i++) {
     const p = P[i];
     p.active = i < n; p.isBot = i > 0; p.robot = i;
@@ -283,6 +410,7 @@ function startLocal(nBots) {
   const live = P.filter(p => p.active);
   live.forEach(p => p.it = false);
   live[Math.floor(Math.random() * live.length)].it = true;
+  camSnap();
   Snd.play('cd');
 }
 
@@ -325,14 +453,33 @@ function tick(dtms) {
     stepPlayer(p, inp, dt, true);
   }
   detectTags();
+  camStep(dt);
   if (S.t <= 0) { S.t = 0; endRound(); }
 }
 
-/* ---------- render: greybox robots (real BSWV21 sprites land in a later commit) ---------- */
+/* ---------- render: greybox robots and tower (real BSWV21 sprites land in a later commit) ---------- */
+const PLAT_COLS = ['#2d4560', '#2d5660', '#3d4a60', '#39606a'];
+function drawPlatforms(c) {
+  for (const pl of L.plats) {
+    const sy = pl.y - cam.y + PLAY_Y0;
+    if (sy < PLAY_Y0 - 20 || sy > PLAY_Y0 + PLAY_H + 20) continue;
+    c.fillStyle = PLAT_COLS[pl.colIdx % PLAT_COLS.length]; c.fillRect(pl.x, sy, pl.w, pl.h);
+    c.fillStyle = CC.cyan; c.fillRect(pl.x, sy, pl.w, 2);
+  }
+  for (const b of L.billboards) {
+    const sy = b.y - cam.y + PLAY_Y0;
+    if (sy < PLAY_Y0 - 20 || sy > PLAY_Y0 + PLAY_H + 20) continue;
+    c.strokeStyle = CC.bd; c.lineWidth = 2; c.strokeRect(b.x - 18, sy - 14, 36, 28);
+    c.fillStyle = CC.dk; c.fillRect(b.x - 18, sy - 14, 36, 28);
+  }
+  const fy = FLOOR - cam.y + PLAY_Y0;
+  if (fy >= PLAY_Y0 - 4 && fy <= PLAY_Y0 + PLAY_H + 4) { c.strokeStyle = CC.dk; c.lineWidth = 2; c.beginPath(); c.moveTo(0, fy + 4); c.lineTo(VW, fy + 4); c.stroke(); }
+}
 function drawRobot(c, p) {
   if (!p.active) return;
   const r = CONFIG.ROBOTS[p.robot] || CONFIG.ROBOTS[0];
-  const x = p.x, yb = p.y, w = CONFIG.HIT_W, h = CONFIG.HIT_H;
+  const x = p.x, yb = p.y - cam.y + PLAY_Y0, w = CONFIG.HIT_W, h = CONFIG.HIT_H;
+  if (yb < PLAY_Y0 - h - 4 || yb > PLAY_Y0 + PLAY_H + 4) return;
   c.save();
   c.translate(x, yb - h);
   if (p.f < 0) c.scale(-1, 1);
@@ -346,12 +493,41 @@ function drawRobot(c, p) {
   c.fillText(r.name, x, yb - h - (p.it ? 22 : 8));
   if (p.it) { c.fillStyle = '#ffd23d'; c.font = '700 11px system-ui'; c.fillText('IT', x, yb - h - 8); }
 }
-
+const MINI = { w: 10, inset: 6 };
+function drawMinimap(c) {
+  const mx = VW - MINI.inset - MINI.w;
+  c.fillStyle = 'rgba(13,20,32,0.7)'; c.fillRect(mx, PLAY_Y0 + 6, MINI.w, PLAY_H - 12);
+  c.strokeStyle = CC.bd; c.strokeRect(mx, PLAY_Y0 + 6, MINI.w, PLAY_H - 12);
+  for (const p of P) {
+    if (!p.active) continue;
+    const my = PLAY_Y0 + 6 + (p.y / WORLD_H) * (PLAY_H - 12);
+    c.fillStyle = CONFIG.ROBOTS[p.robot].col;
+    const r = p.it ? 3.5 : 2.5;
+    c.beginPath(); c.arc(mx + MINI.w / 2, my, r, 0, 7); c.fill();
+    if (p.it) { c.strokeStyle = '#ffd23d'; c.lineWidth = 1.2; c.stroke(); }
+  }
+}
+function drawOffscreenArrows(c) {
+  const me = P[0]; if (!me.active) return;
+  let nAbove = 0, nBelow = 0;
+  for (const p of P) {
+    if (!p.active || p === me) continue;
+    const sy = p.y - cam.y + PLAY_Y0;
+    if (sy >= PLAY_Y0 - 10 && sy <= PLAY_Y0 + PLAY_H + 10) continue;
+    const above = sy < PLAY_Y0;
+    const ay = above ? PLAY_Y0 + 14 + nAbove++ * 14 : PLAY_Y0 + PLAY_H - 14 - nBelow++ * 14;
+    const screens = (Math.abs(p.y - me.y) / PLAY_H).toFixed(1);
+    c.fillStyle = CONFIG.ROBOTS[p.robot].col; c.font = '700 11px system-ui'; c.textAlign = 'center';
+    c.fillText((above ? '▲ ' : '▼ ') + (p.it ? 'IT ' : '') + screens + ' SCREENS ' + (above ? 'UP' : 'DOWN'), VW / 2, ay);
+  }
+}
 function drawHUD(c) {
   c.fillStyle = CC.pan; c.fillRect(0, 0, VW, CONFIG.HUD_H);
   c.strokeStyle = CC.bd; c.beginPath(); c.moveTo(0, CONFIG.HUD_H); c.lineTo(VW, CONFIG.HUD_H); c.stroke();
-  c.fillStyle = CC.lt; c.font = '700 20px ui-monospace, monospace'; c.textAlign = 'center';
-  c.fillText(S.ph === 'countdown' ? Math.ceil(S.t / 1000) : fmtTime(S.t), VW / 2, 31);
+  c.fillStyle = CC.lt; c.font = '700 18px ui-monospace, monospace'; c.textAlign = 'center';
+  c.fillText(S.ph === 'countdown' ? Math.ceil(S.t / 1000) : fmtTime(S.t), VW / 2, 20);
+  c.font = '600 10px ui-monospace, monospace'; c.fillStyle = CC.t2;
+  c.fillText(Math.round((FLOOR - P[0].y) / 10) + 'M', VW / 2, 38);
   c.textAlign = 'left'; c.font = '600 11px system-ui';
   let lx = 10;
   for (const p of P) { if (!p.active) continue; c.fillStyle = CONFIG.ROBOTS[p.robot].col; c.fillText(fmtClock(p.itClock), lx, 31); lx += 46; }
@@ -370,9 +546,13 @@ function drawPanel(c) {
 }
 
 function drawPlayfield(c) {
+  c.save(); c.beginPath(); c.rect(0, PLAY_Y0, VW, PLAY_H); c.clip();
   c.fillStyle = CC.bg; c.fillRect(0, PLAY_Y0, VW, PLAY_H);
-  c.strokeStyle = CC.dk; c.beginPath(); c.moveTo(0, FLOOR + 4); c.lineTo(VW, FLOOR + 4); c.stroke();
+  drawPlatforms(c);
   for (const p of P) drawRobot(c, p);
+  drawOffscreenArrows(c);
+  c.restore();
+  drawMinimap(c);
   if (S.ph === 'countdown') { c.fillStyle = CC.lt; c.font = '700 48px system-ui'; c.textAlign = 'center'; c.fillText(Math.ceil(S.t / 1000) || 'GO!', VW / 2, PLAY_Y0 + PLAY_H / 2); }
   if (S.ph === 'over') {
     c.fillStyle = 'rgba(6,8,16,0.82)'; c.fillRect(0, PLAY_Y0, VW, PLAY_H);
@@ -407,7 +587,8 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 /* ---------- test hook: exposes state for automated tests only ---------- */
-window.__bsw = { CONFIG, P, S, stepPlayer, resetPlayer, startLocal, tick, applyTag, tagAllowed, detectTags, endRound, hitGap, wrapX, wdx, FLOOR, VW, VH };
+window.__bsw = { CONFIG, P, S, L, cam, LAYOUTS, stepPlayer, resetPlayer, startLocal, tick, applyTag, tagAllowed, detectTags,
+  endRound, hitGap, wrapX, wdx, buildLayout, checkReach, camSnap, camStep, FLOOR, WORLD_H, VW, VH, PLAY_H };
 </script>
 </body>
 </html>
