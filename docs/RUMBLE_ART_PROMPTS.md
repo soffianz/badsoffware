@@ -1,5 +1,12 @@
 # Rumble: in-game sprite prompts (for ChatGPT image generation)
 
+> **Status (2026-10-20):** the first delivery (`BSW_RUMBLE_ARTWORK_QA.zip`) is processed and live, with
+> two known gaps. **Run is a stopgap**: the delivered "run" sheet was a 4-frame copy of the idle sheet, so
+> the 8-frame run is the idle frames repeated (a heavy shuffle). A real run strip is the one piece still
+> worth regenerating (use the RUN prompt below, and insist on 8 DIFFERENT running poses). Also, the sheets
+> are 3/4-view rather than strict side-on, and each was drawn at a different zoom (corrected in
+> `ROBOT_ZOOM` in `tools/process_bswv21.py`). `tools/prep_rumble_sheets.py` does the cleanup.
+
 Rumble is the 4th pilot on the select screen. His 512px portrait is in `art/pilots/rumble_portrait.png`,
 but the match needs side-view sprite strips like the other pilots. Until they exist the game borrows
 Havoc's sprites tinted orange (`rumbleStandIn()` in `index.html`), so he is already playable.

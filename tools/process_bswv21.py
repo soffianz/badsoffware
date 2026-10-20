@@ -158,6 +158,12 @@ ROBOTS['rumble'] = {
     'land': ('BSWV21_Rumble/rumble_land_3_frames.png', 3),
     'tagged': ('BSWV21_Rumble/rumble_tagged_4_frames.png', 4),
 }
+# Rumble's sheets were each drawn at a different zoom (measured by the yellow shoulder ring: jump is
+# 1.30x idle, fall 1.24x, land 1.23x, tagged 1.10x), and their poses differ a lot in height (arms up,
+# crouch), so the per-animation height normalisation below would make him change size between actions.
+# For robots listed here every animation is scaled from the IDLE scale divided by that zoom instead.
+ROBOT_SIZE = {'rumble': 0.92}      # he is a wide bruiser; shave him down so the body, not just the height, stays in family
+ROBOT_ZOOM = {'rumble': {'idle': 1.0, 'run': 1.0, 'jump': 1.30, 'fall': 1.24, 'land': 1.23, 'tagged': 1.10}}
 DRONES = {
     'bopster': {'hover': ('Bopster_Hover_Animation.png', 4), 'spawn': ('Bopster_Spawn_Animation.png', 4)},
     'grumpulator': {'hover': ('BSWV21_Grumpulator_Hover.png', 4)},   # spawn stays procedural (DECISIONS.md)
@@ -188,6 +194,9 @@ def main():
         # pose-to-pose height variation within one animation (a crouch, a reach) is real animation
         # and stays, since it's compared against that animation's own median, not inflated by it.
         anim_scales = {anim: character_scale(raw_dir, file, n, ROBOT_TARGET_H) for anim, (file, n) in anims.items()}
+        if name in ROBOT_ZOOM:
+            base = anim_scales['idle']
+            anim_scales = {a: base * ROBOT_SIZE.get(name, 1.0) / ROBOT_ZOOM[name].get(a, 1.0) for a in anims}
         manifest['robots'][name] = {'frame': ROBOT_CANVAS[0], 'scale': round(anim_scales[list(anims)[0]], 4), 'anims': {}}
         for anim, (file, n) in anims.items():
             strip, nf = process_animation(os.path.join(raw_dir, file), n, ROBOT_CANVAS, anim_scales[anim], True)
