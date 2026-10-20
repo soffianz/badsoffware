@@ -79,7 +79,7 @@
           "file": "robots/glitch_jump.png"
         },
         "fall": {
-          "frames": 2,
+          "frames": 3,
           "file": "robots/glitch_fall.png"
         },
         "land": {
@@ -120,6 +120,36 @@
           "frames": 1,
           "file": "robots/havoc_tagged.png",
           "stopgap": "shake"
+        }
+      }
+    },
+    "rumble": {
+      "frame": 84,
+      "scale": 0.102,
+      "anims": {
+        "idle": {
+          "frames": 4,
+          "file": "robots/rumble_idle.png"
+        },
+        "run": {
+          "frames": 8,
+          "file": "robots/rumble_run.png"
+        },
+        "jump": {
+          "frames": 2,
+          "file": "robots/rumble_jump.png"
+        },
+        "fall": {
+          "frames": 2,
+          "file": "robots/rumble_fall.png"
+        },
+        "land": {
+          "frames": 3,
+          "file": "robots/rumble_land.png"
+        },
+        "tagged": {
+          "frames": 4,
+          "file": "robots/rumble_tagged.png"
         }
       }
     }

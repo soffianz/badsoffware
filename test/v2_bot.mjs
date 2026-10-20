@@ -65,6 +65,19 @@ const res = await page.evaluate(() => {
   for (let i = 0; i < 300; i++) { const inp = botThink(P[1], [P[0], P[1]]); stepPlayer(P[1], inp, dt, true); }
   out.farFleeClimbAltitude = Math.round(FLOOR - P[1].y);
 
+  // the single runs above passed or failed by luck (the bot has random replan jitter), which hid a
+  // real bug: bots got stuck jumping on the spot under a platform they could no longer reach. Many
+  // trials across layouts make that visible: a fleeing bot must never fail to climb in 10 seconds.
+  let stuck = 0, trials = 0;
+  for (const li of [0, 2, 4]) for (let t = 0; t < 25; t++) {
+    buildLayout(li); resetPlayer(P[0], 0, 2); resetPlayer(P[1], 1, 2); P[0].active = P[1].active = true;
+    P[0].it = true; P[1].it = false; P[0].x = 80 + Math.random() * 230; P[0].y = FLOOR - 450; P[1].x = P[0].x + (Math.random() - 0.5) * 200; P[1].y = FLOOR;
+    for (let i = 0; i < 600; i++) stepPlayer(P[1], botThink(P[1], [P[0], P[1]]), dt, true);
+    trials++; if (FLOOR - P[1].y < 60) stuck++;
+  }
+  out.stuckBots = stuck + ' of ' + trials;
+  out.stuckCount = stuck;
+
   return out;
 });
 console.log(JSON.stringify(res, null, 2));
@@ -75,6 +88,7 @@ const fail = [];
 if (!res.itBotClimbed) fail.push('It bot did not climb towards a higher target: altitude gain ' + res.itBotAltitudeGain);
 if (!res.fleeIncreasedDistance) fail.push('fleeing bot did not increase distance from It: ' + res.fleeDistStart + ' -> ' + res.fleeDistEnd);
 if (res.climbCommitAltitude < 60) fail.push('chasing bot thrashed instead of committing to a climb against a jittering target: only gained ' + res.climbCommitAltitude + 'px in 5s');
+if (res.stuckCount > 0) fail.push('bots got stuck instead of climbing in ' + res.stuckBots + ' multi-layout trials');
 if (res.farFleeClimbAltitude < 60) fail.push('a far-off fleeing bot below an elevated It did not climb away: only gained ' + res.farFleeClimbAltitude + 'px in 5s');
 if (errs.length) fail.push('page errors present');
 if (fail.length) { console.error('FAIL:\n' + fail.join('\n')); process.exit(1); }
