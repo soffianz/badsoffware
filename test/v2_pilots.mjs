@@ -22,7 +22,7 @@ const code = await A.evaluate(() => window.__bsw.NET.code);
 await B.evaluate(c => window.__bsw.startGuest(c), code);
 await wait(600);
 ok(await A.evaluate(() => window.__bsw.S.ph === 'lobby'), 'host in lobby');
-ok(await A.evaluate(() => window.__bsw.UI.lobby.pilots.length === 4), 'lobby shows 4 pilot cards');
+ok(await A.evaluate(() => window.__bsw.UI.lobby.pilots.length === 6), 'lobby shows 6 pilot cards');
 // host takes Rumble by tapping its card; guest then tries to take Rumble too and must be refused
 await tap(A, await A.evaluate(() => window.__bsw.UI.lobby.pilots[3]));
 ok(await A.evaluate(() => window.__bsw.NET.picks[0] === 3), 'host tapped Rumble card');

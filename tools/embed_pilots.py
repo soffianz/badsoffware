@@ -1,12 +1,12 @@
-"""Embed the character-select art into index.html between the PILOT_DATA markers: the four 512px
+"""Embed the character-select art into index.html between the PILOT_DATA markers: the six 512px
 profile portraits in art/pilots/ (downscaled to 192px webp) and the power icons from
 assets/weapons/. To add or replace a pilot's portrait, drop art/pilots/<id>_portrait.png and
 rerun. Run from the project root."""
 import base64, io, json, re
 from PIL import Image
 
-PILOTS = ['patch', 'bolt', 'glitch', 'rumble']
-ICONS = [('patchcable', 'patch_cable'), ('zappulse', 'zap_pulse'), ('phaseblink', 'phase_blink'), ('groundslam', 'ground_slam')]
+PILOTS = ['patch', 'bolt', 'glitch', 'rumble', 'nova', 'havoc']
+ICONS = [('patchcable', 'patch_cable'), ('zappulse', 'zap_pulse'), ('phaseblink', 'phase_blink'), ('groundslam', 'ground_slam'), ('dashburst', 'dash_burst'), ('popbomb', 'popup_bomb')]
 
 def webp(im, q):
     b = io.BytesIO(); im.save(b, 'WEBP', quality=q, method=6)

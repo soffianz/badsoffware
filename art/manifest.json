@@ -94,7 +94,7 @@
     },
     "havoc": {
       "frame": 84,
-      "scale": 0.8333,
+      "scale": 0.0874,
       "anims": {
         "idle": {
           "frames": 4,
@@ -117,9 +117,8 @@
           "file": "robots/havoc_land.png"
         },
         "tagged": {
-          "frames": 1,
-          "file": "robots/havoc_tagged.png",
-          "stopgap": "shake"
+          "frames": 4,
+          "file": "robots/havoc_tagged.png"
         }
       }
     },
@@ -150,6 +149,36 @@
         "tagged": {
           "frames": 4,
           "file": "robots/rumble_tagged.png"
+        }
+      }
+    },
+    "nova": {
+      "frame": 84,
+      "scale": 0.0916,
+      "anims": {
+        "idle": {
+          "frames": 4,
+          "file": "robots/nova_idle.png"
+        },
+        "run": {
+          "frames": 8,
+          "file": "robots/nova_run.png"
+        },
+        "jump": {
+          "frames": 2,
+          "file": "robots/nova_jump.png"
+        },
+        "fall": {
+          "frames": 2,
+          "file": "robots/nova_fall.png"
+        },
+        "land": {
+          "frames": 3,
+          "file": "robots/nova_land.png"
+        },
+        "tagged": {
+          "frames": 4,
+          "file": "robots/nova_tagged.png"
         }
       }
     }
@@ -198,6 +227,26 @@
           "file": "badsoffwares/hijacker_spawn.png"
         }
       }
+    }
+  },
+  "fx": {
+    "popbomb": {
+      "frames": 6,
+      "w": 128,
+      "h": 128,
+      "file": "fx/popbomb.png"
+    },
+    "dashburst": {
+      "frames": 4,
+      "w": 192,
+      "h": 64,
+      "file": "fx/dashburst.png"
+    },
+    "unlock": {
+      "frames": 4,
+      "w": 128,
+      "h": 128,
+      "file": "fx/unlock.png"
     }
   }
 }

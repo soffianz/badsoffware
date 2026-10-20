@@ -10,7 +10,7 @@ await page.waitForTimeout(600); // let the embedded data-URI images decode
 
 const res = await page.evaluate(() => {
   const { Art, CONFIG, P, S, resetPlayer } = window.__bsw;
-  const out = { artReady: Art.ready, robots: {}, badsoffwares: Object.keys(Art.badsoffwares) };
+  const out = { artReady: Art.ready, robots: {}, badsoffwares: Object.keys(Art.badsoffwares), fx: Object.keys(Art.fx) };
   for (const id of CONFIG.ROBOTS.map(r => r.id)) {
     const r = Art.robots[id];
     out.robots[id] = r ? Object.keys(r.anims) : null;
@@ -50,12 +50,13 @@ await browser.close();
 
 const fail = [];
 if (!res.artReady) fail.push('Art.ready never became true - embedded art failed to decode');
-for (const id of ['patch', 'bolt', 'glitch', 'rumble']) {
+for (const id of ['patch', 'bolt', 'glitch', 'rumble', 'nova', 'havoc']) {
   const anims = res.robots[id];
   if (!anims) { fail.push(id + ': no art loaded'); continue; }
   for (const need of ['idle', 'run', 'jump', 'fall', 'land', 'tagged']) if (!anims.includes(need)) fail.push(id + ': missing ' + need + ' animation');
 }
 for (const b of split) fail.push(b);
+for (const id of ['popbomb', 'dashburst', 'unlock']) if (!res.fx.includes(id)) fail.push(id + ': no effect strip loaded');
 for (const id of ['bopster', 'grumpulator', 'sneakfolder', 'hijacker']) if (!res.badsoffwares.includes(id)) fail.push(id + ': no Badsoffware art loaded');
 if (errs.length) fail.push('page errors present');
 if (fail.length) { console.error('FAIL:\n' + fail.join('\n')); process.exit(1); }

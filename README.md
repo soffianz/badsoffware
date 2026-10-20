@@ -1,7 +1,7 @@
 # Badsoffware
 
 **V2 (current)**: 2-4 player online tag game, portrait phone screens. Robots (Patch, Bolt, Glitch,
-Rumble; Havoc and Nova benched) climb a 2-screen city tower for 1-3 minutes, It passed on by a
+Rumble, Nova and Havoc) climb a 2-screen city tower for 1-3 minutes, It passed on by a
 touch. Least total time as It wins. Catch a Badsoffware drone (Bopster/Grumpulator/Sneakfolder/
 Hijacker) for a one-shot power-up. `docs/PRD_v2.md` has the v2 spec this was built from (the
 linked Claude Docs page it names is the source of truth; the markdown is an offline copy).
