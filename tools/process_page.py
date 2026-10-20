@@ -37,6 +37,19 @@ def main():
     manifest['bg_far'] = {'w': far.width, 'h': far.height}
     print('bg_far', far.size)
 
+    # Street level: an opaque shopfront facade (no green screen) - the actual ground. Without
+    # this the world floor had no visual marker at all, just whatever the tiled mid-background
+    # happened to show at that height. Scaled to the full playfield width (the world is exactly
+    # 390px wide, not infinite, so this is drawn once, not tiled), anchored by its bottom edge
+    # at the world floor.
+    street = Image.open(os.path.join(raw_dir, 'BSWV21_Page_Street_Level.png')).convert('RGB')
+    sw, sh = street.size
+    scale = 390 / sw
+    street = street.resize((390, round(sh * scale)), Image.LANCZOS)
+    street.save(os.path.join(out_dir, 'street.webp'), 'WEBP', quality=84, method=6)
+    manifest['street'] = {'w': street.width, 'h': street.height}
+    print('street', street.size)
+
     # Middle background: green screen flanking an open lane (where the tower sits). Chroma-key,
     # scale to playfield width, tiles vertically to cover the world height.
     mid = chroma_key(Image.open(os.path.join(raw_dir, 'BSWV21_Page_Middle_Background.png')))

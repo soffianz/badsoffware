@@ -12,6 +12,8 @@ out = {
     'bgFar': b64(os.path.join('art/scenery', 'bg_far.webp')),
     'bgMid': b64(os.path.join('art/scenery', 'bg_mid.webp')),
     'bgFarH': m['bg_far']['h'], 'bgMidH': m['bg_mid']['h'],
+    'street': b64(os.path.join('art/scenery', 'street.webp')),
+    'streetH': m['street']['h'],
     'platformSkins': [[{'tag': p['tag'], 'w': p['w'], 'h': p['h'], 'src': b64(os.path.join('art/scenery', p['file']))} for p in skin] for skin in m['platform_skins']],
     'props': {name: {'w': p['w'], 'h': p['h'], 'src': b64(os.path.join('art/scenery', p['file']))} for name, p in m['props'].items()},
 }

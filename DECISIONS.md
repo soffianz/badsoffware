@@ -109,17 +109,36 @@ list) are all different.
   self-movement, so the actor's phone only sends a claim and the host applies the AoE using its own
   copy of the actor's position - mirrors how v1 handled "effects on the other pilot are applied by
   that pilot's own phone" for its weapons, adapted to an AoE that can hit several robots at once.
-- **Bots** don't explore the tower on their own; they only climb/flee vertically when the relevant
-  robot (the It robot, or a chase target) is actually close (within 160px both axes). This matches
-  PRD section 13's "when not It, keeps distance from the It robot, climbs or drops to escape" -
-  reactive, not constant tower-scaling. If play-testing finds bots feel too passive on tall
-  layouts, the fix is widening that distance threshold, not adding random exploration.
-- **Not done this pass**: the Page tileset scenery (background layers, platform skins, props) stays
-  greybox/colour-coded; the current platforms are legible and the city backdrop art would be a
-  reasonable next increment rather than something broken as shipped. PeerJS is code-complete
-  (`Net.hostPeer`/`Net.joinPeer`) but unverified - there's no real device in this build environment
-  to dial a PeerJS broker from. The tabs transport (`Net.openTabs`, used by `test/v2_net.mjs`) is
-  what's actually been exercised end to end.
+- **Bots** don't explore the tower on their own; they only climb/flee vertically toward/away from
+  a relevant robot (the It robot, or a chase target), with no distance gate (removed - see below).
+  This matches PRD section 13's "when not It, keeps distance from the It robot, climbs or drops to
+  escape" - reactive, not constant tower-scaling.
+- **Bot climb commitment** (added after real-phone testing showed bots failing to close vertical
+  gaps): a bot's decision to climb towards/away from a target used to be re-evaluated from scratch
+  every ~130ms replan tick. Against a live, moving target (another bot reacting on its own) the
+  target's relative height constantly crosses the "should I climb" threshold back and forth, so a
+  bot would start a climb step then abandon it a tick later, never making net progress - looked
+  like bots "ignoring" the chase. Fixed with a persistent `climbStep` field on the bot's state that
+  is kept across replans until the step is actually reached, so a committed climb runs to
+  completion before being re-evaluated. Verified in `test/v2_bot.mjs` with a target that jitters
+  across the threshold via a sine wave: the bot still nets 60px+ of real altitude gain in 5s.
+- **Street-level floor art**: `tools/process_page.py` processed every BSWV21 Page tileset image
+  except `BSWV21_Page_Street_Level.png` - an oversight from the original scenery-wiring pass, so
+  the world floor had no visual ground marker at all (just whatever the tiled mid-background
+  showed). Added processing for it (scaled to the full 390px playfield width, not tiled - the
+  world is a fixed width) and draw it anchored by its bottom edge at `FLOOR` in `drawPlatforms()`,
+  with an improved solid-band greybox fallback for when the art isn't loaded.
+- **Adaptive viewport height**: `doLayout()` used a fixed logical height (`CONFIG.H`) for the
+  playfield, so any device whose aspect ratio didn't match that constant got letterboxed (black
+  bars) rather than filling the screen - visible in a real phone screenshot. `VH`/`PLAY_H`/
+  `PANEL_Y0` are now mutable and `doLayout()` computes an ideal height from the actual device
+  viewport's aspect ratio (`visualViewport` width/height), clamped to a sane range, and resizes the
+  stage/canvas CSS to match when it changes meaningfully. Verified with a non-default 412x950 test
+  viewport (different aspect ratio from the 390x844 dev default): canvas `getBoundingClientRect()`
+  exactly matched the full viewport with zero letterbox.
+- **Not done this pass**: PeerJS is code-complete (`Net.hostPeer`/`Net.joinPeer`) but unverified -
+  there's no real device in this build environment to dial a PeerJS broker from. The tabs transport
+  (`Net.openTabs`, used by `test/v2_net.mjs`) is what's actually been exercised end to end.
 - **Tests**: `test/v2_*.mjs` (smoke, tower, bot, powerups, net, art, fx), `test/run_all.mjs` runs
   all of them and prints a summary. The v1 `test/*.mjs` files test the v1 game (different orientation,
   player count and ability system) and were left as-is rather than adapted - they're a record of
