@@ -44,9 +44,11 @@ await A.evaluate(() => {
   S.drones = []; S.feed = []; L.billboards.forEach(b => b.occupied = false);
   S.t = 3000; S.ph = 'countdown';
 });
-await wait(3600);
-ok(await A.evaluate(() => window.__bsw.S.ph === 'play'), 'host round started');
-ok(await B.evaluate(() => window.__bsw.S.ph === 'play'), 'guest followed host into play (via shared broadcast)');
+// poll instead of a fixed sleep: with two pages in one headless browser the frame rate halves, so
+// the 3s game-time countdown can take noticeably longer than 3s of wall clock
+const until = async (pg, fn, ms = 9000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await pg.evaluate(fn)) return true; await wait(100); } return false; };
+ok(await until(A, () => window.__bsw.S.ph === 'play'), 'host round started');
+ok(await until(B, () => window.__bsw.S.ph === 'play'), 'guest followed host into play (via shared broadcast)');
 
 // movement replication: the guest's own page loop already steps its robot and streams state at
 // STATE_HZ every frame (netTick, called from the live rAF loop) - just drive real input and let
