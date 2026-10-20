@@ -524,15 +524,23 @@ function botThink(p, players) {
       // and forth across that threshold constantly, so re-deciding every cycle meant a bot
       // would abandon a climb almost as soon as it started one - it never made visible progress
       // up the tower even though it kept "deciding" to climb over and over.
-      if (bs.climbStep && (p.standPl === bs.climbStep || p.y <= bs.climbStep.y + 4 || !wantClimb)) bs.climbStep = null;
+      // ...but a commitment is only worth keeping while the step is still reachable: a bot that walked
+      // off its ledge and landed on the floor under a platform 176px up (a jump reaches ~94) used to keep
+      // "climbing" that platform forever, jumping on the spot. Grounded and out of reach: re-pick.
+      const outOfReach = bs.climbStep && p.onGround && curStandY(p) - bs.climbStep.y > CONFIG.RISE_MAX;
+      if (bs.climbStep && (p.standPl === bs.climbStep || p.y <= bs.climbStep.y + 4 || !wantClimb || outOfReach)) bs.climbStep = null;
       if (wantClimb && !bs.climbStep) bs.climbStep = nearestStepUp(p);
-      if (bs.climbStep) bs.stepX = bs.climbStep.x + bs.climbStep.w / 2;
+      // aim for the nearest point of the step (not its centre): the centre can be well past the edge of
+      // the ledge the bot is standing on, so it used to walk off the ledge before it ever jumped
+      if (bs.climbStep) bs.stepX = clamp(p.x, bs.climbStep.x + 16, bs.climbStep.x + bs.climbStep.w - 16);
       else if (chasing) bs.stepX = target.x;
       else bs.stepX = p.x - Math.sign(wdx(p.x, target.x) || 1) * 80;   // flee horizontally when not climbing
       const dxs = wdx(p.x, bs.stepX);
       bs.move = Math.abs(dxs) < 14 ? 0 : Math.sign(dxs);
-      bs.wantJump = !!bs.climbStep && Math.abs(dxs) < 50;
-      bs.wantDown = chasing ? (dy > 90 && p.standPl && Math.abs(dxs) < 16) : (dy < -60 && p.standPl && Math.random() < 0.5);
+      // jump from solid ground while the step is within horizontal reach, not only when nearly under its centre
+      bs.wantJump = !!bs.climbStep && (Math.abs(dxs) < 50 || ivGap(bs.climbStep.x, bs.climbStep.w, p.x, CONFIG.HIT_W) <= 36);
+      // dropping through the floor while a climb is committed just undoes the climb (it used to be a coin flip every replan)
+      bs.wantDown = chasing ? (dy > 90 && p.standPl && Math.abs(dxs) < 16) : (!bs.climbStep && dy < -60 && p.standPl && Math.random() < 0.5);
     }
   }
   return { move: bs.move * CONFIG.BOT.speedScale, held: bs.wantJump, press: bs.wantJump && (p.onGround || p.canDbl), down: bs.wantDown };
@@ -1067,7 +1075,7 @@ function initScenery() {
 initScenery();
 /* ---------- title hero: full-screen key art with the logo baked in (tools/embed_title.py). Menu
    screens draw it edge to edge; without it they fall back to the flat navy fill. ---------- */
-const BUILD_TAG = '2026-10-20.7';
+const BUILD_TAG = '2026-10-20.8';
 const Pilots = { img: {}, icon: {} };
 if (typeof PILOT_DATA !== 'undefined' && !NOART) {
   for (const n in PILOT_DATA.portraits) loadStrip(PILOT_DATA.portraits[n], im => { Pilots.img[n] = im; });
