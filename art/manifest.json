@@ -79,7 +79,7 @@
           "file": "robots/glitch_jump.png"
         },
         "fall": {
-          "frames": 2,
+          "frames": 3,
           "file": "robots/glitch_fall.png"
         },
         "land": {

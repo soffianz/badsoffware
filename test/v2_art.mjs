@@ -21,8 +21,9 @@ const res = await page.evaluate(() => {
   p.frozen = 0; p.onGround = true; p.vx = 0; anims.push(window.__bsw.pickRobotAnim ? window.__bsw.pickRobotAnim(p) : 'n/a');
   return out;
 });
-// every robot frame must be ONE figure: a strip cut at the wrong frame count squeezes several poses into
-// one cell (Bolt's fall once showed four tiny copies of him), which looks like several columns of art
+// every robot frame must be ONE figure. A strip cut at the wrong frame count squeezes several poses
+// into one cell (Bolt's fall showed four tiny copies of him) or slices a pose in half (Glitch's fall
+// and land showed two half-figures). Both look like separate chunks of art side by side in one cell.
 const split = await page.evaluate(() => {
   const bad = [];
   for (const n in window.__bsw.Art.robots) for (const a in window.__bsw.Art.robots[n].anims) {
@@ -30,12 +31,15 @@ const split = await page.evaluate(() => {
     const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height; const g = cv.getContext('2d'); g.drawImage(img, 0, 0);
     const data = g.getImageData(0, 0, img.width, img.height).data;
     for (let f = 0; f < frames; f++) {
-      let runs = 0, prev = false;
-      for (let x = Math.round(f * fw); x < Math.round((f + 1) * fw); x++) {
-        let any = false; for (let y = 0; y < img.height && !any; y++) if (data[(y * img.width + x) * 4 + 3] > 10) any = true;
-        if (any && !prev) runs++; prev = any;
+      const runs = []; let start = -1;
+      for (let x = Math.round(f * fw); x <= Math.round((f + 1) * fw); x++) {
+        let any = false;
+        if (x < Math.round((f + 1) * fw)) for (let y = 0; y < img.height && !any; y++) if (data[(y * img.width + x) * 4 + 3] > 10) any = true;
+        if (any && start < 0) start = x; else if (!any && start >= 0) { runs.push(x - start); start = -1; }
       }
-      if (runs >= 3) bad.push(n + '.' + a + ' frame ' + f + ' has ' + runs + ' separate columns of art');
+      // the tagged strips carry intentional dizzy stars / sparks, so only count wide chunks there
+      const big = runs.filter(w => w >= (a === 'tagged' ? 12 : 8)).length;
+      if (big >= 2 || runs.length >= 4 && a !== 'tagged') bad.push(n + '.' + a + ' frame ' + f + ' is split into ' + runs.length + ' separate chunks of art');
     }
   }
   return bad;
