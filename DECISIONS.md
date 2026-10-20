@@ -139,7 +139,54 @@ list) are all different.
 - **Not done this pass**: PeerJS is code-complete (`Net.hostPeer`/`Net.joinPeer`) but unverified -
   there's no real device in this build environment to dial a PeerJS broker from. The tabs transport
   (`Net.openTabs`, used by `test/v2_net.mjs`) is what's actually been exercised end to end.
-- **Tests**: `test/v2_*.mjs` (smoke, tower, bot, powerups, net, art, fx), `test/run_all.mjs` runs
-  all of them and prints a summary. The v1 `test/*.mjs` files test the v1 game (different orientation,
-  player count and ability system) and were left as-is rather than adapted - they're a record of
-  what v1 shipped with, not a suite v2 needs to keep passing.
+- **Tests**: `test/v2_*.mjs` (smoke, tower, bot, powerups, net, art, fx, phone, modes), `test/run_all.mjs`
+  runs all of them and prints a summary. The v1 `test/*.mjs` files test the v1 game (different
+  orientation, player count and ability system) and were left as-is rather than adapted - they're a
+  record of what v1 shipped with, not a suite v2 needs to keep passing.
+
+## Two game modes, a practice battle-settings screen, and a code-only title-screen redesign
+
+- **Two game modes**: Badsoffwares (default, unchanged - catching a drone grants ITS own effect:
+  Bopster/Grumpulator/Sneakfolder/Hijacker) and Character Powers (new - catching ANY drone, even a
+  hijacker-type one, grants the catcher's own robot its one signature power instead). Chosen on the
+  new battle-settings screen for practice, or by the host from a new MODE button in the online
+  lobby (`NET.gameMode`, replicated the same way `NET.roundLenMin` already was); live state lives in
+  `S.gameMode`, read by `catchBadsoff()`. `CONFIG.ROBOTS[i].power` is the per-robot mapping: Patch →
+  Patch Cable, Bolt → Zap Pulse, Glitch → Phase Blink, Havoc → Pop-up Bomb (Rumble/Nova's weapon
+  concepts, Ground Slam/Dash Burst, are reserved for when those two pilots get added - not
+  implemented, since no robot currently claims them).
+  - Patch Cable (self): clears the user's own stun/frozen state and grants a speed boost - the one
+    power allowed to activate WHILE stunned/frozen (every other power is gated behind the actor
+    being free to act; this one's whole point is escaping that state, so `usePower()` special-cases
+    it rather than gating it out).
+  - Zap Pulse (aoe): a short-range stun burst, mechanically identical to Ground Slam just with its
+    own radius/duration/colour - reusing the pattern rather than inventing new physics for it.
+  - Phase Blink (self): the existing Sneakfolder teleport+decoy effect verbatim, just reachable
+    under Glitch's name/colour in Character Powers mode.
+  - Pop-up Bomb (aoe, delayed): genuinely new - a placed hazard (`S.bombs`, mirrors `S.drones`'
+    pattern: host ticks it in `bombsStep()`, synced to guests via `sharedSnapshot`/
+    `applySharedSnapshot`, drawn pulsing by `drawBombs()`) that sits for `BOMB_FUSE_MS` then stuns
+    anyone still in range on detonation - doesn't hurt whoever's standing there the instant it's
+    placed, only once its fuse runs out.
+  - A `POWERS` registry unifies drone-type ids and character-power ids behind one lookup (name,
+    colour, `kind: 'self' | 'aoe'`) so `usePower()`, the held-power HUD panel, and the client/host
+    networking split (self-movement applies instantly on the actor's own phone; aoe only applies
+    host-side off a claim) don't need to know which mode granted the power.
+- **Battle-settings screen** (`S.ph = 'battleSettings'`, between the title and practice actually
+  starting): bot count (1-2, down from the old fixed-at-"up to 3" title button - the Host/Join flow
+  still supports up to 3 via `CONFIG.MAX_SLOTS`, this cap is practice-only per the request), match
+  length (1/2/4 min or `∞`), and game mode, all picked from `segRow()` tile rows before tapping
+  START. Infinity length is implemented as the literal JS value `Infinity` for `S.roundMs` - `S.t -=
+  dtms` and the `S.t <= 0` end check both already behave correctly on `Infinity` with no special
+  case, so a `∞` round simply never times out; `fmtTime()` special-cases only the *display* (an
+  infinity glyph instead of a `NaN:NaN` clock). Automated tests (`DEBUG_BOTS` via the `?bots=`
+  query string) skip straight past this screen so existing bot-stress tests don't need a UI flow.
+- **Title screen redesign**: approximated the look of a reference mock (blueprint-grid backdrop,
+  glowing wordmark, icon-led buttons with corner accent ticks) entirely in canvas code - no new art
+  assets were generated or embedded, since this environment has no image-generation capability,
+  only an art-processing pipeline for supplied source art. The existing BSWV21 scenery
+  (far/mid skyline) still shows through behind the grid, since `drawBg()` was already called on the
+  title screen before this pass. Flagged to the user: a literal pixel-art match to the mock's logo
+  wordmark, corner schematic diagrams, and rain-soaked hero photo would need real exported art
+  assets (a background image, a logo file) supplied the same way the BSWV21 packs were - those
+  can't be generated here, only composited once provided.

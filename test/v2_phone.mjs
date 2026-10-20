@@ -24,11 +24,20 @@ const toScreen = async (lx, ly) => page.evaluate(({ lx, ly }) => {
   return { x: r.left + lx * s, y: r.top + ly * s };
 }, { lx, ly });
 
-// --- title: real touch tap on PRACTICE VS BOTS, at its actual on-screen position ---
+// --- title: real touch tap on PRACTICE VS BOTS, at its actual on-screen position - now lands on
+// the battle-settings screen (bot count / match length / game mode) rather than starting right
+// away, so follow through with a real tap on its START button too.
 const titleRect = await page.evaluate(() => window.__bsw.UI.title.practice);
 out.titleButtonsExist = !!titleRect;
 if (titleRect) {
   const { x, y } = await toScreen(titleRect.x + titleRect.w / 2, titleRect.y + titleRect.h / 2);
+  await page.touchscreen.tap(x, y);
+}
+await page.waitForTimeout(300);
+out.reachedBattleSettings = await page.evaluate(() => window.__bsw.S.ph === 'battleSettings');
+const startRect = await page.evaluate(() => window.__bsw.UI.battle.start);
+if (startRect) {
+  const { x, y } = await toScreen(startRect.x + startRect.w / 2, startRect.y + startRect.h / 2);
   await page.touchscreen.tap(x, y);
 }
 await page.waitForTimeout(600);
@@ -89,7 +98,8 @@ await browser.close();
 const fail = [];
 if (out.loadMs > 5000) fail.push('load took too long: ' + out.loadMs + 'ms');
 if (!out.titleButtonsExist) fail.push('title buttons not found');
-if (!out.enteredLobbyOrPlay) fail.push('tapping PRACTICE did not start a round');
+if (!out.reachedBattleSettings) fail.push('tapping PRACTICE did not reach the battle-settings screen');
+if (!out.enteredLobbyOrPlay) fail.push('tapping START on battle settings did not start a round');
 if (!out.joystickMovedRobot) fail.push('a real touch-drag on the joystick did not move the robot');
 if (!out.jumpButtonWorked) fail.push('a real touch on the jump button did not make the robot jump');
 if (out.fps < 50) fail.push('fps under the 55fps target with 4 robots: ' + out.fps);
