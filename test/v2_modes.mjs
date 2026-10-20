@@ -90,7 +90,16 @@ const cfgBeforeStart = await page.evaluate(() => ({ ...window.__bsw.S.battleCfg 
 await clickRect(() => window.__bsw.UI.battle.start);
 await page.waitForTimeout(150);
 const afterStart = await page.evaluate(() => ({ ph: window.__bsw.S.ph, roundMs: window.__bsw.S.roundMs, gameMode: window.__bsw.S.gameMode, nActive: window.__bsw.P.filter(p => p.active).length }));
-console.log('reachedSettings', reachedSettings, 'cfgBeforeStart', JSON.stringify(cfgBeforeStart), 'afterStart', JSON.stringify(afterStart));
+
+// in-match exit button: there used to be no way back to the title screen once a round had
+// actually started short of reloading the page - a real tap on the HUD's exit button must work
+await page.evaluate(() => { window.__bsw.S.ph = 'play'; window.__bsw.S.t = 30000; });
+await page.waitForTimeout(100);
+await clickRect(() => window.__bsw.UI.hud.exit);
+await page.waitForTimeout(100);
+const afterExit = await page.evaluate(() => window.__bsw.S.ph);
+
+console.log('reachedSettings', reachedSettings, 'cfgBeforeStart', JSON.stringify(cfgBeforeStart), 'afterStart', JSON.stringify(afterStart), 'afterExit', afterExit);
 console.log(errs.length ? ('PAGE ERRORS: ' + JSON.stringify(errs)) : 'no page errors');
 await browser.close();
 
@@ -112,6 +121,7 @@ if (!['countdown', 'play'].includes(afterStart.ph)) fail.push('START did not beg
 if (afterStart.roundMs !== 4 * 60000) fail.push('chosen 4-minute match length was not applied: ' + afterStart.roundMs);
 if (afterStart.gameMode !== 'powers') fail.push('chosen Character Powers mode was not applied: ' + afterStart.gameMode);
 if (afterStart.nActive !== 2) fail.push('chosen 1-bot setting did not produce 2 active robots: ' + afterStart.nActive);
+if (afterExit !== 'title') fail.push('tapping the in-match HUD exit button did not return to the title screen: ph=' + afterExit);
 if (errs.length) fail.push('page errors present');
 if (fail.length) { console.error('FAIL:\n' + fail.join('\n')); process.exit(1); }
 console.log('ALL CHECKS PASSED');

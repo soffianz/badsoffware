@@ -1225,6 +1225,14 @@ function drawHUD(c) {
   let lx = 10;
   for (const p of P) { if (!p.active) continue; c.fillStyle = CONFIG.ROBOTS[p.robot].col; c.fillText(fmtClock(p.itClock), lx, 31); lx += 46; }
   if (S.feed.length) { c.textAlign = 'center'; c.font = '600 9px system-ui'; c.fillStyle = CC.t3; c.fillText(S.feed[S.feed.length - 1].msg, VW / 2, 44); }
+  // exit-to-menu: top right of the HUD, out of the way of the It-clocks/round-timer/feed text -
+  // without this there was no way back to the title screen once a match (local or networked) had
+  // actually started, short of reloading the page
+  const EX = { x: VW - 25, y: 24, r: 14 };
+  c.beginPath(); c.arc(EX.x, EX.y, EX.r, 0, 7); c.fillStyle = CC.dk; c.fill(); c.strokeStyle = CC.bd; c.lineWidth = 1.5; c.stroke();
+  c.strokeStyle = CC.t2; c.lineWidth = 2; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(EX.x - 5, EX.y - 5); c.lineTo(EX.x + 5, EX.y + 5); c.moveTo(EX.x + 5, EX.y - 5); c.lineTo(EX.x - 5, EX.y + 5); c.stroke();
+  UI.hud.exit = { x: EX.x - EX.r - 6, y: EX.y - EX.r - 6, w: (EX.r + 6) * 2, h: (EX.r + 6) * 2 };
 }
 
 function drawPanel(c) {
@@ -1473,6 +1481,7 @@ function backToTitle() { netReset(); S.ph = 'title'; S.codeBuf = ''; }
 const KEYROWS = ['ABCDEFGH', 'JKMNPQRS', 'TUVWXYZ2', '3456789'];
 cv.addEventListener('pointerdown', e => {
   const t = toLogical(e); Snd.init();
+  if ((S.ph === 'countdown' || S.ph === 'play' || S.ph === 'over') && UI.hud.exit && inRect(t, UI.hud.exit)) { backToTitle(); return; }
   if (S.ph === 'title') {
     if (UI.title.host && inRect(t, UI.title.host)) return startHost();
     if (UI.title.join && inRect(t, UI.title.join)) { S.ph = 'enterCode'; S.codeBuf = ''; return; }
@@ -1541,7 +1550,7 @@ cv.addEventListener('pointerdown', e => {
   }
 });
 function inRect(p, r) { return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
-const UI = { title: {}, code: {}, lobby: {}, battle: {} };
+const UI = { title: {}, code: {}, lobby: {}, battle: {}, hud: {} };
 
 let last = performance.now(), acc = 0;
 function frame(now) {
