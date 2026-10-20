@@ -1075,7 +1075,7 @@ function initScenery() {
 initScenery();
 /* ---------- title hero: full-screen key art with the logo baked in (tools/embed_title.py). Menu
    screens draw it edge to edge; without it they fall back to the flat navy fill. ---------- */
-const BUILD_TAG = '2026-10-20.7';
+const BUILD_TAG = '2026-10-20.8';
 const Pilots = { img: {}, icon: {} };
 if (typeof PILOT_DATA !== 'undefined' && !NOART) {
   for (const n in PILOT_DATA.portraits) loadStrip(PILOT_DATA.portraits[n], im => { Pilots.img[n] = im; });
