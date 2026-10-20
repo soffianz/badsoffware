@@ -190,3 +190,10 @@ list) are all different.
   wordmark, corner schematic diagrams, and rain-soaked hero photo would need real exported art
   assets (a background image, a logo file) supplied the same way the BSWV21 packs were - those
   can't be generated here, only composited once provided.
+
+## Pilot select screen (2026-10-20)
+- **Roster**: Patch, Bolt, Glitch, Rumble. Rumble took Havoc's slot (index 3); Havoc and his Pop-up Bomb stay in the code but are benched. Rumble's power is Ground Slam (same stun-nearby code as the Grumpulator slam).
+- **Card text describes what the game does**, not the reference mock: Patch Cable clears stun/freeze and gives a speed boost (there is no tether), Ground Slam stuns rivals around you (it does not break platforms).
+- **One pilot per player**, host-authoritative: a guest's pick is refused if taken and the host's next snapshot reverts it (700ms grace so a fresh tap does not flicker). New guests are given the first free pilot.
+- **Practice** now has the same pilot panel; bots take the remaining pilots in roster order, 1 to 3 bots.
+- **Rumble has no in-game sprites yet**: he borrows Havoc's sprites tinted orange (`rumbleStandIn()`). Prompts and drop-in steps are in `docs/RUMBLE_ART_PROMPTS.md`; `process_bswv21.py <raw> art rumble` adds just him.

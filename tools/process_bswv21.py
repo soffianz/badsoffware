@@ -147,6 +147,17 @@ ROBOTS = {
         # no tagged art delivered for Havoc - stopgap built in-game from the idle frame (DECISIONS.md precedent)
     },
 }
+# Rumble: the 4th pilot. Until these sheets exist the game borrows Havoc's sprites tinted orange.
+# Prompts and the exact file spec: docs/RUMBLE_ART_PROMPTS.md. Add just him with:
+#   python3 tools/process_bswv21.py <raw_dir> art rumble
+ROBOTS['rumble'] = {
+    'idle': ('BSWV21_Rumble/rumble_idle_4_frames.png', 4),
+    'run': ('BSWV21_Rumble/rumble_run_8_frames.png', 8),
+    'jump': ('BSWV21_Rumble/rumble_jump_2_frames.png', 2),
+    'fall': ('BSWV21_Rumble/rumble_fall_2_frames.png', 2),
+    'land': ('BSWV21_Rumble/rumble_land_3_frames.png', 3),
+    'tagged': ('BSWV21_Rumble/rumble_tagged_4_frames.png', 4),
+}
 DRONES = {
     'bopster': {'hover': ('Bopster_Hover_Animation.png', 4), 'spawn': ('Bopster_Spawn_Animation.png', 4)},
     'grumpulator': {'hover': ('BSWV21_Grumpulator_Hover.png', 4)},   # spawn stays procedural (DECISIONS.md)
@@ -156,11 +167,16 @@ DRONES = {
 
 def main():
     raw_dir, out_dir = sys.argv[1], sys.argv[2]
+    only = sys.argv[3:]          # optional robot names: process just those and merge into the existing manifest
     os.makedirs(os.path.join(out_dir, 'robots'), exist_ok=True)
     os.makedirs(os.path.join(out_dir, 'badsoffwares'), exist_ok=True)
-    manifest = {'robots': {}, 'badsoffwares': {}}
+    manifest_path = os.path.join(out_dir, 'manifest.json')
+    manifest = json.load(open(manifest_path)) if only and os.path.exists(manifest_path) else {'robots': {}, 'badsoffwares': {}}
 
     for name, anims in ROBOTS.items():
+        if only and name not in only: continue
+        if not only and not os.path.exists(os.path.join(raw_dir, anims['run'][0])):
+            print('skip robot', name, '(no raw art delivered yet)'); continue
         run_file, n_run = anims['run']
         # scale PER ANIMATION, each normalized independently to ROBOT_TARGET_H from its own
         # median frame height - not one scale derived from the run cycle and reused everywhere.
@@ -200,7 +216,7 @@ def main():
             manifest['robots'][name]['anims']['tagged'] = {'frames': 1, 'file': f'robots/{name}_tagged.png', 'stopgap': 'shake'}
             print('robot', name, 'tagged', 1, 'frame (stopgap: code-driven shake) ->', out_path)
 
-    for name, anims in DRONES.items():
+    for name, anims in ({} if only else DRONES).items():
         manifest['badsoffwares'][name] = {'frame': DRONE_CANVAS[0], 'anims': {}}
         # drones: scale each anim independently off its own tallest frame (no shared run cycle to anchor to)
         for anim, (file, n) in anims.items():
