@@ -1029,6 +1029,7 @@ function initScenery() {
 initScenery();
 /* ---------- title hero: full-screen key art with the logo baked in (tools/embed_title.py). Menu
    screens draw it edge to edge; without it they fall back to the flat navy fill. ---------- */
+const BUILD_TAG = '2026-10-20.3';
 const Title = { img: null };
 if (typeof TITLE_DATA !== 'undefined' && !NOART) loadStrip(TITLE_DATA.hero, im => { Title.img = im; });
 // cover-fit the hero over the whole logical canvas (not just the playfield band). Extra height is
@@ -1303,7 +1304,8 @@ function drawPlayfield(c) {
     c.font = '600 13px system-ui';
     S.ranked.forEach((p, i) => { c.fillStyle = CONFIG.ROBOTS[p.robot].col; c.fillText(CONFIG.ROBOTS[p.robot].name + '  ' + fmtClock(p.itClock) + ' as It', VW / 2, PLAY_Y0 + 100 + i * 24); });
     c.fillStyle = CC.t2; c.font = '600 12px system-ui';
-    c.fillText(NET.mode === 'local' ? 'TAP TO PLAY AGAIN' : NET.isHost ? 'TAP FOR LOBBY' : 'WAITING FOR HOST', VW / 2, PLAY_Y0 + PLAY_H - 40);
+    c.fillText(NET.mode === 'local' ? 'TAP TO PLAY AGAIN' : NET.isHost ? 'TAP FOR LOBBY' : 'WAITING FOR HOST', VW / 2, PLAY_Y0 + PLAY_H - 86);
+    UI.over.menu = btn(c, VW / 2 - 90, PLAY_Y0 + PLAY_H - 66, 180, 44, 'MAIN MENU');
   }
   if (S.ph === 'title') drawTitle(c);
   if (S.ph === 'enterCode') drawCodeEntry(c);
@@ -1392,6 +1394,7 @@ function drawTitle(c) {
   const bw = 268, bx = VW / 2 - bw / 2, bh = 62, gap = 10; let by = Math.round(VH * 0.585);
   UI.title.host = menuBtn(c, bx, by, bw, bh, 'HOST GAME', 'start a room, share the code', iconPeople); by += bh + gap;
   UI.title.join = menuBtn(c, bx, by, bw, bh, 'JOIN GAME', 'enter a 4 letter code', iconArrowIn); by += bh + gap;
+  c.save(); c.globalAlpha = 0.55; c.fillStyle = '#9fe6ff'; c.font = '600 10px Rajdhani, system-ui'; c.textAlign = 'center'; c.fillText('BUILD ' + BUILD_TAG, VW / 2, VH - 10); c.restore();
   UI.title.practice = menuBtn(c, bx, by, bw, bh, 'PRACTICE VS BOTS', 'play offline, 1 or 2 bots', iconRobotHead);
 }
 // a row of mutually-exclusive option tiles (bot count / match length / game mode) - shared by
@@ -1428,9 +1431,22 @@ function drawBattleSettings(c) {
   c.fillText(cfg.mode === 'drones' ? 'catch a badsoffware for its own power (dash/slam/blink/hijack)' : 'catch any badsoffware to use YOUR robot\'s signature power', VW / 2, y);
   y += 26;
   UI.battle.start = btn(c, 30, y, VW - 60, 48, 'START PRACTICE');
-  c.strokeStyle = CC.bd; c.lineWidth = 1.5; c.beginPath(); c.roundRect(10, PLAY_Y0 + 6, 50, 24, 6); c.stroke();
-  c.fillStyle = CC.t2; c.font = '600 10px system-ui'; c.textAlign = 'center'; c.fillText('BACK', 35, PLAY_Y0 + 21);
-  UI.battle.back = { x: 10, y: PLAY_Y0 + 6, w: 50, h: 24 };
+  drawBackBtn(c);
+}
+// shared BACK button for every sub-screen: big enough for a thumb, top-left, same neon styling
+function drawBackBtn(c) {
+  const x = 12, y = 12, w = 84, h = 38, k = 7;
+  c.save();
+  c.beginPath(); c.moveTo(x + k, y); c.lineTo(x + w - k, y); c.lineTo(x + w, y + k); c.lineTo(x + w, y + h - k); c.lineTo(x + w - k, y + h);
+  c.lineTo(x + k, y + h); c.lineTo(x, y + h - k); c.lineTo(x, y + k); c.closePath();
+  c.fillStyle = 'rgba(6,18,52,0.9)'; c.fill(); c.strokeStyle = '#4fd2ff'; c.lineWidth = 2; c.stroke();
+  c.strokeStyle = '#d8f4ff'; c.lineWidth = 2.5; c.lineCap = 'round'; c.lineJoin = 'round';
+  c.beginPath(); c.moveTo(x + 27, y + 11); c.lineTo(x + 17, y + h / 2); c.lineTo(x + 27, y + h - 11); c.stroke();
+  c.fillStyle = '#d8f4ff'; c.font = '700 16px Rajdhani, system-ui'; c.textAlign = 'left';
+  if (c.letterSpacing !== undefined) c.letterSpacing = '1px';
+  c.fillText('BACK', x + 38, y + h / 2 + 5);
+  c.restore();
+  UI.back = { x: x - 6, y: y - 6, w: w + 12, h: h + 12 };
 }
 function drawCodeEntry(c) {
   c.fillStyle = CC.lt; c.font = '700 16px system-ui'; c.textAlign = 'center'; c.fillText('ENTER ROOM CODE', VW / 2, PLAY_Y0 + 40);
@@ -1446,6 +1462,7 @@ function drawCodeEntry(c) {
   });
   const bw = 100, bx = VW / 2 - bw / 2;
   UI.code.back = btn(c, bx, gy + 10, bw, 36, 'BACK');
+  drawBackBtn(c);
 }
 function drawLobby(c) {
   c.fillStyle = CC.lt; c.font = '700 14px system-ui'; c.textAlign = 'center';
@@ -1478,9 +1495,7 @@ function drawLobby(c) {
   } else {
     c.fillStyle = CC.t2; c.font = '600 11px system-ui'; c.fillText('TAP YOUR ROW TO SWAP ROBOT, TAP READY', VW / 2, ry + 20);
   }
-  c.strokeStyle = CC.bd; c.lineWidth = 1.5; c.beginPath(); c.roundRect(10, PLAY_Y0 + 6, 50, 24, 6); c.stroke();
-  c.fillStyle = CC.t2; c.font = '600 10px system-ui'; c.textAlign = 'center'; c.fillText('BACK', 35, PLAY_Y0 + 21);
-  UI.lobby.back = { x: 10, y: PLAY_Y0 + 6, w: 50, h: 24 };
+  drawBackBtn(c);
 }
 
 /* ---------- lobby / title / code-entry flow (section 10) ---------- */
@@ -1516,7 +1531,7 @@ cv.addEventListener('pointerdown', e => {
   }
   if (S.ph === 'battleSettings') {
     const cfg = S.battleCfg;
-    if (UI.battle.back && inRect(t, UI.battle.back)) { S.ph = 'title'; return; }
+    if (UI.back && inRect(t, UI.back)) { S.ph = 'title'; return; }
     (UI.battle.bots || []).forEach((r, i) => { if (inRect(t, r)) cfg.bots = i + 1; });
     (UI.battle.dur || []).forEach((r, i) => { if (inRect(t, r)) cfg.durMin = BATTLE_DUR_OPTS[i]; });
     (UI.battle.mode || []).forEach((r, i) => { if (inRect(t, r)) cfg.mode = i === 0 ? 'drones' : 'powers'; });
@@ -1524,7 +1539,7 @@ cv.addEventListener('pointerdown', e => {
     return;
   }
   if (S.ph === 'enterCode') {
-    if (UI.code.back && inRect(t, UI.code.back)) { S.ph = 'title'; return; }
+    if ((UI.back && inRect(t, UI.back)) || (UI.code.back && inRect(t, UI.code.back))) { S.ph = 'title'; return; }
     for (const k of UI.code.keys || []) {
       if (inRect(t, k.r)) {
         if (k.ch === '⌫') S.codeBuf = S.codeBuf.slice(0, -1);
@@ -1536,7 +1551,7 @@ cv.addEventListener('pointerdown', e => {
     return;
   }
   if (S.ph === 'lobby') {
-    if (UI.lobby.back && inRect(t, UI.lobby.back)) return backToTitle();
+    if (UI.back && inRect(t, UI.back)) return backToTitle();
     if (UI.lobby.ready && inRect(t, UI.lobby.ready)) {
       NET.ready[NET.mySlot] = !NET.ready[NET.mySlot];
       if (NET.isHost) { /* host's own ready is local, applied below on next frame */ }
@@ -1568,12 +1583,31 @@ cv.addEventListener('pointerdown', e => {
     return;
   }
   if (S.ph === 'over') {
+    if (UI.over.menu && inRect(t, UI.over.menu)) return backToTitle();
     if (NET.mode === 'local') return startLocal(DEBUG_BOTS >= 0 ? DEBUG_BOTS : S.battleCfg.bots);
     if (NET.isHost) { S.ph = 'lobby'; NET.ready = NET.ready.map(() => false); }
   }
 });
+function goBack() {
+  if (S.ph === 'battleSettings' || S.ph === 'enterCode') S.ph = 'title';
+  else if (S.ph !== 'title') backToTitle();
+}
+// phone back gesture: while off the title screen it steps back inside the game instead of leaving
+// the site. One history entry is pushed on leaving the title and consumed on returning to it.
+let histPushed = false;
+window.addEventListener('popstate', () => {
+  if (!histPushed) return;
+  if (S.ph === 'title') { histPushed = false; return; }
+  goBack();
+  if (S.ph === 'title') histPushed = false; else history.pushState({ bsw: 1 }, '');
+});
+setInterval(() => {
+  if (S.ph !== 'title' && !histPushed) { histPushed = true; tryDo(() => history.pushState({ bsw: 1 }, '')); }
+  else if (S.ph === 'title' && histPushed) { histPushed = false; tryDo(() => history.back()); }
+}, 150);
+window.addEventListener('keydown', e => { if (e.key === 'Escape') goBack(); });
 function inRect(p, r) { return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
-const UI = { title: {}, code: {}, lobby: {}, battle: {}, hud: {} };
+const UI = { title: {}, code: {}, lobby: {}, battle: {}, hud: {}, over: {}, back: null };
 
 let last = performance.now(), acc = 0;
 function frame(now) {
