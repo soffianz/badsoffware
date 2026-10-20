@@ -1,0 +1,138 @@
+{
+  "bg_far": {
+    "w": 390,
+    "h": 693
+  },
+  "street": {
+    "w": 390,
+    "h": 116
+  },
+  "bg_mid": {
+    "w": 390,
+    "h": 693
+  },
+  "platform_skins": [
+    [
+      {
+        "tag": "left",
+        "file": "plat_skin0_left.png",
+        "w": 58,
+        "h": 27
+      },
+      {
+        "tag": "mid",
+        "file": "plat_skin0_mid.png",
+        "w": 73,
+        "h": 18
+      },
+      {
+        "tag": "right",
+        "file": "plat_skin0_right.png",
+        "w": 58,
+        "h": 27
+      }
+    ],
+    [
+      {
+        "tag": "left",
+        "file": "plat_skin1_left.png",
+        "w": 113,
+        "h": 61
+      },
+      {
+        "tag": "mid",
+        "file": "plat_skin1_mid.png",
+        "w": 143,
+        "h": 18
+      },
+      {
+        "tag": "right",
+        "file": "plat_skin1_right.png",
+        "w": 113,
+        "h": 61
+      }
+    ],
+    [
+      {
+        "tag": "left",
+        "file": "plat_skin2_left.png",
+        "w": 47,
+        "h": 29
+      },
+      {
+        "tag": "mid",
+        "file": "plat_skin2_mid.png",
+        "w": 59,
+        "h": 18
+      },
+      {
+        "tag": "right",
+        "file": "plat_skin2_right.png",
+        "w": 47,
+        "h": 29
+      }
+    ],
+    [
+      {
+        "tag": "left",
+        "file": "plat_skin3_left.png",
+        "w": 48,
+        "h": 20
+      },
+      {
+        "tag": "mid",
+        "file": "plat_skin3_mid.png",
+        "w": 52,
+        "h": 18
+      },
+      {
+        "tag": "right",
+        "file": "plat_skin3_right.png",
+        "w": 48,
+        "h": 20
+      }
+    ]
+  ],
+  "props": {
+    "ac_unit": {
+      "file": "prop_ac_unit.png",
+      "w": 56,
+      "h": 40
+    },
+    "dish": {
+      "file": "prop_dish.png",
+      "w": 40,
+      "h": 40
+    },
+    "water_tank": {
+      "file": "prop_water_tank.png",
+      "w": 36,
+      "h": 40
+    },
+    "antenna": {
+      "file": "prop_antenna.png",
+      "w": 15,
+      "h": 40
+    },
+    "neon_sign": {
+      "file": "prop_neon_sign.png",
+      "w": 31,
+      "h": 40
+    },
+    "billboard": {
+      "file": "prop_billboard.png",
+      "w": 49,
+      "h": 56
+    },
+    "street_lamp": {
+      "file": "prop_street_lamp.png",
+      "w": 35,
+      "h": 40
+    },
+    "crates": {
+      "file": "prop_crates.png",
+      "w": 30,
+      "h": 40
+    }
+  }
+}
