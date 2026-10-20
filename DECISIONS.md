@@ -109,18 +109,84 @@ list) are all different.
   self-movement, so the actor's phone only sends a claim and the host applies the AoE using its own
   copy of the actor's position - mirrors how v1 handled "effects on the other pilot are applied by
   that pilot's own phone" for its weapons, adapted to an AoE that can hit several robots at once.
-- **Bots** don't explore the tower on their own; they only climb/flee vertically when the relevant
-  robot (the It robot, or a chase target) is actually close (within 160px both axes). This matches
-  PRD section 13's "when not It, keeps distance from the It robot, climbs or drops to escape" -
-  reactive, not constant tower-scaling. If play-testing finds bots feel too passive on tall
-  layouts, the fix is widening that distance threshold, not adding random exploration.
-- **Not done this pass**: the Page tileset scenery (background layers, platform skins, props) stays
-  greybox/colour-coded; the current platforms are legible and the city backdrop art would be a
-  reasonable next increment rather than something broken as shipped. PeerJS is code-complete
-  (`Net.hostPeer`/`Net.joinPeer`) but unverified - there's no real device in this build environment
-  to dial a PeerJS broker from. The tabs transport (`Net.openTabs`, used by `test/v2_net.mjs`) is
-  what's actually been exercised end to end.
-- **Tests**: `test/v2_*.mjs` (smoke, tower, bot, powerups, net, art, fx), `test/run_all.mjs` runs
-  all of them and prints a summary. The v1 `test/*.mjs` files test the v1 game (different orientation,
-  player count and ability system) and were left as-is rather than adapted - they're a record of
-  what v1 shipped with, not a suite v2 needs to keep passing.
+- **Bots** don't explore the tower on their own; they only climb/flee vertically toward/away from
+  a relevant robot (the It robot, or a chase target), with no distance gate (removed - see below).
+  This matches PRD section 13's "when not It, keeps distance from the It robot, climbs or drops to
+  escape" - reactive, not constant tower-scaling.
+- **Bot climb commitment** (added after real-phone testing showed bots failing to close vertical
+  gaps): a bot's decision to climb towards/away from a target used to be re-evaluated from scratch
+  every ~130ms replan tick. Against a live, moving target (another bot reacting on its own) the
+  target's relative height constantly crosses the "should I climb" threshold back and forth, so a
+  bot would start a climb step then abandon it a tick later, never making net progress - looked
+  like bots "ignoring" the chase. Fixed with a persistent `climbStep` field on the bot's state that
+  is kept across replans until the step is actually reached, so a committed climb runs to
+  completion before being re-evaluated. Verified in `test/v2_bot.mjs` with a target that jitters
+  across the threshold via a sine wave: the bot still nets 60px+ of real altitude gain in 5s.
+- **Street-level floor art**: `tools/process_page.py` processed every BSWV21 Page tileset image
+  except `BSWV21_Page_Street_Level.png` - an oversight from the original scenery-wiring pass, so
+  the world floor had no visual ground marker at all (just whatever the tiled mid-background
+  showed). Added processing for it (scaled to the full 390px playfield width, not tiled - the
+  world is a fixed width) and draw it anchored by its bottom edge at `FLOOR` in `drawPlatforms()`,
+  with an improved solid-band greybox fallback for when the art isn't loaded.
+- **Adaptive viewport height**: `doLayout()` used a fixed logical height (`CONFIG.H`) for the
+  playfield, so any device whose aspect ratio didn't match that constant got letterboxed (black
+  bars) rather than filling the screen - visible in a real phone screenshot. `VH`/`PLAY_H`/
+  `PANEL_Y0` are now mutable and `doLayout()` computes an ideal height from the actual device
+  viewport's aspect ratio (`visualViewport` width/height), clamped to a sane range, and resizes the
+  stage/canvas CSS to match when it changes meaningfully. Verified with a non-default 412x950 test
+  viewport (different aspect ratio from the 390x844 dev default): canvas `getBoundingClientRect()`
+  exactly matched the full viewport with zero letterbox.
+- **Not done this pass**: PeerJS is code-complete (`Net.hostPeer`/`Net.joinPeer`) but unverified -
+  there's no real device in this build environment to dial a PeerJS broker from. The tabs transport
+  (`Net.openTabs`, used by `test/v2_net.mjs`) is what's actually been exercised end to end.
+- **Tests**: `test/v2_*.mjs` (smoke, tower, bot, powerups, net, art, fx, phone, modes), `test/run_all.mjs`
+  runs all of them and prints a summary. The v1 `test/*.mjs` files test the v1 game (different
+  orientation, player count and ability system) and were left as-is rather than adapted - they're a
+  record of what v1 shipped with, not a suite v2 needs to keep passing.
+
+## Two game modes, a practice battle-settings screen, and a code-only title-screen redesign
+
+- **Two game modes**: Badsoffwares (default, unchanged - catching a drone grants ITS own effect:
+  Bopster/Grumpulator/Sneakfolder/Hijacker) and Character Powers (new - catching ANY drone, even a
+  hijacker-type one, grants the catcher's own robot its one signature power instead). Chosen on the
+  new battle-settings screen for practice, or by the host from a new MODE button in the online
+  lobby (`NET.gameMode`, replicated the same way `NET.roundLenMin` already was); live state lives in
+  `S.gameMode`, read by `catchBadsoff()`. `CONFIG.ROBOTS[i].power` is the per-robot mapping: Patch →
+  Patch Cable, Bolt → Zap Pulse, Glitch → Phase Blink, Havoc → Pop-up Bomb (Rumble/Nova's weapon
+  concepts, Ground Slam/Dash Burst, are reserved for when those two pilots get added - not
+  implemented, since no robot currently claims them).
+  - Patch Cable (self): clears the user's own stun/frozen state and grants a speed boost - the one
+    power allowed to activate WHILE stunned/frozen (every other power is gated behind the actor
+    being free to act; this one's whole point is escaping that state, so `usePower()` special-cases
+    it rather than gating it out).
+  - Zap Pulse (aoe): a short-range stun burst, mechanically identical to Ground Slam just with its
+    own radius/duration/colour - reusing the pattern rather than inventing new physics for it.
+  - Phase Blink (self): the existing Sneakfolder teleport+decoy effect verbatim, just reachable
+    under Glitch's name/colour in Character Powers mode.
+  - Pop-up Bomb (aoe, delayed): genuinely new - a placed hazard (`S.bombs`, mirrors `S.drones`'
+    pattern: host ticks it in `bombsStep()`, synced to guests via `sharedSnapshot`/
+    `applySharedSnapshot`, drawn pulsing by `drawBombs()`) that sits for `BOMB_FUSE_MS` then stuns
+    anyone still in range on detonation - doesn't hurt whoever's standing there the instant it's
+    placed, only once its fuse runs out.
+  - A `POWERS` registry unifies drone-type ids and character-power ids behind one lookup (name,
+    colour, `kind: 'self' | 'aoe'`) so `usePower()`, the held-power HUD panel, and the client/host
+    networking split (self-movement applies instantly on the actor's own phone; aoe only applies
+    host-side off a claim) don't need to know which mode granted the power.
+- **Battle-settings screen** (`S.ph = 'battleSettings'`, between the title and practice actually
+  starting): bot count (1-2, down from the old fixed-at-"up to 3" title button - the Host/Join flow
+  still supports up to 3 via `CONFIG.MAX_SLOTS`, this cap is practice-only per the request), match
+  length (1/2/4 min or `∞`), and game mode, all picked from `segRow()` tile rows before tapping
+  START. Infinity length is implemented as the literal JS value `Infinity` for `S.roundMs` - `S.t -=
+  dtms` and the `S.t <= 0` end check both already behave correctly on `Infinity` with no special
+  case, so a `∞` round simply never times out; `fmtTime()` special-cases only the *display* (an
+  infinity glyph instead of a `NaN:NaN` clock). Automated tests (`DEBUG_BOTS` via the `?bots=`
+  query string) skip straight past this screen so existing bot-stress tests don't need a UI flow.
+- **Title screen redesign**: approximated the look of a reference mock (blueprint-grid backdrop,
+  glowing wordmark, icon-led buttons with corner accent ticks) entirely in canvas code - no new art
+  assets were generated or embedded, since this environment has no image-generation capability,
+  only an art-processing pipeline for supplied source art. The existing BSWV21 scenery
+  (far/mid skyline) still shows through behind the grid, since `drawBg()` was already called on the
+  title screen before this pass. Flagged to the user: a literal pixel-art match to the mock's logo
+  wordmark, corner schematic diagrams, and rain-soaked hero photo would need real exported art
+  assets (a background image, a logo file) supplied the same way the BSWV21 packs were - those
+  can't be generated here, only composited once provided.

@@ -1,8 +1,8 @@
 {
   "robots": {
     "patch": {
-      "frame": 64,
-      "scale": 0.1143,
+      "frame": 84,
+      "scale": 0.1429,
       "anims": {
         "run": {
           "frames": 8,
@@ -32,8 +32,8 @@
       }
     },
     "bolt": {
-      "frame": 64,
-      "scale": 0.0777,
+      "frame": 84,
+      "scale": 0.0971,
       "anims": {
         "run": {
           "frames": 8,
@@ -63,8 +63,8 @@
       }
     },
     "glitch": {
-      "frame": 64,
-      "scale": 0.1189,
+      "frame": 84,
+      "scale": 0.0874,
       "anims": {
         "idle": {
           "frames": 4,
@@ -93,8 +93,8 @@
       }
     },
     "havoc": {
-      "frame": 64,
-      "scale": 0.1159,
+      "frame": 84,
+      "scale": 0.8333,
       "anims": {
         "idle": {
           "frames": 4,

@@ -110,8 +110,8 @@ def character_scale(raw_dir, run_file, n_run, target_h):
     frames = split_into_frames(im, n_run)
     return target_h / median(f.size[1] for f in frames)
 
-ROBOT_CANVAS = (64, 64)
-ROBOT_TARGET_H = 40
+ROBOT_CANVAS = (84, 84)
+ROBOT_TARGET_H = 50
 DRONE_CANVAS = (48, 48)
 DRONE_TARGET_H = 34
 
@@ -162,19 +162,28 @@ def main():
 
     for name, anims in ROBOTS.items():
         run_file, n_run = anims['run']
-        scale = character_scale(raw_dir, run_file, n_run, ROBOT_TARGET_H)
-        manifest['robots'][name] = {'frame': ROBOT_CANVAS[0], 'scale': round(scale, 4), 'anims': {}}
+        # scale PER ANIMATION, each normalized independently to ROBOT_TARGET_H from its own
+        # median frame height - not one scale derived from the run cycle and reused everywhere.
+        # The source files for different animations (run vs jump/fall/land/tagged) turned out to
+        # be drawn at different native zoom levels (separate generation batches), so a single
+        # character-wide scale left jump/fall/land/tagged 1.4-1.5x taller than idle/run after the
+        # per-frame overflow clamp quietly kicked in - the character visibly changed size between
+        # actions. Normalizing every animation to the same target height on its own fixes that;
+        # pose-to-pose height variation within one animation (a crouch, a reach) is real animation
+        # and stays, since it's compared against that animation's own median, not inflated by it.
+        anim_scales = {anim: character_scale(raw_dir, file, n, ROBOT_TARGET_H) for anim, (file, n) in anims.items()}
+        manifest['robots'][name] = {'frame': ROBOT_CANVAS[0], 'scale': round(anim_scales[list(anims)[0]], 4), 'anims': {}}
         for anim, (file, n) in anims.items():
-            strip, nf = process_animation(os.path.join(raw_dir, file), n, ROBOT_CANVAS, scale, True)
+            strip, nf = process_animation(os.path.join(raw_dir, file), n, ROBOT_CANVAS, anim_scales[anim], True)
             out_path = os.path.join(out_dir, 'robots', f'{name}_{anim}.png')
             strip.save(out_path)
             manifest['robots'][name]['anims'][anim] = {'frames': nf, 'file': f'robots/{name}_{anim}.png'}
-            print('robot', name, anim, nf, 'frames ->', out_path)
+            print('robot', name, anim, nf, 'frames, scale', round(anim_scales[anim], 4), '->', out_path)
         # stopgaps (DECISIONS.md precedent): no clean delivered strip for this animation, so build
         # one frame from an animation that does exist and animate it in code instead (idle bob /
         # tagged shake), rather than block on art that isn't there
         if 'idle' not in anims:
-            strip, _ = process_animation(os.path.join(raw_dir, run_file), n_run, ROBOT_CANVAS, scale, True)
+            strip, _ = process_animation(os.path.join(raw_dir, run_file), n_run, ROBOT_CANVAS, anim_scales['run'], True)
             frame0 = strip.crop((0, 0, ROBOT_CANVAS[0], ROBOT_CANVAS[1]))
             out_path = os.path.join(out_dir, 'robots', f'{name}_idle.png')
             frame0.save(out_path)
@@ -183,7 +192,8 @@ def main():
         if 'tagged' not in anims:
             idle_file = anims.get('idle', (run_file, n_run))[0]
             idle_n = anims.get('idle', (run_file, n_run))[1]
-            strip, _ = process_animation(os.path.join(raw_dir, idle_file), idle_n, ROBOT_CANVAS, scale, True)
+            idle_scale = anim_scales.get('idle', anim_scales['run'])
+            strip, _ = process_animation(os.path.join(raw_dir, idle_file), idle_n, ROBOT_CANVAS, idle_scale, True)
             frame0 = strip.crop((0, 0, ROBOT_CANVAS[0], ROBOT_CANVAS[1]))
             out_path = os.path.join(out_dir, 'robots', f'{name}_tagged.png')
             frame0.save(out_path)
