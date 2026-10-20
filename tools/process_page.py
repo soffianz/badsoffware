@@ -37,16 +37,20 @@ def main():
     manifest['bg_far'] = {'w': far.width, 'h': far.height}
     print('bg_far', far.size)
 
-    # Street level: an opaque shopfront facade (no green screen) - the actual ground. Without
-    # this the world floor had no visual marker at all, just whatever the tiled mid-background
-    # happened to show at that height. Scaled to the full playfield width (the world is exactly
-    # 390px wide, not infinite, so this is drawn once, not tiled), anchored by its bottom edge
-    # at the world floor.
-    street = Image.open(os.path.join(raw_dir, 'BSWV21_Page_Street_Level.png')).convert('RGB')
+    # Street level: a shopfront facade - the actual ground. Without this the world floor had no
+    # visual marker at all, just whatever the tiled mid-background happened to show at that
+    # height. The source has a plain green-screen sky above the shopfronts (not pre-keyed, unlike
+    # the far background), so it needs the same chroma key as everything else; cropped to its
+    # opaque bbox afterwards (keeps any rooftop bits like lamp posts/signs that poke above the
+    # shopfront line, drops the dead green). Scaled to the full playfield width (the world is
+    # exactly 390px wide, not infinite, so this is drawn once, not tiled), anchored by its bottom
+    # edge at the world floor.
+    street = chroma_key(Image.open(os.path.join(raw_dir, 'BSWV21_Page_Street_Level.png')))
+    street = trim(street)
     sw, sh = street.size
     scale = 390 / sw
     street = street.resize((390, round(sh * scale)), Image.LANCZOS)
-    street.save(os.path.join(out_dir, 'street.webp'), 'WEBP', quality=84, method=6)
+    street.save(os.path.join(out_dir, 'street.webp'), 'WEBP', quality=84, method=6, lossless=False)
     manifest['street'] = {'w': street.width, 'h': street.height}
     print('street', street.size)
 
