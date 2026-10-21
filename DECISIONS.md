@@ -190,3 +190,15 @@ list) are all different.
   wordmark, corner schematic diagrams, and rain-soaked hero photo would need real exported art
   assets (a background image, a logo file) supplied the same way the BSWV21 packs were - those
   can't be generated here, only composited once provided.
+
+## CLIMB mode (solo prototype, `climb.html`)
+- **Separate file**, loads sprites and scenery from `art/` by relative path (so it must be served, unlike index.html it is not self-contained). Tag game untouched.
+- **Camera is locked to the player** (smoothed, follows down as well as up), player sits 58% down the play area so the swarm front shows when it is within about 290 px.
+- **Swarm**: rises at 34 px/s growing to 105 px/s by 500 m. Rubber-band: more than 480 px behind you it surges up to 1.9x, and when it gets within 130 px it stalls ("REBUILDING...") for 1.1 s, at most once every 7 s so standing next to it cannot be farmed. Front edge is 26 columns of varying height; death is feet below the column top at the player's x, minus 6 px forgiveness.
+- **Hunter drone**: one at a time (Hijacker sprite), first after 16 s and 12 m, then every 15 s shrinking to 7 s with height. 0.9 s warning while it emerges (flashing edge marker), then lag-steered homing at 120 to 175 px/s so it can be dodged, gives up after 10 s. Stomp it from above (+25 and a bounce). A hit stuns 0.7 s and makes the swarm surge for 3 s. It does not kill outright, the swarm does.
+- **Platforms**: static always, moving from 25 m, bouncy from 30 m, crumbling from 55 m, all scaling with difficulty up to 350 m. Main path is always reachable (vertical step 64 to 150 px, edge gap 40 to 105 px at the extremes); about 30% of rows add a greedy side platform, 60% of those with a drone pickup.
+- **Items**: one held slot (freeze 4 s, shock pushes the swarm back 220 px and kills the hunter, jet launches 1000 px/s up), plus a separate auto shield that cancels a hunter hit or one swarm death (pushes the swarm back 300 px, 1.5 s invulnerable). Pilot weapons are not used in this mode yet.
+- **Score** = metres climbed + bonuses. A landing 2 or more rows above the last one is a "skip" and chains (3 x chain length points). Chain resets on a lower landing or 2 s idle.
+- **Daily seed** is the MYT date hashed, so everyone gets the same tower, and retrying keeps the same tower. Gameplay randomness (hunter timing) uses a second RNG from the same seed. Bests are in localStorage per mode and per day.
+- **Jump feel**: same numbers as the tag game (jump 645, double jump 565, gravity 1800) plus 0.1 s coyote time, 0.12 s jump buffer and a 0.45 jump cut.
+- **Not done yet**: drone types beyond the hunter (Grumpulator crush, Sneakfolder ambush), ghost runs, pilot weapons, real sound assets (a tiny synth stands in), tuning on a real phone. The title screen reuses the tag-game hero art with its tagline painted over.
