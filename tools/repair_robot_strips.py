@@ -8,9 +8,12 @@ project root, then python3 tools/embed_art_v2.py.
                 is continuous, so the three poses are re-found and re-cut as 3 frames (manifest updated).
 - glitch land : frames were sliced through his body (two half-figures per cell). Rebuilt from his crouch
                 (jump frame 1) and idle frame, which read correctly as a landing squash.
+- bolt run/idle: the run sheet had each of his four poses cut in two (a left half and a right half, each in its
+                own cell, with a straight cut edge), so he ran as 8 half-bodies. The halves are rejoined into 4
+                full poses (the run becomes a 4 frame cycle); idle is the first pose.
 - patch idle/run : a detached teal sliver floats beside him in several frames; detached specks are removed.
 """
-import json
+import json, sys
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
@@ -42,8 +45,30 @@ def drop_specks(im, frac=0.25):
     a[~keep[lab]] = 0
     return Image.fromarray(a)
 
+def rejoin_bolt_run(manifest):
+    """Pair up the 8 half-body cells of bolt_run into 4 full poses. Each half was trimmed to its own bounding
+    box and bottom-aligned at the same scale, so butting the left half's right edge against the right half's
+    left edge, feet on one baseline, restores the pose."""
+    info = manifest['robots']['bolt']['anims']['run']
+    if info['frames'] != 8:
+        print('bolt run: already', info['frames'], 'frames, left alone'); return
+    im = load('bolt', 'run'); poses = []
+    for k in range(4):
+        l, r = cell(im, 2 * k), cell(im, 2 * k + 1); lb, rb = l.getbbox(), r.getbbox()
+        lc, rc = l.crop(lb), r.crop(rb)
+        base = max(lb[3], rb[3])                     # shared feet baseline (the cells were bottom-aligned)
+        w = lc.width + rc.width
+        pose = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0)); x0 = (CELL - w) // 2
+        pose.alpha_composite(lc, (x0, base - lc.height)); pose.alpha_composite(rc, (x0 + lc.width, base - rc.height))
+        poses.append(pose)
+    strip(poses).save('art/robots/bolt_run.png'); info['frames'] = 4
+    strip([poses[0]]).save('art/robots/bolt_idle.png')
+    print('bolt run: rejoined 8 half-bodies into 4 full poses; idle is pose 1')
+
 def main():
     manifest = json.load(open('art/manifest.json'))
+    if len(sys.argv) > 1 and sys.argv[1] == 'bolt-run':
+        rejoin_bolt_run(manifest); json.dump(manifest, open('art/manifest.json', 'w'), indent=2); return
     # bolt fall
     jump = load('bolt', 'jump'); strip([cell(jump, 1), cell(jump, 1)]).save('art/robots/bolt_fall.png')
     # glitch fall: the strip holds three poses, but the middle one was cut in half at the cell border
@@ -69,8 +94,9 @@ def main():
     for a in ('idle', 'run'):
         im = load('patch', a); n = im.width // CELL
         strip([drop_specks(cell(im, i)) for i in range(n)]).save(f'art/robots/patch_{a}.png')
+    rejoin_bolt_run(manifest)
     json.dump(manifest, open('art/manifest.json', 'w'), indent=2)
-    print('repaired: bolt fall, glitch fall + land, patch idle + run')
+    print('repaired: bolt fall + run + idle, glitch fall + land, patch idle + run')
 
 if __name__ == '__main__':
     main()

@@ -36,7 +36,7 @@
       "scale": 0.0971,
       "anims": {
         "run": {
-          "frames": 8,
+          "frames": 4,
           "file": "robots/bolt_run.png"
         },
         "jump": {

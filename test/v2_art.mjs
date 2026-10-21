@@ -44,6 +44,18 @@ const split = await page.evaluate(() => {
   }
   return bad;
 });
+// Bolt's run sheet once held each pose cut in two (a left half and a right half in separate cells), so he
+// ran as eight half-bodies about 21 px wide. A whole pose is over 36 px wide in the 84 px cell.
+const boltW = await page.evaluate(() => {
+  const out = {};
+  for (const a of ['idle', 'run']) {
+    const { img, frames } = window.__bsw.Art.robots.bolt.anims[a], fw = img.width / frames;
+    const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height; const g = cv.getContext('2d'); g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, img.width, img.height).data; out[a] = [];
+    for (let f = 0; f < frames; f++) { let lo = 1e9, hi = -1; for (let x = Math.round(f * fw); x < Math.round((f + 1) * fw); x++) for (let y = 0; y < img.height; y++) if (d[(y * img.width + x) * 4 + 3] > 10) { lo = Math.min(lo, x); hi = Math.max(hi, x); break; } out[a].push(hi - lo + 1); }
+  }
+  return out;
+});
 console.log(JSON.stringify(res, null, 2));
 console.log(errs.length ? ('PAGE ERRORS: ' + JSON.stringify(errs)) : 'no page errors');
 await browser.close();
@@ -56,6 +68,7 @@ for (const id of ['patch', 'bolt', 'glitch', 'rumble', 'nova', 'havoc']) {
   for (const need of ['idle', 'run', 'jump', 'fall', 'land', 'tagged']) if (!anims.includes(need)) fail.push(id + ': missing ' + need + ' animation');
 }
 for (const b of split) fail.push(b);
+for (const a of ['idle', 'run']) boltW[a].forEach((w, i) => { if (w < 36) fail.push('bolt ' + a + ' frame ' + i + ' is only ' + w + ' px wide - a half-body?'); });
 for (const id of ['popbomb', 'dashburst', 'unlock']) if (!res.fx.includes(id)) fail.push(id + ': no effect strip loaded');
 for (const id of ['bopster', 'grumpulator', 'sneakfolder', 'hijacker']) if (!res.badsoffwares.includes(id)) fail.push(id + ': no Badsoffware art loaded');
 if (errs.length) fail.push('page errors present');
