@@ -24,10 +24,13 @@ Then open `http://localhost:8123/` (landscape, or a wide desktop window).
 
 Keyboard: A/D or arrows move, W/Up/Space jump (double jump allowed), S/Down drops through a window, P pauses, M mutes.
 
+## Online play (different networks)
+The game talks through a small relay (`relay/`, Cloudflare Worker, free plan), so friends anywhere can join. Deploy steps are in `relay/README.md`. Once `CONFIG.RELAY_URL` is set (or with `?relay=wss://...`), HOST GAME gives a room code and a tap-to-share invite link. Without a relay the game falls back to the same-browser tabs transport (`?net=tabs` forces it, and is what the older tests use).
+
 ## Play
 - **Practice**: DEPLOY, then PRACTICE VS BOT. Works offline once the page has loaded.
-- **Two phones, same Wi-Fi**: one taps HOST GAME and reads out the 4 letter room code. The other taps JOIN GAME and types it on the on-screen keypad. Pick pilots, both tap I'M READY.
-- Peer-to-peer connects reliably on the same Wi-Fi. Between phones on different mobile networks it can fail without a TURN relay (v1 targets same-Wi-Fi play). To add a relay, fill `PEER_HOST`, `PEER_PORT` and `ICE_SERVERS` in `CONFIG`.
+- **Online**: one taps HOST GAME and shares the invite link (or reads out the 4 letter room code). The others open the link, or tap JOIN GAME and type the code. Pick pilots, everyone taps READY. Needs the relay (see above).
+- The old PeerJS code in `Net` (`hostPeer`/`joinPeer`) is not used by v2 and was never wired up.
 
 ## Testing two players with two tabs (no internet needed)
 Open `http://localhost:8123/?net=tabs` in two tabs of the same browser. Tab 1: DEPLOY, HOST GAME. Tab 2: DEPLOY, JOIN GAME, type the code (keyboard works) and press Enter. This uses a BroadcastChannel transport behind the same `Net` interface.
