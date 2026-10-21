@@ -35,7 +35,7 @@ const CONFIG = {
   STEP: 1 / 60, MAX_STEPS: 5,
   // round
   ROUND_MS: 120000, COUNTDOWN_MS: 3000, GO_MS: 900,
-  FREEZE_MS: 1000, TAG_COOLDOWN_MS: 1000, TAG_TOL: 24, LOCAL_TAG_SLACK: 2,
+  FREEZE_MS: 1000, TAG_COOLDOWN_MS: 1000, TAG_TOL: 24, TAG_LAG_MAX: 60, LOCAL_TAG_SLACK: 2,
   HIT_W: 28, HIT_H: 40,
   MAX_SLOTS: 4,
   // movement (unchanged from v1 PRD section 5)
@@ -73,6 +73,9 @@ const CONFIG = {
   // implementations (tabs for local/offline testing, PeerJS for real play - section 11 transport).
   CODE_ALPHABET: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789',    // no O/0, I/1/L
   STATE_HZ: 25, SHARED_HZ: 10, PEER_TIMEOUT_MS: 6000, RECONNECT_MS: 20000,
+  // WebSocket relay (relay/): set this to your deployed relay, e.g. 'wss://badsoffware-relay.<you>.workers.dev', and
+  // online play works across any networks. Empty = the BroadcastChannel (same-browser tabs) transport. ?relay=wss://... overrides.
+  RELAY_URL: '',
   PEER_HOST: '', PEER_PORT: 443, PEER_PATH: '/', PEER_SECURE: true,
   ICE_SERVERS: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }],
   // touch controls (logical px, panel coordinates: panel origin is y = HUD_H + playfield height)
@@ -549,6 +552,8 @@ function botWantsPower(p, players) {                // simple distance rules per
    flags, held power-ups); each phone streams its own robot (client-authoritative movement);
    the host relays each guest's state to the others so every phone sees every robot. */
 function genCode() { let s = ''; const a = CONFIG.CODE_ALPHABET; for (let i = 0; i < 4; i++) s += a[Math.floor(Math.random() * a.length)]; return s; }
+const RELAY_URL = QS.get('relay') || CONFIG.RELAY_URL;
+const NETKIND = QS.get('net') === 'tabs' || !RELAY_URL ? 'tabs' : 'ws';
 const Net = {
   kind: 'none', chan: null, peer: null, conns: {}, onMsg: null, clientId: Math.random().toString(36).slice(2, 10),
   openTabs(code) { this.kind = 'tabs'; this.chan = new BroadcastChannel('bsw-net-' + code); this.chan.onmessage = e => this.onMsg && this.onMsg(e.data); },
@@ -556,8 +561,33 @@ const Net = {
     msg.from = this.clientId;
     if (this.kind === 'tabs' && this.chan) this.chan.postMessage(msg);
     else if (this.kind === 'peer') this._peerSend(msg);
+    else if (this.kind === 'ws' && this.ws && this.ws.readyState === 1) {
+      if (this.ws.bufferedAmount > 32768 && msg.type === 'state') return;    // a clogged link: drop position updates, never queue stale ones
+      this.ws.send(JSON.stringify(msg));
+    }
   },
-  close() { tryDo(() => this.chan && this.chan.close()); this.chan = null; tryDo(() => this.peer && this.peer.destroy()); this.peer = null; this.conns = {}; this.kind = 'none'; },
+  // WebSocket relay transport (relay/worker.js). Same star shape as the others: a guest's frames reach the host only,
+  // the host's reach every guest. h = { onReady(), onError(reason), onClose(wasReady), onHostLeft()? }
+  ws: null,
+  openWs(role, code, h) {
+    this.kind = 'ws';
+    let ws, ready = false;
+    try { ws = new WebSocket(RELAY_URL.replace(/\/$/, '') + '/room/' + code + '?role=' + role + '&id=' + this.clientId); } catch (e) { return h.onClose(false); }
+    this.ws = ws;
+    const giveUp = setTimeout(() => { if (!ready) tryDo(() => ws.close()); }, 8000);
+    ws.onmessage = e => {
+      if (this.ws !== ws) return;
+      let m; try { m = JSON.parse(e.data); } catch (_) { return; }
+      if (m.ctl === 'hosted' || m.ctl === 'joined') { ready = true; clearTimeout(giveUp); h.onReady(); }
+      else if (m.ctl === 'error') h.onError(m.reason);
+      else if (m.ctl === 'host_left') { NET.hostLeft = true; h.onHostLeft && h.onHostLeft(); }   // don't wait on the close handshake
+      else if (!m.ctl) this.onMsg && this.onMsg(m);
+    };
+    ws.onclose = () => { clearTimeout(giveUp); if (this.ws === ws) { this.ws = null; h.onClose(ready); } };
+    ws.onerror = () => { };      // onclose always follows
+  },
+  closeWs() { const w = this.ws; this.ws = null; if (w) tryDo(() => w.close()); },
+  close() { this.closeWs(); tryDo(() => this.chan && this.chan.close()); this.chan = null; tryDo(() => this.peer && this.peer.destroy()); this.peer = null; this.conns = {}; this.kind = 'none'; },
   // PeerJS implementation (section 11): loaded lazily from cdnjs, pinned per DECISIONS.md. Not
   // exercised by the automated tests in this sandbox (no real network peer to dial) - the tabs
   // transport above is what test/v2_net.mjs actually drives; this path is code-complete but
@@ -609,8 +639,10 @@ const NET = {
   tokens: {},                 // slot -> reconnect token (host-side)
   myToken: '', lastSentT: 0, lastSharedT: 0, picks: [0, 1, 2, 3], ready: [false, false, false, false],
   roundLenMin: 2, gameMode: 'drones',   // 'drones' | 'powers' - host-chosen lobby setting
+  sid: 0, rtt: 0, lastHeard: 0, pingT: 0, dropT: 0, tries: 0, hostLeft: false, reconnects: 0,   // relay session: id, ping, reconnect bookkeeping
 };
 function netReset() {
+  NET.sid++; NET.rtt = 0; NET.pingT = 0; NET.dropT = 0; NET.tries = 0; NET.hostLeft = false; S.reconnecting = false;
   NET.mode = 'local'; NET.isHost = false; NET.mySlot = 0; NET.code = '';
   NET.peers = [{ connected: true, lastSeen: 0, token: '' }, null, null, null];
   NET.tokens = {}; NET.picks = [0, 1, 2, 3]; NET.ready = [false, false, false, false]; NET.roundLenMin = 2;
@@ -656,6 +688,7 @@ function applyStateMsg(m) {
 }
 function netOnMessage(m) {
   if (m.from === Net.clientId) return;
+  NET.lastHeard = performance.now();
   if (m.to && m.to !== Net.clientId) return;    // tabs transport broadcasts to everyone; targeted messages filter here
   if (NET.isHost) {
     if (m.type === 'join') { hostAdmitGuest(m); return; }
@@ -669,12 +702,13 @@ function netOnMessage(m) {
     if (m.type === 'ping') { Net.send({ type: 'pong', to: m.from, t: m.t }); return; }
   } else {
     if (m.type === 'welcome') {
-      NET.mySlot = m.slot; NET.myToken = m.token; S.connecting = false;
-      P[NET.mySlot].active = true; P[NET.mySlot].robot = NET.mySlot;
+      NET.mySlot = m.slot; NET.myToken = m.token; S.connecting = false; S.reconnecting = false; NET.dropT = 0; NET.tries = 0;
+      P[NET.mySlot].active = true; P[NET.mySlot].robot = NET.picks[NET.mySlot] !== undefined ? NET.picks[NET.mySlot] : NET.mySlot;
       tryDo(() => sessionStorage.setItem('bsw_token_' + NET.code, m.token));
       return;
     }
-    if (m.type === 'full') { S.connecting = false; S.connectError = 'ROOM FULL'; return; }
+    if (m.type === 'full') { S.connecting = false; if (NETKIND === 'ws') leaveWithError('ROOM FULL', 'enterCode'); else S.connectError = 'ROOM FULL'; return; }
+    if (m.type === 'pong') { const r = performance.now() - m.t; NET.rtt = NET.rtt ? NET.rtt * 0.7 + r * 0.3 : r; return; }
     if (m.type === 'shared') { applySharedSnapshot(m); return; }
     if (m.type === 'state') { applyStateMsg(m); return; }
   }
@@ -686,15 +720,20 @@ function hostAdmitGuest(m) {
   if (m.token && NET.tokens[m.token] !== undefined) slot = NET.tokens[m.token];
   else { for (let i = 1; i < CONFIG.MAX_SLOTS; i++) if (!NET.peers[i] || !NET.peers[i].connected) { slot = i; break; } }
   if (slot < 0) { Net.send({ type: 'full', to: m.from }); return; }
+  const rejoin = !!(m.token && NET.tokens[m.token] !== undefined);          // known token = a guest coming back, not a new one
   const token = m.token || (Math.random().toString(36).slice(2, 10));
   NET.tokens[token] = slot; NET.peers[slot] = { connected: true, lastSeen: performance.now(), token };
-  P[slot].active = true; P[slot].robot = slot; if (!NET.ready[slot]) NET.ready[slot] = false; NET.picks[slot] = slot;
+  P[slot].active = true;
+  if (!rejoin) { P[slot].robot = slot; if (!NET.ready[slot]) NET.ready[slot] = false; NET.picks[slot] = slot; }   // a reconnect keeps its pilot and ready flag
   Net.send({ type: 'welcome', to: m.from, slot, token, code: NET.code });
 }
 function hostHandleTagClaim(m) {
   const by = P[m.by], target = P[m.target]; if (!by || !target) return;
   if (!tagAllowed(by, target)) return;
-  if (hitGap(m.x, m.y, target.x, target.y) <= CONFIG.TAG_TOL) applyTag(by, target);
+  // the target has moved on since the claimant saw it: allow the distance a robot covers in about 3/4 of the claimant's
+  // round trip, capped. Zero ping (tabs, same room) keeps the strict 24 px.
+  const lag = clamp(+m.rtt || 0, 0, 400), tol = CONFIG.TAG_TOL + Math.min(CONFIG.TAG_LAG_MAX, CONFIG.RUN * lag / 1000 * 0.75);
+  if (hitGap(m.x, m.y, target.x, target.y) <= tol) applyTag(by, target);
 }
 function hostHandleCatchClaim(m) {
   const p = P[m.slot], d = S.drones.find(d => d.id === m.droneId); if (!p || !d) return;
@@ -934,6 +973,12 @@ function netTick(dtms) {
   const dt = dtms / 1000, now = performance.now();
   NET.lastSentT += dtms;
   if (NET.lastSentT >= 1000 / CONFIG.STATE_HZ) { NET.lastSentT = 0; Net.send(myStateMsg()); }
+  if (NETKIND === 'ws' && !NET.isHost && NET.mode === 'guest') {
+    NET.pingT += dtms;
+    if (NET.pingT >= 2000) { NET.pingT = 0; Net.send({ type: 'ping', t: now }); }
+    // a socket that stopped hearing the host (phone asleep, tunnel) looks open for a long time: cut it so the reconnect logic takes over
+    if (Net.ws && !S.reconnecting && NET.lastHeard && now - NET.lastHeard > CONFIG.PEER_TIMEOUT_MS) tryDo(() => Net.ws.close());
+  }
 
   if (S.ph === 'play') {
     const me = P[NET.mySlot];
@@ -954,7 +999,7 @@ function netTick(dtms) {
         for (const o of others) {
           if (!tagAllowed(me, o)) continue;
           if (hitGap(me.x, me.y, o.x, o.y) <= CONFIG.LOCAL_TAG_SLACK) {
-            if (NET.isHost) applyTag(me, o); else Net.send({ type: 'claim_tag', by: NET.mySlot, target: o.slot, x: me.x, y: me.y });
+            if (NET.isHost) applyTag(me, o); else Net.send({ type: 'claim_tag', by: NET.mySlot, target: o.slot, x: me.x, y: me.y, rtt: Math.round(NET.rtt) });
             break;
           }
         }
@@ -1291,6 +1336,11 @@ function drawHUD(c) {
   c.beginPath(); c.arc(EX.x, EX.y, EX.r, 0, 7); c.fillStyle = CC.dk; c.fill(); c.strokeStyle = CC.bd; c.lineWidth = 1.5; c.stroke();
   c.strokeStyle = CC.t2; c.lineWidth = 2; c.lineCap = 'round';
   c.beginPath(); c.moveTo(EX.x - 5, EX.y - 5); c.lineTo(EX.x + 5, EX.y + 5); c.moveTo(EX.x + 5, EX.y - 5); c.lineTo(EX.x - 5, EX.y + 5); c.stroke();
+  if (NETKIND === 'ws' && NET.mode === 'guest' && NET.rtt) {
+    const ms = Math.round(NET.rtt);
+    c.textAlign = 'right'; c.font = '700 9px ui-monospace, monospace'; c.fillStyle = ms < 120 ? '#3df5c4' : ms < 250 ? '#ffd23d' : '#ff4d6a';
+    c.fillText(ms + ' MS', VW - 46, 44);
+  }
   UI.hud.exit = { x: EX.x - EX.r - 6, y: EX.y - EX.r - 6, w: (EX.r + 6) * 2, h: (EX.r + 6) * 2 };
 }
 
@@ -1372,6 +1422,13 @@ function drawPlayfield(c) {
   }
   c.restore();
   if (!menuPh) drawMinimap(c);
+  if (S.reconnecting || (S.toast && performance.now() < S.toast.until)) {
+    const msg = S.reconnecting ? 'RECONNECTING...' : S.toast.msg, y = PLAY_Y0 + PLAY_H - 36;
+    c.font = '700 12px system-ui'; const w = c.measureText(msg).width + 28;
+    c.fillStyle = 'rgba(6,8,16,0.85)'; c.beginPath(); c.roundRect(VW / 2 - w / 2, y - 16, w, 28, 14); c.fill();
+    c.strokeStyle = S.reconnecting ? '#ffd23d' : CC.cyan; c.lineWidth = 1.5; c.stroke();
+    c.fillStyle = S.reconnecting ? '#ffd23d' : CC.lt; c.textAlign = 'center'; c.fillText(msg, VW / 2, y + 3);
+  }
   if (S.ph === 'countdown') { c.fillStyle = CC.lt; c.font = '700 48px system-ui'; c.textAlign = 'center'; c.fillText(Math.ceil(S.t / 1000) || 'GO!', VW / 2, PLAY_Y0 + PLAY_H / 2); }
   if (S.ph === 'over') {
     c.fillStyle = 'rgba(6,8,16,0.82)'; c.fillRect(0, PLAY_Y0, VW, PLAY_H);
@@ -1463,6 +1520,7 @@ function menuBtn(c, x, y, w, h, label, sub, iconFn) {
 function drawTitle(c) {
   // the hero art carries the logo and tagline; only the buttons are live, in the lower half
   const bw = 290, bx = VW / 2 - bw / 2, bh = 60, gap = 10; let by = Math.round(VH * 0.585);
+  if (S.connectError) { c.fillStyle = '#ff4d6a'; c.font = '700 12px system-ui'; c.textAlign = 'center'; c.fillText(S.connectError, VW / 2, by - 12); }
   UI.title.host = menuBtn(c, bx, by, bw, bh, 'HOST GAME', 'start a room, share the code', iconPeople); by += bh + gap;
   UI.title.join = menuBtn(c, bx, by, bw, bh, 'JOIN GAME', 'enter a 4 letter code', iconArrowIn); by += bh + gap;
   UI.title.practice = menuBtn(c, bx, by, bw, bh, 'PRACTICE VS BOTS', 'play offline, 1 or 2 bots', iconRobotHead);
@@ -1527,7 +1585,10 @@ function drawLobby(c) {
   c.fillStyle = CC.lt; c.font = '700 14px system-ui'; c.textAlign = 'center';
   c.fillText(NET.isHost ? 'ROOM CODE' : 'CONNECTED TO', VW / 2, PLAY_Y0 + 30);
   c.font = '700 30px ui-monospace, monospace'; c.fillStyle = CC.cyan; c.fillText(NET.code.split('').join(' '), VW / 2, PLAY_Y0 + 62);
+  UI.lobby.share = null;
   if (S.connecting) { c.fillStyle = CC.t2; c.font = '600 12px system-ui'; c.fillText('CONNECTING...', VW / 2, PLAY_Y0 + 86); }
+  else if (NETKIND === 'ws' && NET.isHost) { c.fillStyle = CC.cyan; c.font = '600 11px system-ui'; c.fillText('TAP THE CODE TO SHARE AN INVITE LINK', VW / 2, PLAY_Y0 + 86); UI.lobby.share = { x: 30, y: PLAY_Y0 + 36, w: VW - 60, h: 56 }; }
+  else if (NETKIND === 'ws' && NET.rtt) { c.fillStyle = CC.t2; c.font = '600 11px system-ui'; c.fillText('PING ' + Math.round(NET.rtt) + ' MS', VW / 2, PLAY_Y0 + 86); }
   let ry = PLAY_Y0 + 100;
   for (let i = 0; i < CONFIG.MAX_SLOTS; i++) {
     const p = P[i], row = { x: 30, y: ry, w: VW - 60, h: 40 };
@@ -1562,21 +1623,74 @@ function drawLobby(c) {
 /* ---------- lobby / title / code-entry flow (section 10) ---------- */
 function startHost() {
   netReset(); NET.mode = 'host'; NET.isHost = true; NET.mySlot = 0; NET.code = store.get('bsw_lastcode', genCode());
-  Net.openTabs(NET.code);
+  S.connectError = '';
   P.forEach((p, i) => { p.active = i === 0; p.robot = i; p.isBot = false; });
   resetPlayer(P[0], 0, 1);
   NET.ready = [false, false, false, false]; NET.picks = [0, 1, 2, 3];
   S.ph = 'lobby'; S.connecting = false;
+  if (NETKIND === 'ws') hostOverWs(0); else Net.openTabs(NET.code);
   store.set('bsw_lastcode', NET.code);
 }
 function startGuest(code) {
   netReset(); NET.mode = 'guest'; NET.isHost = false; NET.code = code;
+  S.connectError = '';
+  S.ph = 'lobby'; S.connecting = true;
+  if (NETKIND === 'ws') return guestOverWs();
   Net.openTabs(code);
   const stored = tryDo(() => sessionStorage.getItem('bsw_token_' + code));
   Net.send({ type: 'join', token: stored || undefined });
-  S.ph = 'lobby'; S.connecting = true;
 }
-function backToTitle() { netReset(); S.ph = 'title'; S.codeBuf = ''; }
+// relay flows. A failure puts the player back where they can retry, with the reason on screen.
+function leaveWithError(msg, ph) { netReset(); S.ph = ph; S.codeBuf = ''; S.connecting = false; S.connectError = msg; }
+function hostOverWs(tries) {
+  const sid = NET.sid; S.connecting = true;
+  Net.openWs('host', NET.code, {
+    onReady() { if (NET.sid === sid) { S.connecting = false; NET.lastHeard = performance.now(); } },
+    onError(r) {
+      if (NET.sid !== sid) return; Net.closeWs();
+      if (r === 'taken' && tries < 4) { NET.code = genCode(); store.set('bsw_lastcode', NET.code); hostOverWs(tries + 1); }
+      else leaveWithError("CAN'T START A ROOM", 'title');
+    },
+    onClose(wasReady) { if (NET.sid === sid) leaveWithError(wasReady ? 'CONNECTION LOST, ROOM CLOSED' : "CAN'T REACH THE GAME SERVER", 'title'); },
+  });
+}
+function guestOverWs() {
+  const sid = NET.sid;
+  Net.openWs('guest', NET.code, {
+    onReady() {
+      if (NET.sid !== sid) return;
+      NET.lastHeard = performance.now();
+      Net.send({ type: 'join', token: NET.myToken || tryDo(() => sessionStorage.getItem('bsw_token_' + NET.code)) || undefined });
+    },
+    onHostLeft() { if (NET.sid === sid) leaveWithError('THE HOST HAS LEFT', 'enterCode'); },
+    onError(r) {
+      if (NET.sid !== sid) return; Net.closeWs();
+      leaveWithError(r === 'noroom' ? (NET.dropT || NET.hostLeft ? 'THE HOST HAS LEFT' : 'ROOM NOT FOUND') : r === 'full' ? 'ROOM FULL' : "CAN'T JOIN THAT ROOM", 'enterCode');
+    },
+    onClose(wasReady) {
+      if (NET.sid !== sid) return;
+      if (NET.hostLeft) return leaveWithError('THE HOST HAS LEFT', 'enterCode');
+      if (!wasReady && !NET.dropT) return leaveWithError("CAN'T REACH THE GAME SERVER", 'enterCode');
+      // a dropped link (phone slept, wifi hop): keep the game on screen and keep knocking, with the saved token so the host seats us back in the same slot
+      if (!NET.dropT) NET.dropT = performance.now();
+      if (performance.now() - NET.dropT > CONFIG.RECONNECT_MS) return leaveWithError('CONNECTION LOST', 'title');
+      S.reconnecting = true; NET.tries++; NET.reconnects++;
+      setTimeout(() => { if (NET.sid === sid && NET.mode === 'guest') guestOverWs(); }, Math.min(3000, 400 * NET.tries));
+    },
+  });
+}
+function backToTitle() { netReset(); S.ph = 'title'; S.codeBuf = ''; S.connectError = ''; }
+// invite link: opening ?join=CODE seats you in that room without the keypad
+function inviteUrl() {
+  const q = new URLSearchParams(); q.set('join', NET.code); if (QS.get('relay')) q.set('relay', QS.get('relay'));
+  return location.origin + location.pathname + '?' + q.toString();
+}
+function shareInvite() {
+  const url = inviteUrl(), text = 'Join my Badsoffware room ' + NET.code;
+  const copy = () => { tryDo(() => navigator.clipboard.writeText(url)); S.toast = { msg: 'INVITE LINK COPIED', until: performance.now() + 2200 }; };
+  if (navigator.share) navigator.share({ title: 'Badsoffware', text, url }).catch(() => { });
+  else copy();
+}
 const KEYROWS = ['ABCDEFGH', 'JKMNPQRS', 'TUVWXYZ2', '3456789'];
 cv.addEventListener('pointerdown', e => {
   const t = toLogical(e); Snd.init();
@@ -1614,6 +1728,7 @@ cv.addEventListener('pointerdown', e => {
   }
   if (S.ph === 'lobby') {
     if (UI.lobby.back && inRect(t, UI.lobby.back)) return backToTitle();
+    if (UI.lobby.share && inRect(t, UI.lobby.share)) return shareInvite();
     if (UI.lobby.ready && inRect(t, UI.lobby.ready)) {
       NET.ready[NET.mySlot] = !NET.ready[NET.mySlot];
       if (NET.isHost) { /* host's own ready is local, applied below on next frame */ }
@@ -1668,7 +1783,11 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 /* ---------- test hook: exposes state for automated tests only ---------- */
-window.__bsw = { CONFIG, POWERS, P, S, L, cam, LAYOUTS, stepPlayer, resetPlayer, startLocal, tick, applyTag, tagAllowed, detectTags,
+// invite link: ?join=CODE seats this phone in that room straight away (see inviteUrl)
+const JOIN_CODE = (QS.get('join') || '').toUpperCase();
+if (/^[A-Z0-9]{4}$/.test(JOIN_CODE)) startGuest(JOIN_CODE);
+
+window.__bsw = { NETKIND, leaveWithError, inviteUrl, hostHandleTagClaim, CONFIG, POWERS, P, S, L, cam, LAYOUTS, stepPlayer, resetPlayer, startLocal, tick, applyTag, tagAllowed, detectTags,
   endRound, hitGap, wrapX, wdx, buildLayout, checkReach, camSnap, camStep, botThink, botWantsPower,
   trySpawnBadsoff, catchBadsoff, applyHijack, usePower, dronesStep, bombsStep, fmtTime, FLOOR, WORLD_H, VW, VH, PLAY_H,
   Net, NET, startHost, startGuest, backToTitle, myStateMsg, applyStateMsg, sharedSnapshot, applySharedSnapshot, netTick,
