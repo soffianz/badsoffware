@@ -1094,7 +1094,7 @@ function initScenery() {
 initScenery();
 /* ---------- title hero: full-screen key art with the logo baked in (tools/embed_title.py). Menu
    screens draw it edge to edge; without it they fall back to the flat navy fill. ---------- */
-const BUILD_TAG = '2026-10-20.9';
+const BUILD_TAG = '2026-10-21.1';
 const Pilots = { img: {}, icon: {} };
 if (typeof PILOT_DATA !== 'undefined' && !NOART) {
   for (const n in PILOT_DATA.portraits) loadStrip(PILOT_DATA.portraits[n], im => { Pilots.img[n] = im; });
@@ -1513,48 +1513,87 @@ function wrapLines(c, text, maxW) {
 // "SELECT YOUR PILOT" panel: one card per robot with portrait, power icon + name, what it does, and
 // a SELECT button. mine = robot index I hold; takenOf(i) = slot of another player holding robot i
 // (or -1). Returns each card's hit rect.
-const PILOT_PANEL_H = 322;
-// six pilots in a 3 x 2 grid of compact cards (portrait, name, power); the selected pilot's power is
-// explained in the strip under the grid. The whole card is the tap target.
+const PILOT_SCR = { f: 0, t: 0, lastMine: -1 };        // strip scroll: shown offset (in cards), target offset
+const PDRAG = { on: false, x0: 0, off0: 0, moved: false, hit: -1, step: 90, pick: null };
+function pilotScroll(d) { PILOT_SCR.t = clamp(Math.round(PILOT_SCR.t) + d, 0, Math.max(0, CONFIG.ROBOTS.length - 4)); }
+// a press on the pilot panel: arrows scroll, a drag slides the strip, a tap on a card picks it (on release)
+function pilotPress(t, pick) {
+  const nav = UI.pilotNav; if (!nav || !inRect(t, nav.panel)) return false;
+  if (inRect(t, nav.prev)) { pilotScroll(-1); return true; }
+  if (inRect(t, nav.next)) { pilotScroll(1); return true; }
+  let hit = -1; nav.cards.forEach((r, i) => { if (r.w > 0 && inRect(t, r)) hit = i; });
+  Object.assign(PDRAG, { on: true, x0: t.x, off0: PILOT_SCR.f, moved: false, hit, step: nav.step, pick });
+  return true;
+}
+window.addEventListener('pointermove', e => {
+  if (!PDRAG.on) return;
+  const dx = toLogical(e).x - PDRAG.x0;
+  if (Math.abs(dx) > 8) PDRAG.moved = true;
+  if (PDRAG.moved) PILOT_SCR.f = clamp(PDRAG.off0 - dx / PDRAG.step, 0, Math.max(0, CONFIG.ROBOTS.length - 4));
+});
+function pilotRelease() {
+  if (!PDRAG.on) return; PDRAG.on = false;
+  if (PDRAG.moved) { PILOT_SCR.t = clamp(Math.round(PILOT_SCR.f), 0, Math.max(0, CONFIG.ROBOTS.length - 4)); PDRAG.moved = false; }
+  else if (PDRAG.hit >= 0 && PDRAG.pick) PDRAG.pick(PDRAG.hit);
+}
+window.addEventListener('pointerup', pilotRelease);
+window.addEventListener('pointercancel', pilotRelease);
 function drawPilotPanel(c, x, y, w, h, mine, takenOf) {
   neonBox(c, x, y, w, h, { k: 11, rim: '#2f9fe0', fill: 'rgba(4,12,40,0.8)', glow: true });
   c.fillStyle = '#8fe8ff'; c.font = '700 19px Rajdhani, system-ui'; c.textAlign = 'center';
   if (c.letterSpacing !== undefined) c.letterSpacing = '2px';
   c.fillText('SELECT YOUR PILOT', x + w / 2, y + 24);
   if (c.letterSpacing !== undefined) c.letterSpacing = '0px';
-  const R = CONFIG.ROBOTS, cols = 3, rows = Math.ceil(R.length / cols), pad = 8, gap = 6, top = y + 34, strip = 46;
-  const cw = (w - pad * 2 - gap * (cols - 1)) / cols, ch = (h - 34 - pad - strip - gap * (rows - 1)) / rows, rects = [];
+  const R = CONFIG.ROBOTS, pad = 8, gap = 6, VIS = 4, cw = (w - pad * 2 - gap * (VIS - 1)) / VIS, cy = y + 34, ch = h - 34 - pad, rects = [];
+  // four cards are visible at a time; the strip slides (arrows, or drag it) to reach the rest
+  const max = Math.max(0, R.length - VIS), SC = PILOT_SCR;
+  if (SC.lastMine !== mine) { SC.lastMine = mine; if (mine < SC.t) SC.t = mine; else if (mine > SC.t + VIS - 1) SC.t = mine - VIS + 1; }
+  SC.t = clamp(SC.t, 0, max);
+  if (!PDRAG.moved) SC.f += (SC.t - SC.f) * 0.3;
+  if (Math.abs(SC.t - SC.f) < 0.005) SC.f = SC.t;
+  SC.f = clamp(SC.f, 0, max);
+  c.save(); c.beginPath(); c.rect(x + 3, y + 30, w - 6, h - 33); c.clip();
   R.forEach((r, i) => {
-    const cx0 = x + pad + (i % cols) * (cw + gap), cy = top + Math.floor(i / cols) * (ch + gap), sel = mine === i, tk = takenOf(i) >= 0;
-    neonBox(c, cx0, cy, cw, ch, { k: 7, rim: r.col, rimW: sel ? 3 : 1.5, rimA: tk ? 0.35 : (sel ? 1 : 0.7), fill: sel ? 'rgba(14,26,58,0.96)' : 'rgba(5,10,28,0.92)', glow: sel, glowCol: r.col });
+    const cx0 = x + pad + (i - SC.f) * (cw + gap), sel = mine === i, tk = takenOf(i) >= 0;
+    neonBox(c, cx0, cy, cw, ch, { k: 7, rim: r.col, rimW: sel ? 3 : 1.5, rimA: tk ? 0.35 : (sel ? 1 : 0.7), fill: 'rgba(5,10,28,0.92)', glow: sel, glowCol: r.col });
     c.save(); neonPath(c, cx0, cy, cw, ch, 7); c.clip();
     if (tk) c.globalAlpha = 0.45;
-    const ps = Math.min(cw - 8, ch - 42), px0 = cx0 + (cw - ps) / 2, im = Pilots.img[r.id];
-    if (im) { c.imageSmoothingEnabled = true; c.drawImage(im, px0, cy + 4, ps, ps); }
-    else { c.fillStyle = r.col; c.globalAlpha *= 0.25; c.fillRect(px0, cy + 4, ps, ps); c.globalAlpha = tk ? 0.45 : 1; c.font = '700 40px Rajdhani, system-ui'; c.textAlign = 'center'; c.fillStyle = r.col; c.fillText(r.name[0], cx0 + cw / 2, cy + 4 + ps * 0.68); }
+    const ps = cw - 6, im = Pilots.img[r.id];
+    if (im) { c.imageSmoothingEnabled = true; c.drawImage(im, cx0 + 3, cy + 3, ps, ps); }
+    else { c.fillStyle = r.col; c.globalAlpha *= 0.25; c.fillRect(cx0 + 3, cy + 3, ps, ps); c.globalAlpha = tk ? 0.45 : 1; c.font = '700 40px Rajdhani, system-ui'; c.textAlign = 'center'; c.fillStyle = r.col; c.fillText(r.name[0], cx0 + cw / 2, cy + 3 + ps * 0.65); }
     const mid = cx0 + cw / 2;
-    c.textAlign = 'center'; c.fillStyle = r.col; c.font = '700 15px Rajdhani, system-ui';
+    c.textAlign = 'center'; c.fillStyle = r.col; c.font = '700 16px Rajdhani, system-ui';
     if (c.letterSpacing !== undefined) c.letterSpacing = '1px';
-    c.fillText(r.name, mid, cy + ps + 18);
+    c.fillText(r.name, mid, cy + ps + 19);
     if (c.letterSpacing !== undefined) c.letterSpacing = '0px';
     const pw = POWERS[r.power], ic = Pilots.icon[r.power];
     c.font = '700 9.5px Rajdhani, system-ui';
-    const tw = c.measureText(pw.name).width, rowW = (ic ? 16 : 0) + tw, rx = mid - rowW / 2;
-    if (ic) c.drawImage(ic, rx, cy + ps + 22, 14, 14);
-    c.fillStyle = r.col; c.textAlign = 'left'; c.fillText(pw.name, rx + (ic ? 17 : 0), cy + ps + 33);
+    const tw = c.measureText(pw.name).width, rowW = (ic ? 20 : 0) + tw, rx = mid - rowW / 2;
+    if (ic) c.drawImage(ic, rx, cy + ps + 25, 18, 18);
+    c.fillStyle = r.col; c.textAlign = 'left'; c.fillText(pw.name, rx + (ic ? 21 : 0), cy + ps + 38);
+    c.fillStyle = '#a9c8e6'; c.font = '600 9px Rajdhani, system-ui'; c.textAlign = 'center';
+    wrapLines(c, r.blurb, cw - 10).slice(0, 4).forEach((ln, li) => c.fillText(ln, mid, cy + ps + 55 + li * 10.5));
     c.restore();
-    if (sel || tk) {   // corner tag: SELECTED on yours, TAKEN on a pilot another player holds
-      c.fillStyle = sel ? r.col : '#4a5a70'; c.fillRect(cx0 + cw - 58, cy + 5, 53, 14);
-      c.fillStyle = sel ? '#04101c' : '#d5dde8'; c.font = '700 9.5px Rajdhani, system-ui'; c.textAlign = 'center';
-      c.fillText(sel ? 'SELECTED' : 'TAKEN', cx0 + cw - 31.5, cy + 15.5);
-    }
-    rects.push({ x: cx0, y: cy, w: cw, h: ch });
+    // SELECT / SELECTED / TAKEN button along the bottom of the card
+    const bx = cx0 + 5, bw = cw - 10, bh = 22, by = cy + ch - bh - 5;
+    neonBox(c, bx, by, bw, bh, { k: 4, rim: tk ? '#4a5a70' : r.col, rimW: 1.5, fill: sel ? r.col : 'rgba(5,12,34,0.9)' });
+    c.fillStyle = sel ? '#04101c' : (tk ? '#6b7c92' : r.col); c.font = '700 12px Rajdhani, system-ui'; c.textAlign = 'center';
+    c.fillText(sel ? 'SELECTED' : (tk ? 'TAKEN' : 'SELECT'), mid, by + bh / 2 + 4);
+    const vx0 = Math.max(cx0, x + pad), vx1 = Math.min(cx0 + cw, x + w - pad);
+    rects.push(vx1 - vx0 > 12 ? { x: vx0, y: cy, w: vx1 - vx0, h: ch } : { x: -999, y: -999, w: 0, h: 0 });
   });
-  const cur = R[mine] || R[0], sy0 = y + h - pad - strip + 2;
-  c.fillStyle = cur.col; c.font = '700 12px Rajdhani, system-ui'; c.textAlign = 'left';
-  c.fillText(cur.name + ': ' + POWERS[cur.power].name, x + pad + 4, sy0 + 12);
-  c.fillStyle = '#a9c8e6'; c.font = '600 10.5px Rajdhani, system-ui';
-  wrapLines(c, cur.blurb, w - pad * 2 - 8).slice(0, 2).forEach((ln, li) => c.fillText(ln, x + pad + 4, sy0 + 24 + li * 11));
+  c.restore();
+  // arrows in the header corners (bright when there is more that way), and page dots under the title
+  const nav = { panel: { x, y, w, h }, step: cw + gap, cards: rects }, aw = 32, ah = 26;
+  [['prev', x + 10, -1], ['next', x + w - 10 - aw, 1]].forEach(([k, ax, dir]) => {
+    const can = dir < 0 ? SC.t > 0 : SC.t < max, ay = y + 6;
+    nav[k] = { x: ax - 6, y: ay - 4, w: aw + 12, h: ah + 8 };
+    neonBox(c, ax, ay, aw, ah, { k: 5, rim: '#4fd2ff', rimW: 1.5, rimA: can ? 1 : 0.3, fill: 'rgba(6,18,52,0.9)', glow: can, glowCol: '#4fd2ff' });
+    c.save(); c.globalAlpha = can ? 1 : 0.3; c.strokeStyle = '#d8f4ff'; c.lineWidth = 2.5; c.lineCap = 'round'; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(ax + aw / 2 - dir * 4, ay + 7); c.lineTo(ax + aw / 2 + dir * 4, ay + ah / 2); c.lineTo(ax + aw / 2 - dir * 4, ay + ah - 7); c.stroke(); c.restore();
+  });
+  for (let i = 0; i <= max; i++) { c.fillStyle = Math.abs(SC.t - i) < 0.5 ? '#8fe8ff' : 'rgba(143,232,255,0.3)'; c.beginPath(); c.arc(x + w / 2 + (i - max / 2) * 9, y + 30, 2.2, 0, 7); c.fill(); }
+  UI.pilotNav = nav;
   return rects;
 }
 const BATTLE_DUR_OPTS = [1, 2, 4, Infinity];
@@ -1565,7 +1604,7 @@ function drawBattleSettings(c) {
   if (c.letterSpacing !== undefined) c.letterSpacing = '2px';
   c.fillText('PRACTICE VS BOTS', VW / 2 + 36, 38);
   if (c.letterSpacing !== undefined) c.letterSpacing = '0px';
-  const px = 12, pw = VW - 24, ph = PILOT_PANEL_H;
+  const px = 12, pw = VW - 24, ph = 252;
   UI.battle.pilots = drawPilotPanel(c, px, 66, pw, ph, cfg.pilot, () => -1);
   let y = 66 + ph + 14;
   const label = (t) => { c.fillStyle = '#7fdcff'; c.font = '700 12px Rajdhani, system-ui'; c.textAlign = 'left'; if (c.letterSpacing !== undefined) c.letterSpacing = '1.5px'; c.fillText(t, 18, y + 8); if (c.letterSpacing !== undefined) c.letterSpacing = '0px'; };
@@ -1630,7 +1669,7 @@ function drawLobby(c) {
   c.fillStyle = amReady ? '#35e08a' : '#ff8a98'; c.font = '700 12px Rajdhani, system-ui'; c.fillText(amReady ? 'READY' : 'NOT READY', chip.x + chip.w / 2, chip.y + 35);
   UI.lobby.ready = chip;
   const takenOf = i => pilotTakenBy(i, me);
-  const px = 12, pw = VW - 24, panelH = PILOT_PANEL_H, playersH = 134, tileH = 54, startH = 52;
+  const px = 12, pw = VW - 24, panelH = 252, playersH = 134, tileH = 54, startH = 52;
   const free = Math.max(0, VH - 70 - (panelH + playersH + tileH + startH) - 16), gap = Math.min(26, Math.max(8, free / 3));
   let y = 70 + Math.min(14, Math.max(0, (free - 3 * gap) / 3));
   UI.lobby.pilots = drawPilotPanel(c, px, y, pw, panelH, NET.picks[me], takenOf);
@@ -1719,7 +1758,7 @@ cv.addEventListener('pointerdown', e => {
   if (S.ph === 'battleSettings') {
     const cfg = S.battleCfg;
     if (UI.back && inRect(t, UI.back)) { S.ph = 'title'; return; }
-    (UI.battle.pilots || []).forEach((r, i) => { if (inRect(t, r)) cfg.pilot = i; });
+    if (pilotPress(t, i => { cfg.pilot = i; })) return;
     (UI.battle.bots || []).forEach((r, i) => { if (inRect(t, r)) cfg.bots = i + 1; });
     (UI.battle.dur || []).forEach((r, i) => { if (inRect(t, r)) cfg.durMin = BATTLE_DUR_OPTS[i]; });
     (UI.battle.mode || []).forEach((r, i) => { if (inRect(t, r)) cfg.mode = i === 0 ? 'drones' : 'powers'; });
@@ -1740,7 +1779,7 @@ cv.addEventListener('pointerdown', e => {
   }
   if (S.ph === 'lobby') {
     if (UI.back && inRect(t, UI.back)) return backToTitle();
-    for (let i = 0; i < (UI.lobby.pilots || []).length; i++) if (inRect(t, UI.lobby.pilots[i])) { pickPilot(i); return; }
+    if (pilotPress(t, i => pickPilot(i))) return;
     if ((UI.lobby.ready && inRect(t, UI.lobby.ready)) || (UI.lobby.readyBtn && inRect(t, UI.lobby.readyBtn))) {
       NET.ready[NET.mySlot] = !NET.ready[NET.mySlot];
       if (NET.isHost) { /* host's own ready is local, applied below on next frame */ }
