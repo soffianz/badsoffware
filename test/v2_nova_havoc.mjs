@@ -18,6 +18,8 @@ const tap = async (pg, r) => {
   await pg.touchscreen.tap(pt.x, pt.y); await wait(250);
 };
 
+// the pilot strip shows four cards at a time: the arrows (real taps) scroll it to the last two
+const scrollEnd = async pg => { for (let i = 0; i < 2; i++) await tap(pg, await pg.evaluate(() => window.__bsw.UI.pilotNav.next)); await wait(500); };
 const A = await mk();
 const roster = await A.evaluate(() => window.__bsw.CONFIG.ROBOTS.map(r => r.id + ':' + r.power));
 ok(roster.join() === 'patch:patchcable,bolt:zappulse,glitch:phaseblink,rumble:groundslam,nova:dashburst,havoc:popbomb', 'roster is Patch, Bolt, Glitch, Rumble, Nova, Havoc: ' + roster.join());
@@ -29,6 +31,9 @@ await tap(A, await A.evaluate(() => window.__bsw.UI.title.practice));
 ok(await A.evaluate(() => window.__bsw.UI.battle.pilots.length === 6), 'practice shows 6 pilot cards');
 const fits = await A.evaluate(() => { const { UI, VH } = window.__bsw; const s = UI.battle.start; return s.y + s.h <= VH; });
 ok(fits, 'practice START button is on screen');
+ok(await A.evaluate(() => window.__bsw.UI.battle.pilots[4].w === 0 && window.__bsw.UI.battle.pilots[3].w > 0), 'four cards visible, Nova and Havoc are behind the arrow');
+await scrollEnd(A);
+ok(await A.evaluate(() => window.__bsw.UI.battle.pilots[5].w > 0 && window.__bsw.UI.battle.pilots[0].w === 0), 'arrows scroll to Nova and Havoc');
 await tap(A, await A.evaluate(() => window.__bsw.UI.battle.pilots[4]));       // Nova
 await shot(A, 'practice_select_nova');
 await tap(A, await A.evaluate(() => window.__bsw.UI.battle.bots[2]));         // 3 bots
@@ -77,11 +82,21 @@ const B = await mk();
 await B.evaluate(() => window.__bsw.startHost());
 await wait(500);
 ok(await B.evaluate(() => window.__bsw.UI.lobby.pilots.length === 6), 'lobby shows 6 pilot cards');
+await scrollEnd(B);
 await tap(B, await B.evaluate(() => window.__bsw.UI.lobby.pilots[5]));
 ok(await B.evaluate(() => window.__bsw.NET.picks[0] === 5), 'host can pick Havoc');
 await shot(B, 'lobby_havoc');
 await tap(B, await B.evaluate(() => window.__bsw.UI.lobby.pilots[4]));
 ok(await B.evaluate(() => window.__bsw.NET.picks[0] === 4), 'host can pick Nova');
 await shot(B, 'lobby_nova');
+// dragging the strip scrolls it and does not pick the card under the finger
+const D = await mk();
+await D.evaluate(() => window.__bsw.startHost()); await wait(500);
+const from = await D.evaluate(() => { const r = window.__bsw.UI.lobby.pilots[2], b = document.getElementById('cv').getBoundingClientRect(), k = b.width / window.__bsw.VW; return { x: b.left + (r.x + r.w / 2) * k, y: b.top + (r.y + r.h / 2) * k, k }; });
+await D.mouse.move(from.x, from.y); await D.mouse.down();
+for (let i = 1; i <= 8; i++) { await D.mouse.move(from.x - i * 22 * from.k, from.y); await wait(20); }
+await D.mouse.up(); await wait(600);
+ok(await D.evaluate(() => window.__bsw.UI.lobby.pilots[0].w === 0 && window.__bsw.UI.lobby.pilots[5].w > 0), 'dragging the strip scrolls it');
+ok(await D.evaluate(() => window.__bsw.NET.picks[0] === 0), 'a drag does not pick the card under the finger');
 ok(errs.length === 0, 'no page errors ' + JSON.stringify(errs));
 await browser.close();
