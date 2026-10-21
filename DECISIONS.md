@@ -208,3 +208,12 @@ list) are all different.
 - **Effect art**: `tools/process_fx_sheets.py <fx dir>` writes `art/fx/{popbomb,dashburst,unlock}.png` and the manifest `fx` section; `embed_art_v2.py` embeds them in `ART_DATA.fx`. All frames of a sheet share one scale; the dash streak is right-aligned in its cells so its head sits on the pilot; the unlock flash is cut by connected piece rather than by column because the burst spills over its cell.
 - **Size**: `index.html` grew from 1.6 MB to 2.0 MB (about 350 KB of sprites, portraits and effects).
 - **Tests**: `test/v2_nova_havoc.mjs` added (six cards, arrow and drag scrolling, Nova and Havoc selectable, practice, Dash Burst, Pop-up Bomb stun and blast art, art loaded); `v2_pilots` now expects six cards and `v2_art` checks six pilots and the effect strips. Set `SHOTS=<dir>` to save screenshots.
+
+## Control panel redesign restored (2026-10-21, build 2026-10-21.2)
+- **Why it was missing**: the console panel was built in another session's branch (`ccr-3e6985f3-nz8qiu`, commit 427649d) and deployed, then my deploy replaced that page. This brings back only the panel from that commit. Its Nova and Havoc changes were not taken (this build already has both from the final art packs), and neither was its online relay work.
+- **What it is**: the clean console plate, a joystick well and ball with a cyan ring while held, a hex power socket with a cap tinted in the held power's colour, a blue JUMP button and the seam where the playfield meets the console. `tools/process_panel.py` makes the game-sized WebPs in `art/panel/`, `tools/embed_panel.py` embeds them as `PANEL_DATA`. The plain code-drawn panel stays as `drawPanelPlain()` for `?noart=1` or if the art has not decoded.
+- **First-use hitch**: `initPanelArt()` decodes the sprites and does one throwaway draw of each on the title screen, so the first match frame does not stall (that stall showed up in `test/v2_net.mjs`).
+- **Art prompts**: `assets/CONTROL_PANEL_ART_PROMPTS.md`, the pack used to generate the panel pieces.
+- **Size**: `index.html` is now about 2.5 MB (the panel art is about 460 KB).
+- **Test**: `test/v2_panel.mjs` (art decoded, all eight sprites, tint on a held power, panel area drawn, `?noart=1` fallback).
+- **Still on that other branch, not merged**: the online play relay (WebSocket transport, Cloudflare Worker, reconnect, ping, invite links).
