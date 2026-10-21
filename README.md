@@ -1,7 +1,7 @@
 # Badsoffware
 
 **V2 (current)**: 2-4 player online tag game, portrait phone screens. Robots (Patch, Bolt, Glitch,
-Havoc; Rumble and Nova benched) climb a 2-screen city tower for 1-3 minutes, It passed on by a
+Havoc, Nova; Rumble benched) climb a 2-screen city tower for 1-3 minutes, It passed on by a
 touch. Least total time as It wins. Catch a Badsoffware drone (Bopster/Grumpulator/Sneakfolder/
 Hijacker) for a one-shot power-up. `docs/PRD_v2.md` has the v2 spec this was built from (the
 linked Claude Docs page it names is the source of truth; the markdown is an offline copy).
@@ -9,6 +9,8 @@ Rebuild the art pack and run the checks:
 
     python3 tools/process_bswv21.py <raw BSWV21 zips extracted here> art
     python3 tools/embed_art_v2.py
+    python3 tools/process_new_pilots.py <Havoc raw> <Nova raw> art   # then embed_art_v2.py again
+    python3 tools/process_panel.py <Badsoffware_Artwork dir> art/panel && python3 tools/embed_panel.py
     node test/run_all.mjs   # needs a local server on :8123, see "Run locally" below
 
 **V1 (superseded by the above)**: 2-player online tag game. One self-contained `index.html`, vanilla JS and Canvas 2D, no build step.

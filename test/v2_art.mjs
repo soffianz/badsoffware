@@ -27,7 +27,7 @@ await browser.close();
 
 const fail = [];
 if (!res.artReady) fail.push('Art.ready never became true - embedded art failed to decode');
-for (const id of ['patch', 'bolt', 'glitch', 'havoc']) {
+for (const id of ['patch', 'bolt', 'glitch', 'havoc', 'nova']) {
   const anims = res.robots[id];
   if (!anims) { fail.push(id + ': no art loaded'); continue; }
   for (const need of ['idle', 'run', 'jump', 'fall', 'land', 'tagged']) if (!anims.includes(need)) fail.push(id + ': missing ' + need + ' animation');
