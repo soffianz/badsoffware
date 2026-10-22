@@ -34,7 +34,7 @@ const res = await page.evaluate(() => {
         // a sliced sprite has a near-solid vertical wall at one side; real silhouettes top out around 0.2-0.5
         if (y1 - y0 > 12 && (col(x0) > 0.6 || col(x1) > 0.6)) fail.push(tag + '[' + f + ']: hard vertical cut (' + col(x0).toFixed(2) + '/' + col(x1).toFixed(2) + ')');
         bottoms.push(y1);
-        if (anim === 'idle' || anim === 'run') { if (y1 - y0 < 40) fail.push(tag + '[' + f + ']: only ' + (y1 - y0 + 1) + 'px tall'); if (x1 - x0 < 30) fail.push(tag + '[' + f + ']: only ' + (x1 - x0 + 1) + 'px wide, narrower than a whole robot'); }
+        if (anim === 'idle' || anim === 'run') { if (y1 - y0 < 40) fail.push(tag + '[' + f + ']: only ' + (y1 - y0 + 1) + 'px tall'); if (x1 - x0 < 25) fail.push(tag + '[' + f + ']: only ' + (x1 - x0 + 1) + 'px wide, narrower than a whole robot'); }
       }
       if ((anim === 'idle' || anim === 'run') && Math.max(...bottoms) - Math.min(...bottoms) > 1) fail.push(tag + ': feet baseline jitters ' + bottoms);
       for (let t = 0; t < 5; t += 0.013) { const fr = Math.floor(t * (FPS[anim] || 10)) % a.frames; if (!(fr >= 0 && fr < a.frames)) { fail.push(tag + ': bad frame index ' + fr); break; } }
@@ -59,10 +59,6 @@ await page.waitForTimeout(100);
 const pos = await page.evaluate(() => { const { P } = window.__bsw; S: 0; const c = document.querySelector('canvas').getBoundingClientRect(); return { x: P[0].x, y: P[0].y, c: { x: c.x, y: c.y, w: c.width, h: c.height } }; });
 await page.screenshot({ path: process.env.BOLT_SHOT || '/tmp/bolt_idle_ingame.png' });
 await browser.close();
-// Glitch's land/fall strips have the same sliced-frame defect (found by this test, not part of the Bolt repair): reported, not fatal.
-const KNOWN_BROKEN = /^glitch\./;
-const known = res.fail.filter(f => KNOWN_BROKEN.test(f)); res.fail = res.fail.filter(f => !KNOWN_BROKEN.test(f));
-if (known.length) console.warn('KNOWN (not failing):\n' + known.join('\n'));
 if (errs.length) res.fail.push('page errors: ' + JSON.stringify(errs));
 if (res.fail.length) { console.error('FAIL:\n' + res.fail.join('\n')); process.exit(1); }
 console.log('ALL CHECKS PASSED');

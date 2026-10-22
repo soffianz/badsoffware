@@ -207,4 +207,9 @@ list) are all different.
   Replace with proper 64x64 strips (idle 4, run 8, fall 2) when the zip/art is available and fix `split_into_frames`
   to merge runs across small gutters before re-running the pipeline.
 - **Test**: `test/v2_sprite_integrity.mjs` (frame size, cell margins, hard-edge cut, feet baseline, frame indices, anim
-  selection). It also reports the same sliced-frame defect in Glitch's land/fall strips (not fixed, warning only).
+  selection). Enforced for Patch, Bolt, Glitch and Havoc.
+- **Glitch land/fall**: same slicer defect. `tools/repair_glitch_v21.py` rejoins the cut poses from existing pixels
+  (originals in `art/robots/_orig_glitch_v21/`). The two strips also appear swapped at the source: `glitch_land.png`
+  held two arms-up falling poses and `glitch_fall.png` a crouch-to-stand landing, so fall (2 frames) and land (3 frames)
+  now take the matching poses. Pose joins are zero-gap and feet-anchored, so a 1px seam is possible; replace from raw art
+  when available.
