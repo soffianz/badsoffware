@@ -36,7 +36,7 @@ await p.evaluate(() => {
   const K = __climb; window.__bot = setInterval(() => {
     const P = K.P, st = K.keys; if (K.state !== 'play') { st.left = st.right = st.jump = 0; return; }
     let best = null;
-    for (const q of K.plats) { if (q.broken || q.type === 'floor' || q.y >= P.y - 8 || q.y < P.y - 150) continue; const c = q.x + q.w / 2, d = Math.abs(c - P.x); if (!best || q.y < best.y - 10 || (Math.abs(q.y - best.y) <= 10 && d < best.d)) best = { q, y: q.y, c, d }; }
+    for (const q of K.plats) { if (q.broken || q.type === 'floor' || q.y >= P.y - 8 || q.y < P.y - 110) continue; const c = q.x + q.w / 2, d = Math.abs(c - P.x); if (!best || q.y < best.y - 10 || (Math.abs(q.y - best.y) <= 10 && d < best.d)) best = { q, y: q.y, c, d }; }
     if (!best) { st.left = st.right = 0; return; }
     const dx = best.c - P.x; st.left = dx < -8 ? 1 : 0; st.right = dx > 8 ? 1 : 0;
     const want = Math.abs(dx) < best.q.w / 2 + 20;
@@ -73,6 +73,26 @@ await p.evaluate(() => { __climb.sw.started = true; });
 let sawHunter = false; for (let i = 0; i < 40 && !sawHunter; i++) { await p.evaluate(() => { __climb.G.maxH = Math.max(__climb.G.maxH, 30); __climb.P.y = Math.min(__climb.P.y, -300); __climb.P.vy = 0; __climb.P.onGround = true; __climb.sw.y = 800; }); await wait(500); sawHunter = (await p.evaluate(() => __climb.hunters.length)) > 0; }
 ok(sawHunter, 'a hunter drone peels off the swarm');
 await p.screenshot({ path: OUT + '/climb-hunter.png' });
+
+
+// tag-game style controls: analogue stick (mouse pointer stands in for a finger), push down drops through a platform
+await p.evaluate(() => { __climb.setMode('free'); __climb.startRun(); });
+await wait(200);
+await p.mouse.move(78, 775); await p.mouse.down(); await p.mouse.move(78 + 49, 775, { steps: 4 }); await wait(100);
+let jv = await p.evaluate(() => ({ mv: __climb.input.move, dn: __climb.input.down }));
+ok(jv.mv > 0.9 && !jv.dn, 'stick pushed right gives full right movement (' + jv.mv.toFixed(2) + ')');
+await p.mouse.move(78 - 20, 775, { steps: 3 }); await wait(100);
+jv = await p.evaluate(() => ({ mv: __climb.input.move }));
+ok(jv.mv < 0 && jv.mv > -0.5, 'stick nudged left gives gentle analogue movement (' + jv.mv.toFixed(2) + ')');
+await p.mouse.up(); await wait(100);
+ok((await p.evaluate(() => __climb.input.move)) === 0, 'releasing the stick stops movement');
+await p.evaluate(() => { const K = __climb, pl = K.plats.find(q => q.row === 1 && !q.extra); K.P.x = pl.x + pl.w / 2; K.P.y = pl.y; K.P.on = pl; K.P.onGround = true; K.sw.started = false; K.sw.y = 2000; });
+await wait(100);
+await p.mouse.move(78, 775); await p.mouse.down(); await p.mouse.move(78, 775 + 45, { steps: 4 }); await wait(700);
+const dr = await p.evaluate(() => ({ y: __climb.P.y, row1: __climb.plats.find(q => q.row === 1 && !q.extra).y }));
+await p.mouse.up();
+ok(dr.y > dr.row1 + 20, 'pushing the stick down drops through the platform (feet y ' + Math.round(dr.y) + ' vs platform ' + Math.round(dr.row1) + ')');
+await p.screenshot({ path: OUT + '/climb-stick.png' });
 
 // daily seed is stable across loads
 const p2 = await ctx.newPage(); await p2.goto(URL); await wait(800);

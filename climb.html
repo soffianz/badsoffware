@@ -17,13 +17,13 @@
 /* BADSOFFWARE CLIMB, solo vertical-climb prototype.
    Serve the folder (python3 -m http.server 8123) and open /climb.html. Sprites load from art/.
    Every tunable number lives in CONFIG. Keyboard: arrows/AD move, Space/W/Up jump (twice for double jump),
-   E/Shift/Down use item, M mute, P pause, R retry. */
+   E/Shift use item, Down/S drop through a platform, M mute, P pause, R retry. */
 
 const CONFIG = {
   W: 390, H: 844, PH: 693,                 // logical size, play area height (controls panel is the rest)
   GRAV: 1800, JUMP_V: 645, DJUMP_V: 565, JUMP_CUT: 0.45, MAX_FALL: 900,
   RUN: 230, ACC_G: 2400, ACC_A: 1500, FRIC_G: 2200, FRIC_A: 420,
-  COYOTE: 0.10, BUFFER: 0.12,
+  COYOTE: 0.10, BUFFER: 0.12, DROP_T: 0.22,
   PW: 22, PHH: 44,                         // player hitbox
   CAM_AT: 0.58, CAM_LERP: 7,               // player sits this far down the play area
   PX_PER_M: 10,
@@ -100,41 +100,44 @@ const Snd = {
 };
 
 /* ---------- input ---------- */
-const keys = { left: 0, right: 0, jump: 0 }, touch = { left: 0, right: 0, jump: 0 };
-const input = { left: 0, right: 0, jump: 0, jumpEdge: false, useEdge: false };
+const keys = { left: 0, right: 0, jump: 0, down: 0 }, touch = { jump: 0, joy: 0, jx: 0, jy: 0 };
+const input = { move: 0, down: 0, jump: 0, jumpEdge: false, useEdge: false };
 const CTRL = {
-  left: { x: 8, y: PH + 34, w: 98, h: 112 }, right: { x: 112, y: PH + 34, w: 98, h: 112 },
+  joy: { cx: 78, cy: PH + 82, r: 49, knob: 19, dead: 0.18, full: 0.75, drop: 0.6 },   // same analogue stick as the tag game
   use: { cx: 244, cy: PH + 92, r: 32 }, jump: { cx: 326, cy: PH + 90, r: 54 },
 };
 function ctrlAt(x, y) {
   if (y < PH) return null;
   if (Math.hypot(x - CTRL.jump.cx, y - CTRL.jump.cy) < CTRL.jump.r + 14) return 'jump';
   if (Math.hypot(x - CTRL.use.cx, y - CTRL.use.cy) < CTRL.use.r + 10) return 'use';
-  for (const k of ['left', 'right']) { const r = CTRL[k]; if (x >= r.x && x <= r.x + r.w && y >= r.y - 20 && y <= r.y + r.h + 10) return k; }
+  if (x < 170) return 'joy';
   return null;
 }
 const ptrs = new Map(); let uiBtns = [];
 function pt(e) { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; }
-function recompute() { touch.left = touch.right = touch.jump = 0; for (const k of ptrs.values()) if (k && touch[k] !== undefined) touch[k] = 1; }
+function setJoy(x, y) { const J = CTRL.joy; let dx = x - J.cx, dy = y - J.cy; const l = Math.hypot(dx, dy); if (l > J.r) { dx *= J.r / l; dy *= J.r / l; } touch.jx = dx; touch.jy = dy; }
+function recompute() { touch.jump = 0; touch.joy = 0; for (const k of ptrs.values()) { if (k === 'jump') touch.jump = 1; else if (k === 'joy') touch.joy = 1; } if (!touch.joy) touch.jx = touch.jy = 0; }
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); Snd.init(); try { cv.setPointerCapture(e.pointerId); } catch (_) { /* ok */ }
   const [x, y] = pt(e);
   for (const b of uiBtns) if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { b.fn(); return; }
-  if (state === 'play') { const k = ctrlAt(x, y); ptrs.set(e.pointerId, k); recompute(); if (k === 'jump') input.jumpEdge = true; if (k === 'use') input.useEdge = true; }
+  if (state === 'play') { const k = ctrlAt(x, y); ptrs.set(e.pointerId, k); recompute(); if (k === 'joy') setJoy(x, y); if (k === 'jump') input.jumpEdge = true; if (k === 'use') input.useEdge = true; }
   else if (state === 'dead' && G.deadT > 0.8) startRun();
 });
 cv.addEventListener('pointermove', e => {
-  if (!ptrs.has(e.pointerId)) return; const [x, y] = pt(e), k = ctrlAt(x, y), old = ptrs.get(e.pointerId);
-  if (k !== old) { ptrs.set(e.pointerId, k); recompute(); if (k === 'jump') input.jumpEdge = true; }
+  if (!ptrs.has(e.pointerId)) return; const [x, y] = pt(e), old = ptrs.get(e.pointerId);
+  if (old === 'joy') { setJoy(x, y); return; }
+  const k = ctrlAt(x, y);
+  if (k !== old) { ptrs.set(e.pointerId, k); recompute(); if (k === 'joy') setJoy(x, y); if (k === 'jump') input.jumpEdge = true; }
 });
 const endPtr = e => { ptrs.delete(e.pointerId); recompute(); };
 cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
 cv.addEventListener('contextmenu', e => e.preventDefault());
-const KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'jump', KeyW: 'jump', Space: 'jump' };
+const KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'jump', KeyW: 'jump', Space: 'jump', ArrowDown: 'down', KeyS: 'down' };
 addEventListener('keydown', e => {
   Snd.init(); const k = KEYMAP[e.code];
   if (k) { e.preventDefault(); if (k === 'jump' && !keys.jump && !e.repeat) input.jumpEdge = true; keys[k] = 1; if (state === 'title' && k === 'jump') startRun(); else if (state === 'dead' && k === 'jump' && G.deadT > 0.8) startRun(); }
-  if ((e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'ArrowDown') && !e.repeat) { e.preventDefault(); input.useEdge = true; }
+  if ((e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) { e.preventDefault(); input.useEdge = true; }
   if (e.code === 'KeyM') { Snd.muted = !Snd.muted; store.set('muted', Snd.muted ? 1 : 0); }
   if (e.code === 'KeyP' && state === 'play') paused = !paused;
   if (e.code === 'KeyR' && (state === 'play' || state === 'dead')) startRun();
@@ -143,7 +146,7 @@ addEventListener('keydown', e => {
   if (state === 'title' && e.code === 'KeyT') { mode = 'daily'; startRun(); }
 });
 addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) keys[k] = 0; });
-addEventListener('blur', () => { keys.left = keys.right = keys.jump = 0; if (state === 'play') paused = true; });
+addEventListener('blur', () => { keys.left = keys.right = keys.jump = keys.down = 0; if (state === 'play') paused = true; });
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') paused = true; });
 
 /* ---------- game state ---------- */
@@ -159,7 +162,7 @@ function startRun() {
   G = { t: 0, deadT: 0, seed, maxH: 0, bonus: 0, combo: 0, lastRow: 0, lastLandT: -9, minGap: 99999, landings: 0, hunterHits: 0, stomps: 0, newBest: false, cause: '' };
   plats = [{ x: 0, y: 0, w: W, type: 'floor', row: 0, dx: 0 }]; picks = []; hunters = []; fx = []; rings = []; pops = [];
   gen = { y: 0, x: W / 2, w: W, row: 0, type: 'floor' };
-  P = { x: W / 2, y: 0, vx: 0, vy: 0, f: 1, onGround: true, on: plats[0], coyote: 0, buf: 0, air: 1, jumping: false, t: 0, landT: 0, stun: 0, inv: 0, item: null, shield: false, dead: false, cx: 0 };
+  P = { x: W / 2, y: 0, vx: 0, vy: 0, f: 1, onGround: true, on: plats[0], coyote: 0, buf: 0, air: 1, jumping: false, t: 0, landT: 0, stun: 0, inv: 0, dropT: 0, item: null, shield: false, dead: false, cx: 0 };
   sw = { y: C.SWARM.START_Y, t: 0, freeze: 0, stall: 0, stallCD: 3, surge: 0, started: false };
   HT = C.HUNT.FIRST_T; cam.y = -C.PH * C.CAM_AT; cam.shake = 0;
   genUp(-1500);
@@ -275,8 +278,8 @@ function updatePlayer(dt) {
     const pl = p.on;
     if (!pl || pl.broken || !supports(pl, p.x)) { p.onGround = false; p.on = null; p.coyote = C.COYOTE; } else { p.x += pl.dx; p.y = pl.y; }
   }
-  const mx = ctrl ? (input.right - input.left) : 0;
-  if (mx) { p.f = mx; p.vx = approach(p.vx, mx * C.RUN, (p.onGround ? C.ACC_G : C.ACC_A) * dt); } else p.vx = approach(p.vx, 0, (p.onGround ? C.FRIC_G : C.FRIC_A) * dt);
+  const mx = ctrl ? input.move : 0; p.dropT = Math.max(0, p.dropT - dt);
+  if (mx) { p.f = mx > 0 ? 1 : -1; p.vx = approach(p.vx, mx * C.RUN, (p.onGround ? C.ACC_G : C.ACC_A) * dt); } else p.vx = approach(p.vx, 0, (p.onGround ? C.FRIC_G : C.FRIC_A) * dt);
   if (input.jumpEdge && ctrl) p.buf = C.BUFFER; p.buf = Math.max(0, p.buf - dt);
   if (!p.onGround) p.coyote = Math.max(0, p.coyote - dt);
   if (ctrl && p.buf > 0) {
@@ -284,10 +287,11 @@ function updatePlayer(dt) {
     else if (p.air > 0) { p.vy = -C.DJUMP_V; p.air = 0; p.buf = 0; p.jumping = true; Snd.play('djump'); burst(p.x, p.y - 8, '#7fe9ff', 6, 90); }
   }
   if (p.jumping && !input.jump && p.vy < 0) { p.vy *= C.JUMP_CUT; p.jumping = false; }
+  if (ctrl && input.down && p.onGround && p.on && p.on.type !== 'floor') { p.dropT = C.DROP_T; p.onGround = false; p.on = null; p.coyote = 0; p.buf = 0; p.air = 1; }   // push down to drop through
   if (input.useEdge && !p.dead) usePower();
   if (!p.onGround) {
     const prevY = p.y; p.vy = Math.min(p.vy + C.GRAV * dt, C.MAX_FALL); p.y += p.vy * dt;
-    if (p.vy >= 0) for (const pl of plats) {
+    if (p.vy >= 0 && p.dropT <= 0) for (const pl of plats) {
       if (pl.broken || pl.y < prevY - 0.01 || pl.y > p.y + 0.01) continue;
       if (supports(pl, p.x) || supports(pl, p.x + W) || supports(pl, p.x - W)) { landOn(pl, p); break; }
     }
@@ -466,7 +470,7 @@ function drawHud(c) {
     c.fillStyle = '#ff7ac8'; c.font = '800 12px system-ui'; c.textAlign = 'center'; c.fillText(`SWARM ${(Math.max(0, gap) / C.PX_PER_M).toFixed(1)} m`, W / 2, PH - 10);
   }
   if (G.t < 7 && state === 'play') { c.globalAlpha = Math.min(1, (7 - G.t)); c.fillStyle = '#cfe3ff'; c.font = '700 13px system-ui'; c.textAlign = 'center'; c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,0.8)';
-    for (const [t, y] of [['JUMP AGAIN IN MID-AIR FOR A DOUBLE JUMP', 150], ['SKIP A PLATFORM FOR BONUS. DO NOT GET CONSUMED.', 170]]) { c.strokeText(t, W / 2, y); c.fillText(t, W / 2, y); } c.globalAlpha = 1; }
+    for (const [t, y] of [['JUMP AGAIN IN MID-AIR FOR A DOUBLE JUMP', 140], ['PUSH THE STICK DOWN TO DROP THROUGH', 158], ['SKIP A PLATFORM FOR BONUS', 176]]) { c.strokeText(t, W / 2, y); c.fillText(t, W / 2, y); } c.globalAlpha = 1; }
 }
 function drawVignette(c) {
   const dist = sw.y - P.y, a = clamp((300 - dist) / 300, 0, 1) * 0.55 * (1 + 0.25 * Math.sin(now * 8)); if (a <= 0.01) return;
@@ -474,11 +478,10 @@ function drawVignette(c) {
 }
 function drawPanel(c) {
   c.fillStyle = '#070a15'; c.fillRect(0, PH, W, H - PH); c.fillStyle = '#1b2442'; c.fillRect(0, PH, W, 2);
-  const held = { left: input.left, right: input.right, jump: input.jump };
-  for (const k of ['left', 'right']) {
-    const r = CTRL[k]; rr(c, r.x, r.y, r.w, r.h, 16); c.fillStyle = held[k] ? 'rgba(127,233,255,0.28)' : 'rgba(159,180,217,0.12)'; c.fill(); c.strokeStyle = 'rgba(159,180,217,0.4)'; c.lineWidth = 2; c.stroke();
-    c.fillStyle = '#cfe3ff'; c.beginPath(); const mx = r.x + r.w / 2, my = r.y + r.h / 2, s = k === 'left' ? -1 : 1; c.moveTo(mx + s * 16, my); c.lineTo(mx - s * 12, my - 18); c.lineTo(mx - s * 12, my + 18); c.closePath(); c.fill();
-  }
+  const held = { jump: input.jump }, S = CTRL.joy;
+  c.strokeStyle = input.down ? 'rgba(127,233,255,0.6)' : '#1c3350'; c.lineWidth = 3; c.beginPath(); c.arc(S.cx, S.cy, S.r, 0, 7); c.stroke();
+  c.fillStyle = '#6b7aa0'; c.beginPath(); c.moveTo(S.cx - 7, S.cy + S.r + 9); c.lineTo(S.cx + 7, S.cy + S.r + 9); c.lineTo(S.cx, S.cy + S.r + 15); c.closePath(); c.fill();
+  c.fillStyle = touch.joy ? '#38507a' : '#223a56'; c.beginPath(); c.arc(S.cx + touch.jx, S.cy + touch.jy, S.knob, 0, 7); c.fill();
   const J = CTRL.jump; c.beginPath(); c.arc(J.cx, J.cy, J.r, 0, 6.283); c.fillStyle = held.jump ? 'rgba(255,210,61,0.35)' : 'rgba(255,210,61,0.14)'; c.fill(); c.strokeStyle = '#ffd23d'; c.lineWidth = 3; c.stroke();
   c.fillStyle = '#ffd23d'; c.font = '800 16px system-ui'; c.textAlign = 'center'; c.fillText('JUMP', J.cx, J.cy + 6);
   const U = CTRL.use; c.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; c.lineTo(U.cx + Math.cos(a) * U.r, U.cy + Math.sin(a) * U.r); } c.closePath();
@@ -504,7 +507,7 @@ function drawTitle(c) {
   btn(c, '>', 289, 716, 56, 62, () => { pilot = PILOTS[(i + 1) % PILOTS.length]; store.set('pilot', pilot); }, '#9fb4d9');
   c.fillStyle = '#cfe3ff'; c.font = '800 15px system-ui'; c.textAlign = 'center'; c.fillText(PILOT_NAMES[pilot], W / 2, 797);
   if (im && im.naturalWidth) { const fr = Math.floor(now * 6) % Math.max(1, Math.round(im.naturalWidth / 84)); c.drawImage(im, fr * 84, 0, 84, 84, W / 2 - 42, 698, 84, 84); }
-  c.fillStyle = '#6b7aa0'; c.font = '600 11px system-ui'; c.fillText('Arrows/WASD + Space on keyboard. M mutes.', W / 2, 826);
+  c.fillStyle = '#6b7aa0'; c.font = '600 11px system-ui'; c.fillText('Arrows/WASD + Space. Down drops through. E uses item. M mutes.', W / 2, 826);
 }
 function drawDead(c) {
   const t = clamp(G.deadT / 0.5, 0, 1); c.fillStyle = `rgba(5,0,12,${0.72 * t})`; c.fillRect(0, 0, W, H); if (G.deadT < 0.5) return;
@@ -539,7 +542,9 @@ function render() {
 let last = 0, acc = 0;
 function frame(ts) {
   const dt = Math.min(0.1, (ts - last) / 1000 || 0); last = ts;
-  input.left = keys.left | touch.left; input.right = keys.right | touch.right; input.jump = keys.jump | touch.jump;
+  let mv = keys.right - keys.left, dn = keys.down; const J = CTRL.joy;
+  if (touch.joy) { const nx = touch.jx / J.r, ny = touch.jy / J.r, ax = Math.abs(nx); if (ax > J.dead) mv = Math.sign(nx) * Math.min(1, (ax - J.dead) / (J.full - J.dead)); if (ny > J.drop) dn = 1; }
+  input.move = mv; input.down = dn; input.jump = keys.jump | touch.jump;
   if (state === 'title') now += dt; else if (!paused) { acc += dt; let n = 0; while (acc >= 1 / 60 && n < 6) { step(1 / 60); acc -= 1 / 60; n++; } if (n === 6) acc = 0; }
   if (state !== 'play') Snd.rumble(state === 'dead' ? 0.6 : 0);
   render(); requestAnimationFrame(frame);
