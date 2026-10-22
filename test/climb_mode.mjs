@@ -1,10 +1,10 @@
 // CLIMB mode test: node test/climb_mode.mjs   (needs Playwright + a server on :8123)
-// Title screen, a scripted bot climbs the generated tower, the swarm catches an idle player, the hunter drone spawns, daily seed is stable.
+// Title screen, a scripted bot climbs the generated tower, the swarm catches an idle player, the hunter drone spawns, a ?seed= replays the same tower.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 let chromium;
 try { ({ chromium } = require('playwright')); } catch (e) { ({ chromium } = require('/opt/node-tools/node_modules/playwright')); }
-const URL = process.env.URL || 'http://localhost:8123/climb.html';
+const URL = (process.env.URL || 'http://localhost:8123/climb.html') + '?seed=4242';
 const OUT = process.env.OUT || '/tmp/shots';
 import fs from 'fs'; fs.mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch();
@@ -17,9 +17,9 @@ await p.goto(URL); await wait(1500);
 await p.screenshot({ path: OUT + '/climb-title.png' });
 ok(await p.evaluate(() => __climb.state) === 'title', 'opens on the title screen');
 
-// real tap on DAILY CLIMB (logical 390x844 maps 1:1 at this viewport)
-await p.touchscreen.tap(195, 590); await wait(300);
-ok(await p.evaluate(() => __climb.state) === 'play', 'tapping DAILY CLIMB starts a run');
+// real tap on CLIMB (logical 390x844 maps 1:1 at this viewport)
+await p.touchscreen.tap(195, 638); await wait(300);
+ok(await p.evaluate(() => __climb.state) === 'play', 'tapping CLIMB starts a run');
 const seed1 = await p.evaluate(() => __climb.G.seed);
 ok(await p.evaluate(() => __climb.plats.length) > 8, 'tower is generated ahead of the player');
 
@@ -58,7 +58,7 @@ await p.evaluate(() => clearInterval(window.__bot));
 
 // idle player must be consumed by the swarm
 await p.keyboard.press('KeyR'); await wait(200);
-ok(await p.evaluate(() => __climb.state) === 'play' && await p.evaluate(() => __climb.G.seed) === seed1, 'R restarts the daily tower with the same seed');
+ok(await p.evaluate(() => __climb.state) === 'play' && await p.evaluate(() => __climb.G.seed) === seed1, 'R restarts and ?seed= gives the same tower');
 await p.evaluate(() => { __climb.keys.left = __climb.keys.right = __climb.keys.jump = 0; });
 await wait(15000);
 ok(await p.evaluate(() => __climb.state) === 'dead', 'standing still gets you consumed');
@@ -76,7 +76,7 @@ await p.screenshot({ path: OUT + '/climb-hunter.png' });
 
 
 // tag-game style controls: analogue stick (mouse pointer stands in for a finger), push down drops through a platform
-await p.evaluate(() => { __climb.setMode('free'); __climb.startRun(); });
+await p.evaluate(() => { __climb.startRun(); });
 await wait(200);
 await p.mouse.move(78, 775); await p.mouse.down(); await p.mouse.move(78 + 49, 775, { steps: 4 }); await wait(100);
 let jv = await p.evaluate(() => ({ mv: __climb.input.move, dn: __climb.input.down }));
@@ -94,12 +94,12 @@ await p.mouse.up();
 ok(dr.y > dr.row1 + 20, 'pushing the stick down drops through the platform (feet y ' + Math.round(dr.y) + ' vs platform ' + Math.round(dr.row1) + ')');
 await p.screenshot({ path: OUT + '/climb-stick.png' });
 
-// daily seed is stable across loads
+// same seed gives the same tower across loads
 const p2 = await ctx.newPage(); await p2.goto(URL); await wait(800);
-await p2.evaluate(() => { __climb.setMode('daily'); __climb.startRun(); });
+await p2.evaluate(() => { __climb.startRun(); });
 const a = await p2.evaluate(() => __climb.plats.slice(1, 6).map(q => Math.round(q.x) + ',' + Math.round(q.y)).join('|'));
-await p.evaluate(() => { __climb.setMode('daily'); __climb.startRun(); });
+await p.evaluate(() => { __climb.startRun(); });
 const b = await p.evaluate(() => __climb.plats.slice(1, 6).map(q => Math.round(q.x) + ',' + Math.round(q.y)).join('|'));
-ok(a === b && a.length > 10, 'daily tower is identical on every load');
+ok(a === b && a.length > 10, 'a seed gives an identical tower on every load');
 ok(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' / ') : ''));
 await browser.close();

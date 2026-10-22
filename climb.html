@@ -42,8 +42,6 @@ const lerp = (a, b, t) => a + (b - a) * t, clamp = (v, a, b) => Math.max(a, Math
 const approach = (v, t, d) => v < t ? Math.min(t, v + d) : Math.max(t, v - d);
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function hash(i, j = 0) { let h = (Math.imul(i, 374761393) + Math.imul(j, 668265263)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
-const dailyKey = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);   // MYT
-const dailySeed = () => Math.imul(Number(dailyKey().replace(/-/g, '')), 2654435761) >>> 0;
 const store = {
   get(k, d) { try { const v = localStorage.getItem('bswclimb.' + k); return v === null ? d : v; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('bswclimb.' + k, String(v)); } catch (e) { /* private mode */ } },
@@ -142,22 +140,21 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyP' && state === 'play') paused = !paused;
   if (e.code === 'KeyR' && (state === 'play' || state === 'dead')) startRun();
   if (e.code === 'Enter' && (state === 'title' || (state === 'dead' && G.deadT > 0.8))) startRun();
-  if (state === 'title' && e.code === 'KeyF') { mode = 'free'; startRun(); }
-  if (state === 'title' && e.code === 'KeyT') { mode = 'daily'; startRun(); }
 });
 addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) keys[k] = 0; });
 addEventListener('blur', () => { keys.left = keys.right = keys.jump = keys.down = 0; if (state === 'play') paused = true; });
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') paused = true; });
 
 /* ---------- game state ---------- */
-let state = 'title', mode = store.get('mode', 'daily'), pilot = store.get('pilot', 'patch'), paused = false, now = 0;
+let state = 'title', pilot = store.get('pilot', 'patch'), paused = false, now = 0;
 if (!PILOTS.includes(pilot)) pilot = 'patch';
 let G = { t: 0, deadT: 0 }, P, sw, plats, picks, hunters, fx, rings, pops, gen, cam = { y: 0, shake: 0 }, rng, rng2, HT;
-const keyFor = () => mode === 'daily' ? 'best.daily.' + dailyKey() : 'best.free';
+const keyFor = () => 'best.free';
+const urlSeed = (() => { try { const v = new URLSearchParams(location.search).get('seed'); return v === null ? null : Number(v) >>> 0; } catch (e) { return null; } })();   // ?seed=123 replays a tower (testing, sharing)
 
 function startRun() {
   Snd.init(); state = 'play'; paused = false; ptrs.clear(); recompute();
-  const seed = mode === 'daily' ? dailySeed() : (Math.random() * 4294967296) >>> 0;
+  const seed = urlSeed !== null ? urlSeed : (Math.random() * 4294967296) >>> 0;
   rng = mulberry32(seed); rng2 = mulberry32(seed ^ 0x9e3779b9);
   G = { t: 0, deadT: 0, seed, maxH: 0, bonus: 0, combo: 0, lastRow: 0, lastLandT: -9, minGap: 99999, landings: 0, hunterHits: 0, stomps: 0, newBest: false, cause: '' };
   plats = [{ x: 0, y: 0, w: W, type: 'floor', row: 0, dx: 0 }]; picks = []; hunters = []; fx = []; rings = []; pops = [];
@@ -460,7 +457,7 @@ function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w
 function drawHud(c) {
   const score = Math.floor(G.maxH) + G.bonus, best = Number(store.get(keyFor(), 0));
   c.textAlign = 'left'; c.fillStyle = '#fff'; c.font = '800 34px system-ui'; c.lineWidth = 5; c.strokeStyle = 'rgba(0,0,0,0.6)'; c.strokeText(score, 14, 40); c.fillText(score, 14, 40);
-  c.font = '700 12px system-ui'; c.fillStyle = '#9fb4d9'; c.fillText(`${Math.floor(G.maxH)} m   BEST ${Math.max(best, score)}${mode === 'daily' ? '   DAILY' : ''}`, 16, 58);
+  c.font = '700 12px system-ui'; c.fillStyle = '#9fb4d9'; c.fillText(`${Math.floor(G.maxH)} m   BEST ${Math.max(best, score)}`, 16, 58);
   if (G.combo > 1) { c.fillStyle = '#ffd23d'; c.font = '800 14px system-ui'; c.fillText(`SKIP CHAIN x${G.combo}`, 16, 78); }
   c.save(); rr(c, W - 66, 10, 54, 54, 10); c.fillStyle = 'rgba(6,10,20,0.6)'; c.fill(); c.strokeStyle = P.item ? ITEMS[P.item].col : 'rgba(159,180,217,0.35)'; c.lineWidth = 2; c.stroke(); c.restore();
   if (P.item) { drawIcon(c, P.item, W - 39, 33, 12); c.fillStyle = ITEMS[P.item].col; c.font = '800 9px system-ui'; c.textAlign = 'center'; c.fillText(ITEMS[P.item].name, W - 39, 58); } else { c.fillStyle = 'rgba(159,180,217,0.5)'; c.font = '700 9px system-ui'; c.textAlign = 'center'; c.fillText('NO ITEM', W - 39, 41); }
@@ -499,9 +496,8 @@ function drawTitle(c) {
   c.textAlign = 'center'; c.fillStyle = '#ffd23d'; c.font = '800 24px system-ui'; c.fillText('C L I M B', W / 2, 321);
   c.fillStyle = '#ff7ac8'; c.font = '700 11px system-ui'; c.fillText('OUTRUN THE SWARM. IT IS BUILDING UPWARDS.', W / 2, 331);
   const g = c.createLinearGradient(0, 520, 0, H); g.addColorStop(0, 'rgba(5,6,13,0)'); g.addColorStop(0.35, 'rgba(5,6,13,0.9)'); c.fillStyle = g; c.fillRect(0, 520, W, H - 520);
-  const bd = Number(store.get('best.daily.' + dailyKey(), 0)), bf = Number(store.get('best.free', 0));
-  btn(c, 'DAILY CLIMB', 45, 560, 300, 62, () => { mode = 'daily'; store.set('mode', mode); startRun(); }, '#ffd23d', `${dailyKey()}  |  same tower for everyone  |  best ${bd}`);
-  btn(c, 'FREE CLIMB', 45, 634, 300, 62, () => { mode = 'free'; store.set('mode', mode); startRun(); }, '#38e1ff', `random tower  |  best ${bf}`);
+  const bf = Number(store.get('best.free', 0));
+  btn(c, 'CLIMB', 45, 600, 300, 76, startRun, '#ffd23d', `random tower every run  |  best ${bf}`);
   const i = PILOTS.indexOf(pilot), set = A.robots[pilot] || {}, im = set.idle;
   btn(c, '<', 45, 716, 56, 62, () => { pilot = PILOTS[(i + PILOTS.length - 1) % PILOTS.length]; store.set('pilot', pilot); }, '#9fb4d9');
   btn(c, '>', 289, 716, 56, 62, () => { pilot = PILOTS[(i + 1) % PILOTS.length]; store.set('pilot', pilot); }, '#9fb4d9');
@@ -515,12 +511,12 @@ function drawDead(c) {
   c.textAlign = 'center'; c.fillStyle = '#ff3d71'; c.font = '800 38px system-ui'; c.fillText('CONSUMED', W / 2, 200);
   c.fillStyle = '#fff'; c.font = '800 64px system-ui'; c.fillText(score, W / 2, 285); c.fillStyle = '#9fb4d9'; c.font = '700 13px system-ui'; c.fillText('POINTS', W / 2, 306);
   if (G.newBest) { c.fillStyle = '#ffd23d'; c.font = '800 16px system-ui'; c.fillText('NEW BEST', W / 2, 334); } else { c.fillStyle = '#6b7aa0'; c.font = '700 13px system-ui'; c.fillText(`BEST ${best}`, W / 2, 334); }
-  const rows = [['HEIGHT', `${Math.floor(G.maxH)} m`], ['CLOSEST CALL', G.minGap < 99999 ? `${Math.max(0, G.minGap / C.PX_PER_M).toFixed(1)} m` : '-'], ['STOMPS', G.stomps], ['HUNTER GRABS', G.hunterHits], ['MODE', mode === 'daily' ? 'DAILY ' + dailyKey() : 'FREE']];
+  const rows = [['HEIGHT', `${Math.floor(G.maxH)} m`], ['CLOSEST CALL', G.minGap < 99999 ? `${Math.max(0, G.minGap / C.PX_PER_M).toFixed(1)} m` : '-'], ['STOMPS', G.stomps], ['HUNTER GRABS', G.hunterHits], ['MODE', 'FREE CLIMB']];
   c.font = '700 14px system-ui'; rows.forEach((r, k) => { c.textAlign = 'left'; c.fillStyle = '#9fb4d9'; c.fillText(r[0], 80, 385 + k * 28); c.textAlign = 'right'; c.fillStyle = '#fff'; c.fillText(String(r[1]), 310, 385 + k * 28); });
-  if (G.deadT > 0.8) { btn(c, 'CLIMB AGAIN', 45, 560, 300, 62, startRun, '#ffd23d', mode === 'daily' ? 'same tower, go again' : 'new tower'); btn(c, 'SHARE', 45, 634, 144, 54, shareScore, '#38e1ff'); btn(c, 'TITLE', 201, 634, 144, 54, () => { state = 'title'; }, '#9fb4d9'); }
+  if (G.deadT > 0.8) { btn(c, 'CLIMB AGAIN', 45, 560, 300, 62, startRun, '#ffd23d', 'new tower'); btn(c, 'SHARE', 45, 634, 144, 54, shareScore, '#38e1ff'); btn(c, 'TITLE', 201, 634, 144, 54, () => { state = 'title'; }, '#9fb4d9'); }
 }
 function shareScore() {
-  const txt = `Badsoffware CLIMB ${mode === 'daily' ? dailyKey() : '(free)'}\n${G.score} pts, ${Math.floor(G.maxH)} m as ${PILOT_NAMES[pilot]}\nClosest call: ${G.minGap < 99999 ? Math.max(0, G.minGap / C.PX_PER_M).toFixed(1) : '-'} m from the swarm\n${location.href.split('?')[0]}`;
+  const txt = `Badsoffware CLIMB\n${G.score} pts, ${Math.floor(G.maxH)} m as ${PILOT_NAMES[pilot]}\nClosest call: ${G.minGap < 99999 ? Math.max(0, G.minGap / C.PX_PER_M).toFixed(1) : '-'} m from the swarm\n${location.href.split('?')[0]}`;
   const done = () => addPop('COPIED', W / 2, 600, '#38e1ff');
   if (navigator.share) navigator.share({ text: txt }).catch(() => { }); else if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done, () => { }); else done();
 }
@@ -551,7 +547,7 @@ function frame(ts) {
 }
 P = { x: W / 2, y: 0, f: 1, t: 0, onGround: true, vx: 0, vy: 0, landT: 0, stun: 0, inv: 0, dead: false, item: null, shield: false };
 loadArt().then(() => requestAnimationFrame(frame));
-window.__climb = { get G() { return G; }, get P() { return P; }, get sw() { return sw; }, get plats() { return plats; }, get picks() { return picks; }, get hunters() { return hunters; }, get cam() { return cam; }, get state() { return state; }, CONFIG, input, keys, startRun, frontAt, get seed() { return G.seed; }, setMode(m) { mode = m; } };
+window.__climb = { get G() { return G; }, get P() { return P; }, get sw() { return sw; }, get plats() { return plats; }, get picks() { return picks; }, get hunters() { return hunters; }, get cam() { return cam; }, get state() { return state; }, CONFIG, input, keys, startRun, frontAt, get seed() { return G.seed; } };
 </script>
 </body>
 </html>
