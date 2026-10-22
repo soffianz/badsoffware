@@ -27,7 +27,7 @@ const toScreen = async (lx, ly) => page.evaluate(({ lx, ly }) => {
 // --- title: real touch tap on PRACTICE VS BOTS, at its actual on-screen position - now lands on
 // the battle-settings screen (bot count / match length / game mode) rather than starting right
 // away, so follow through with a real tap on its START button too.
-const titleRect = await page.evaluate(() => window.__bsw.UI.title.practice);
+const titleRect = await page.evaluate(() => window.__bsw.UI.title.pursuit);
 out.titleButtonsExist = !!titleRect;
 if (titleRect) {
   const { x, y } = await toScreen(titleRect.x + titleRect.w / 2, titleRect.y + titleRect.h / 2);

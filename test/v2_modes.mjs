@@ -80,7 +80,7 @@ const clickRect = async (getRect) => {
   const s = rectPx.width / 390;
   await page.mouse.click(rectPx.left + (r.x + r.w / 2) * s, rectPx.top + (r.y + r.h / 2) * s);
 };
-await clickRect(() => window.__bsw.UI.title.practice);
+await clickRect(() => window.__bsw.UI.title.pursuit);
 await page.waitForTimeout(150);
 const reachedSettings = await page.evaluate(() => window.__bsw.S.ph === 'battleSettings');
 await clickRect(() => window.__bsw.UI.battle.bots[0]);          // "1 BOT"

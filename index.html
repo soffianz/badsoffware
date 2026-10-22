@@ -1273,7 +1273,7 @@ function drawPanel(c) {
 }
 
 function drawPlayfield(c) {
-  const menuPh = S.ph === 'title' || S.ph === 'enterCode' || S.ph === 'lobby' || S.ph === 'battleSettings';
+  const menuPh = S.ph === 'title' || S.ph === 'coop' || S.ph === 'enterCode' || S.ph === 'lobby' || S.ph === 'battleSettings';
   c.save();
   if (menuPh) drawMenuBg(c);
   else { c.beginPath(); c.rect(0, PLAY_Y0, VW, PLAY_H); c.clip(); }
@@ -1302,6 +1302,7 @@ function drawPlayfield(c) {
     c.fillText(NET.mode === 'local' ? 'TAP TO PLAY AGAIN' : NET.isHost ? 'TAP FOR LOBBY' : 'WAITING FOR HOST', VW / 2, PLAY_Y0 + PLAY_H - 40);
   }
   if (S.ph === 'title') drawTitle(c);
+  if (S.ph === 'coop') drawCoop(c);
   if (S.ph === 'enterCode') drawCodeEntry(c);
   if (S.ph === 'lobby') drawLobby(c);
   if (S.ph === 'battleSettings') drawBattleSettings(c);
@@ -1341,7 +1342,7 @@ function iconRobotHead(c, x, y, s, col) {
 // a wider, icon-led button for the title screen (host/join/practice) - same rect contract as
 // btn() so the existing hit-testing code doesn't need to change, just a different look: icon
 // badge on the left, label+subtitle left-aligned beside it, double border, corner ticks.
-function menuBtn(c, x, y, w, h, label, sub, iconFn) {
+function menuBtn(c, x, y, w, h, label, sub, iconFn, disabled) {
   // reference mock: chamfered neon-blue frame (bright rim over a dark rim), translucent navy glass,
   // icon | divider | label + subline, and a small dot grid in the top-right corner
   const ch = 9;
@@ -1350,6 +1351,7 @@ function menuBtn(c, x, y, w, h, label, sub, iconFn) {
     c.lineTo(px + pw - k, py + ph); c.lineTo(px + k, py + ph); c.lineTo(px, py + ph - k); c.lineTo(px, py + k); c.closePath();
   };
   c.save();
+  if (disabled) c.globalAlpha = 0.4;       // coming-soon buttons: dimmed, and the caller keeps no hit rect
   c.shadowColor = 'rgba(40,180,255,0.55)'; c.shadowBlur = 12;
   path(x, y, w, h, ch); c.fillStyle = 'rgba(8,22,58,0.88)'; c.fill();
   c.shadowBlur = 0;
@@ -1381,9 +1383,20 @@ function menuBtn(c, x, y, w, h, label, sub, iconFn) {
 function drawTitle(c) {
   // the hero art carries the logo and tagline; only the buttons are live, in the lower half
   const bw = 290, bx = VW / 2 - bw / 2, bh = 60, gap = 10; let by = Math.round(VH * 0.585);
-  UI.title.host = menuBtn(c, bx, by, bw, bh, 'HOST GAME', 'start a room, share the code', iconPeople); by += bh + gap;
-  UI.title.join = menuBtn(c, bx, by, bw, bh, 'JOIN GAME', 'enter a 4 letter code', iconArrowIn); by += bh + gap;
-  UI.title.practice = menuBtn(c, bx, by, bw, bh, 'PRACTICE VS BOTS', 'play offline, 1 or 2 bots', iconRobotHead);
+  UI.title.pursuit = menuBtn(c, bx, by, bw, bh, 'PURSUIT', 'play offline, 1 or 2 bots', iconRobotHead); by += bh + gap;
+  UI.title.coop = menuBtn(c, bx, by, bw, bh, 'CO-OP', 'host or join a room with friends', iconPeople); by += bh + gap;
+  menuBtn(c, bx, by, bw, bh, 'ESCAPE', 'coming soon', iconArrowIn, true);
+}
+// co-op sub-screen: the host / join choice that used to sit on the title screen
+function drawCoop(c) {
+  c.fillStyle = CC.lt; c.font = '700 18px system-ui'; c.textAlign = 'center';
+  c.fillText('CO-OP', VW / 2, PLAY_Y0 + 34);
+  const bw = 290, bx = VW / 2 - bw / 2, bh = 60, gap = 10; let by = PLAY_Y0 + 70;
+  UI.coop.host = menuBtn(c, bx, by, bw, bh, 'HOST GAME', 'start a room, share the code', iconPeople); by += bh + gap;
+  UI.coop.join = menuBtn(c, bx, by, bw, bh, 'JOIN GAME', 'enter a 4 letter code', iconArrowIn);
+  c.strokeStyle = CC.bd; c.lineWidth = 1.5; c.beginPath(); c.roundRect(10, PLAY_Y0 + 6, 50, 24, 6); c.stroke();
+  c.fillStyle = CC.t2; c.font = '600 10px system-ui'; c.textAlign = 'center'; c.fillText('BACK', 35, PLAY_Y0 + 21);
+  UI.coop.back = { x: 10, y: PLAY_Y0 + 6, w: 50, h: 24 };
 }
 // a row of mutually-exclusive option tiles (bot count / match length / game mode) - shared by
 // drawBattleSettings; the selected tile is highlighted, every tile's rect is returned for hit-testing
@@ -1403,7 +1416,7 @@ const BATTLE_DUR_OPTS = [1, 2, 4, Infinity];
 function drawBattleSettings(c) {
   const cfg = S.battleCfg;
   c.fillStyle = CC.lt; c.font = '700 18px system-ui'; c.textAlign = 'center';
-  c.fillText('PRACTICE VS BOTS', VW / 2, PLAY_Y0 + 34);
+  c.fillText('PURSUIT', VW / 2, PLAY_Y0 + 34);
   let y = PLAY_Y0 + 58;
   c.font = '600 11px system-ui'; c.fillStyle = CC.t2; c.textAlign = 'left';
   c.fillText('BOTS', 30, y);
@@ -1418,7 +1431,7 @@ function drawBattleSettings(c) {
   c.font = '600 10px system-ui'; c.fillStyle = CC.t2; c.textAlign = 'center';
   c.fillText(cfg.mode === 'drones' ? 'catch a badsoffware for its own power (dash/slam/blink/hijack)' : 'catch any badsoffware to use YOUR robot\'s signature power', VW / 2, y);
   y += 26;
-  UI.battle.start = btn(c, 30, y, VW - 60, 48, 'START PRACTICE');
+  UI.battle.start = btn(c, 30, y, VW - 60, 48, 'START PURSUIT');
   c.strokeStyle = CC.bd; c.lineWidth = 1.5; c.beginPath(); c.roundRect(10, PLAY_Y0 + 6, 50, 24, 6); c.stroke();
   c.fillStyle = CC.t2; c.font = '600 10px system-ui'; c.textAlign = 'center'; c.fillText('BACK', 35, PLAY_Y0 + 21);
   UI.battle.back = { x: 10, y: PLAY_Y0 + 6, w: 50, h: 24 };
@@ -1497,12 +1510,17 @@ cv.addEventListener('pointerdown', e => {
   const t = toLogical(e); Snd.init();
   if ((S.ph === 'countdown' || S.ph === 'play' || S.ph === 'over') && UI.hud.exit && inRect(t, UI.hud.exit)) { backToTitle(); return; }
   if (S.ph === 'title') {
-    if (UI.title.host && inRect(t, UI.title.host)) return startHost();
-    if (UI.title.join && inRect(t, UI.title.join)) { S.ph = 'enterCode'; S.codeBuf = ''; return; }
-    if (UI.title.practice && inRect(t, UI.title.practice)) {
+    if (UI.title.coop && inRect(t, UI.title.coop)) { S.ph = 'coop'; return; }
+    if (UI.title.pursuit && inRect(t, UI.title.pursuit)) {
       if (DEBUG_BOTS >= 0) return startLocal(DEBUG_BOTS);   // automated tests: skip the settings screen
       S.ph = 'battleSettings'; return;
     }
+    return;
+  }
+  if (S.ph === 'coop') {
+    if (UI.coop.back && inRect(t, UI.coop.back)) { S.ph = 'title'; return; }
+    if (UI.coop.host && inRect(t, UI.coop.host)) return startHost();
+    if (UI.coop.join && inRect(t, UI.coop.join)) { S.ph = 'enterCode'; S.codeBuf = ''; return; }
     return;
   }
   if (S.ph === 'battleSettings') {
@@ -1515,7 +1533,7 @@ cv.addEventListener('pointerdown', e => {
     return;
   }
   if (S.ph === 'enterCode') {
-    if (UI.code.back && inRect(t, UI.code.back)) { S.ph = 'title'; return; }
+    if (UI.code.back && inRect(t, UI.code.back)) { S.ph = 'coop'; return; }
     for (const k of UI.code.keys || []) {
       if (inRect(t, k.r)) {
         if (k.ch === '⌫') S.codeBuf = S.codeBuf.slice(0, -1);
@@ -1564,7 +1582,7 @@ cv.addEventListener('pointerdown', e => {
   }
 });
 function inRect(p, r) { return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
-const UI = { title: {}, code: {}, lobby: {}, battle: {}, hud: {} };
+const UI = { title: {}, coop: {}, code: {}, lobby: {}, battle: {}, hud: {} };
 
 let last = performance.now(), acc = 0;
 function frame(now) {
@@ -1574,7 +1592,7 @@ function frame(now) {
   while (acc >= 1000 / 60) { tick(1000 / 60); acc -= 1000 / 60; }
   const c = cx; c.save(); c.scale(view.bs, view.bs);
   c.fillStyle = '#060810'; c.fillRect(0, 0, VW, VH);
-  const menuPh = S.ph === 'title' || S.ph === 'enterCode' || S.ph === 'lobby' || S.ph === 'battleSettings';
+  const menuPh = S.ph === 'title' || S.ph === 'coop' || S.ph === 'enterCode' || S.ph === 'lobby' || S.ph === 'battleSettings';
   drawPlayfield(c);
   if (!menuPh) { drawHUD(c); drawPanel(c); }
   c.restore();
