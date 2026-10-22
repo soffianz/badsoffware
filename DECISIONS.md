@@ -190,3 +190,21 @@ list) are all different.
   wordmark, corner schematic diagrams, and rain-soaked hero photo would need real exported art
   assets (a background image, a logo file) supplied the same way the BSWV21 packs were - those
   can't be generated here, only composited once provided.
+
+## Bolt sprite repair (BSW v2.1)
+- **Root cause**: `tools/process_bswv21.py` `split_into_frames` groups non-transparent columns into runs and only
+  falls back to equal slicing when the run count != n. Bolt's run sheet has a vertical gutter through every pose,
+  so 4 poses gave exactly 8 runs (== n, no fallback) and every baked "frame" was half a robot with a hard vertical
+  edge. Idle is stopgapped from run frame 0, so idle was a 20x45 sliver. Bolt's fall sheet hit the fallback instead
+  and baked 4 tiny poses into each frame. Jump, land and tagged were fine. The renderer (`drawRobotArt`) was correct.
+- **Fix**: `tools/repair_bolt_v21.py` rebuilds the strips from pixels already in `art/robots/` (no new art): run =
+  left+right halves rejoined (8 sliced frames -> 4 whole poses), idle = run pose 0 (existing bob stopgap), fall = the
+  8 tiny poses cut out and enlarged exactly 2x nearest (8 frames). Broken originals kept in `art/robots/_orig_bolt_v21/`.
+  Then `tools/embed_art_v2.py`. Manifest frame counts updated (run 4, fall 8).
+- **Limitations**: the raw `BSWV21_Bolt.zip` is not in the repo, so nothing was re-sliced from source. Run is a 4-pose
+  cycle (was declared 8; global `ANIM_FPS.run` unchanged, so it cycles twice as fast per pose). Fall is a 2x upscale of a
+  ~0.43x downsample, so it is softer than the other Bolt frames. Idle is one frame plus code bob, not a real 4-frame idle.
+  Replace with proper 64x64 strips (idle 4, run 8, fall 2) when the zip/art is available and fix `split_into_frames`
+  to merge runs across small gutters before re-running the pipeline.
+- **Test**: `test/v2_sprite_integrity.mjs` (frame size, cell margins, hard-edge cut, feet baseline, frame indices, anim
+  selection). It also reports the same sliced-frame defect in Glitch's land/fall strips (not fixed, warning only).
