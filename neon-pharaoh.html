@@ -113,7 +113,7 @@ body {
 }
 
 /* rows */
-.row { display: flex; align-items: flex-start; min-height: 34px; padding-right: 14px; }
+.row { display: flex; align-items: flex-start; min-height: 26px; padding-right: 14px; }
 .row.active { background: linear-gradient(90deg, rgba(255, 43, 214, 0.13), rgba(255, 43, 214, 0) 75%); }
 .no {
   flex: none;
@@ -121,7 +121,7 @@ body {
   padding-right: 12px;
   box-sizing: border-box;
   text-align: right;
-  font: 12px/34px var(--ui-font);
+  font: 12px/26px var(--ui-font);
   color: var(--gold-dim);
   user-select: none;
   font-variant-numeric: tabular-nums;
@@ -131,8 +131,8 @@ body {
   flex: 1;
   min-width: 0;
   font-family: var(--glyph-font);
-  font-size: 22px;
-  line-height: 34px;
+  font-size: 16.5px;
+  line-height: 26px;
   color: var(--cyan);
   overflow-wrap: anywhere;
 }
@@ -206,7 +206,7 @@ body {
 
 /* progress bar rows (system voice, never glyphs) */
 .row.bar .no { color: var(--green); }
-.row.bar .code { font: 13px/34px var(--ui-font); color: var(--gold); letter-spacing: 0.02em; white-space: pre-wrap; }
+.row.bar .code { font: 13px/26px var(--ui-font); color: var(--gold); letter-spacing: 0.02em; white-space: pre-wrap; }
 .bar .meter { color: var(--green); text-shadow: 0 0 6px rgba(57, 255, 156, 0.6); }
 .bar .pct { color: var(--gold); font-variant-numeric: tabular-nums; }
 .bar .done { color: var(--green); font-weight: 700; text-shadow: 0 0 8px rgba(57, 255, 156, 0.7); }
@@ -252,7 +252,7 @@ body {
   .status { gap: 8px; font-size: 10px; }
 }
 @media (max-width: 380px) {
-  .code { font-size: 20px; }
+  .code { font-size: 15px; }
   .title { letter-spacing: 0.12em; }
 }
 </style>
@@ -761,7 +761,7 @@ function reveal() {
   if (needLoop) newFile();
   for (let i = 0; i < fresh.length; i++) fresh[i].classList.remove('fresh');
   fresh = [];
-  const want = 3 + ((Math.random() * 3) | 0);
+  const want = 1 + ((Math.random() * 3) | 0);
   let c = 0, d = 0, run = 0;
   const flush = function () {
     if (run > 0) {
@@ -783,11 +783,11 @@ function reveal() {
     const g = document.createElement('span');
     g.className = 'g fresh';
     g.setAttribute('data-g', t);
-    g.style.setProperty('--d', (d * 15) + 'ms');
+    g.style.setProperty('--d', Math.round(d) + 'ms');
     g.textContent = t;
     cur.code.appendChild(g);
     fresh.push(g);
-    cur.n++; col++; d++; c++; ptr++;
+    cur.n++; col++; d += 45 + Math.random() * 50; c++; ptr++;
   }
   flush();
   cur.code.appendChild(cursor);
