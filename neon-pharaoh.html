@@ -113,7 +113,7 @@ body {
 }
 
 /* rows */
-.row { display: flex; align-items: flex-start; min-height: 26px; padding-right: 14px; }
+.row { display: flex; align-items: flex-start; min-height: 19px; padding-right: 14px; }
 .row.active { background: linear-gradient(90deg, rgba(255, 43, 214, 0.13), rgba(255, 43, 214, 0) 75%); }
 .no {
   flex: none;
@@ -121,7 +121,7 @@ body {
   padding-right: 12px;
   box-sizing: border-box;
   text-align: right;
-  font: 12px/26px var(--ui-font);
+  font: 11px/19px var(--ui-font);
   color: var(--gold-dim);
   user-select: none;
   font-variant-numeric: tabular-nums;
@@ -131,8 +131,8 @@ body {
   flex: 1;
   min-width: 0;
   font-family: var(--glyph-font);
-  font-size: 16.5px;
-  line-height: 26px;
+  font-size: 12px;
+  line-height: 19px;
   color: var(--cyan);
   overflow-wrap: anywhere;
 }
@@ -206,7 +206,7 @@ body {
 
 /* progress bar rows (system voice, never glyphs) */
 .row.bar .no { color: var(--green); }
-.row.bar .code { font: 13px/26px var(--ui-font); color: var(--gold); letter-spacing: 0.02em; white-space: pre-wrap; }
+.row.bar .code { font: 12px/19px var(--ui-font); color: var(--gold); letter-spacing: 0.02em; white-space: pre-wrap; }
 .bar .meter { color: var(--green); text-shadow: 0 0 6px rgba(57, 255, 156, 0.6); }
 .bar .pct { color: var(--gold); font-variant-numeric: tabular-nums; }
 .bar .done { color: var(--green); font-weight: 700; text-shadow: 0 0 8px rgba(57, 255, 156, 0.7); }
@@ -242,6 +242,27 @@ body {
 .status .sp-fill { flex: 1; }
 .status .cnt { color: var(--cyan); }
 
+/* Q alert (in-page, since browser alert() is blocked in artifacts) */
+.alert {
+  position: fixed;
+  left: 50%;
+  top: 28%;
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: calc(100% - 32px);
+  padding: 14px 26px;
+  font: 700 15px var(--ui-font);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #fff;
+  background: rgba(30, 6, 28, 0.94);
+  border: 1px solid var(--mag);
+  box-shadow: 0 0 24px rgba(255, 43, 214, 0.7), inset 0 0 14px rgba(255, 43, 214, 0.35);
+  text-shadow: 0 0 8px var(--mag);
+  pointer-events: none;
+}
+
 /* hidden input that catches every key and soft-keyboard event */
 #ta { position: fixed; left: 0; top: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; font-size: 16px; resize: none; pointer-events: none; }
 
@@ -252,7 +273,7 @@ body {
   .status { gap: 8px; font-size: 10px; }
 }
 @media (max-width: 380px) {
-  .code { font-size: 15px; }
+  .code { font-size: 11px; }
   .title { letter-spacing: 0.12em; }
 }
 </style>
@@ -289,6 +310,7 @@ body {
   </footer>
 </div>
 <textarea id="ta" aria-label="Mash any key to write code" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"></textarea>
+<div class="alert" id="alert" role="alert" hidden>Curse detected</div>
 
 <script>
 (function () {
@@ -854,6 +876,14 @@ function press() {
   status();
 }
 
+let alertTimer = 0;
+function showAlert() {
+  const a = $('alert');
+  a.hidden = false;
+  clearTimeout(alertTimer);
+  alertTimer = setTimeout(function () { a.hidden = true; }, 1000);
+}
+
 let lastBurst = 0, lastKd = 0;
 function trigger() {
   const now = performance.now();
@@ -872,6 +902,7 @@ document.addEventListener('keydown', function (e) {
   if (IGNORED.has(e.key) || /^F\d{1,2}$/.test(e.key)) return;
   if (e.target && e.target.closest && e.target.closest('button')) return;
   e.preventDefault();
+  if (e.key === 'q' || e.key === 'Q') { showAlert(); return; }
   lastKd = performance.now();
   trigger();
 });
@@ -880,6 +911,7 @@ ta.addEventListener('input', function (e) {
   const t = e.inputType || '';
   ta.value = '';
   if (t.indexOf('delete') === 0 || t === 'historyUndo' || t === 'historyRedo') return;
+  if (e.data && e.data.toLowerCase() === 'q') { showAlert(); return; }
   if (performance.now() - lastKd < 60) return;
   trigger();
 });
