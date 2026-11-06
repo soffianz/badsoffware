@@ -722,7 +722,7 @@ function newFile() {
 }
 
 function setMode(busy, text) {
-  modeEl.textContent = text || (autoOn ? (autoKind === '1' ? 'DEFCON 1' : autoKind === '2' ? 'DOWNLOAD MODE' : autoKind === '3' ? 'LOGIN MODE' : 'BLACKHAT MODE') : (busy ? 'DECRYPT MODE' : 'SCRIBE MODE'));
+  modeEl.textContent = text || (autoOn ? (autoKind === '2' ? 'DOWNLOAD MODE' : autoKind === '3' ? 'LOGIN MODE' : 'BLACKHAT MODE') : (busy ? 'DECRYPT MODE' : 'SCRIBE MODE'));
   modeEl.classList.toggle('busy', !!busy || autoOn);
 }
 
