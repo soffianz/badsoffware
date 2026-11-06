@@ -1,0 +1,980 @@
+<title>Neon Pharaoh</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+Egyptian+Hieroglyphs&display=swap">
+<style>
+/* Layout: one full-height tomb terminal. Title bar, file tab, scrolling glyph code with gutter, status bar. Single dark look by design. */
+:root {
+  --bg: #07060d;
+  --stone: #0b0a14;
+  --stone-hi: #15112a;
+  --cyan: #00f0ff;
+  --mag: #ff2bd6;
+  --gold: #f5c542;
+  --gold-dim: #8f7a3a;
+  --green: #39ff9c;
+  --glyph-font: 'Noto Sans Egyptian Hieroglyphs', 'Segoe UI Historic', 'Noto Sans Symbols', serif;
+  --ui-font: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html { box-sizing: border-box; height: 100%; }
+body {
+  box-sizing: border-box;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  background-image: radial-gradient(ellipse at 50% -10%, rgba(255, 43, 214, 0.14), transparent 55%), radial-gradient(ellipse at 50% 110%, rgba(0, 240, 255, 0.08), transparent 55%);
+  color: var(--gold);
+  font-family: var(--ui-font);
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.app {
+  height: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--gold);
+  background: var(--stone);
+  box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px rgba(245, 197, 66, 0.3), 0 0 40px rgba(255, 43, 214, 0.14), 0 0 90px rgba(0, 240, 255, 0.07);
+}
+
+/* title bar */
+.titlebar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, #1a1430, #0e0b1b);
+  border-bottom: 1px solid rgba(245, 197, 66, 0.45);
+}
+.eye { flex: none; width: 34px; height: 24px; color: var(--gold); filter: drop-shadow(0 0 5px rgba(245, 197, 66, 0.7)); }
+.eye svg { width: 100%; height: 100%; display: block; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.eye .pupil { fill: currentColor; stroke: none; }
+.title { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title small { font-weight: 400; color: var(--gold-dim); letter-spacing: 0.12em; margin-left: 10px; }
+.btn {
+  flex: none;
+  font: 700 11px var(--ui-font);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  background: transparent;
+  border: 1px solid var(--gold);
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.btn:hover { color: var(--mag); border-color: var(--mag); box-shadow: 0 0 10px rgba(255, 43, 214, 0.45); }
+.btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* tab strip */
+.tabs {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  background: #0a0816;
+  border-bottom: 1px solid rgba(245, 197, 66, 0.25);
+  font-size: 12px;
+}
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  color: var(--gold);
+  background: var(--stone);
+  border-top: 2px solid var(--gold);
+  border-right: 1px solid rgba(245, 197, 66, 0.25);
+  min-width: 0;
+}
+.tab i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--mag); box-shadow: 0 0 6px var(--mag); }
+.tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hint { padding: 8px 12px; color: var(--gold-dim); letter-spacing: 0.1em; text-transform: uppercase; font-size: 10px; white-space: nowrap; }
+
+/* editor viewport */
+.viewport { position: relative; flex: 1; min-height: 0; background: var(--stone); }
+.screen { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 8px 0 60px; scrollbar-width: thin; scrollbar-color: rgba(245, 197, 66, 0.35) transparent; }
+.noise, .scan { position: absolute; inset: 0; pointer-events: none; }
+.noise {
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .96 0 0 0 0 .77 0 0 0 0 .26 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.scan {
+  z-index: 5;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 2px, rgba(0, 0, 0, 0.2) 2px, rgba(0, 0, 0, 0.2) 3px), radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.45));
+}
+
+/* rows */
+.row { display: flex; align-items: flex-start; min-height: 34px; padding-right: 14px; }
+.row.active { background: linear-gradient(90deg, rgba(255, 43, 214, 0.13), rgba(255, 43, 214, 0) 75%); }
+.no {
+  flex: none;
+  width: 56px;
+  padding-right: 12px;
+  box-sizing: border-box;
+  text-align: right;
+  font: 12px/34px var(--ui-font);
+  color: var(--gold-dim);
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+.row.active .no { color: var(--mag); }
+.code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--glyph-font);
+  font-size: 22px;
+  line-height: 34px;
+  color: var(--cyan);
+  overflow-wrap: anywhere;
+}
+.g {
+  position: relative;
+  display: inline-block;
+  text-shadow: 0 0 6px rgba(0, 240, 255, 0.55);
+}
+.sp { display: inline-block; height: 1px; }
+
+/* newest burst only */
+.g.fresh { animation: flare 190ms ease-out both; animation-delay: var(--d, 0ms); }
+.g.fresh::before, .g.fresh::after {
+  content: attr(data-g);
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  text-shadow: none;
+  pointer-events: none;
+  animation: tearM 190ms steps(1, end) both;
+  animation-delay: var(--d, 0ms);
+}
+.g.fresh::before { color: var(--mag); }
+.g.fresh::after { color: var(--cyan); animation-name: tearC; mix-blend-mode: screen; }
+@keyframes flare {
+  0% { opacity: 0; transform: scale(1.4); color: #e6ffff; text-shadow: 0 0 12px #00f0ff, 0 0 26px #00f0ff; }
+  30% { opacity: 1; transform: scale(1.4); color: #e6ffff; text-shadow: 0 0 12px #00f0ff, 0 0 26px #00f0ff; }
+  70% { transform: scale(1.12); color: #9ffaff; text-shadow: 0 0 10px #00f0ff; }
+  100% { opacity: 1; transform: scale(1); color: var(--cyan); text-shadow: 0 0 6px rgba(0, 240, 255, 0.55); }
+}
+@keyframes tearM {
+  0%, 30% { opacity: 0; }
+  32% { opacity: 0.95; transform: translate(-3px, 1px); clip-path: inset(8% 0 58% 0); }
+  46% { transform: translate(2px, -1px); clip-path: inset(55% 0 10% 0); }
+  58% { transform: translate(-2px, 0); clip-path: inset(30% 0 36% 0); }
+  70% { transform: translate(3px, 1px); clip-path: inset(0 0 72% 0); }
+  80%, 100% { opacity: 0; }
+}
+@keyframes tearC {
+  0%, 30% { opacity: 0; }
+  32% { opacity: 0.95; transform: translate(3px, -1px); clip-path: inset(50% 0 18% 0); }
+  46% { transform: translate(-2px, 1px); clip-path: inset(12% 0 60% 0); }
+  58% { transform: translate(2px, 0); clip-path: inset(62% 0 4% 0); }
+  70% { transform: translate(-3px, -1px); clip-path: inset(24% 0 44% 0); }
+  80%, 100% { opacity: 0; }
+}
+@keyframes glow {
+  0% { opacity: 0.2; text-shadow: 0 0 14px #00f0ff; }
+  100% { opacity: 1; text-shadow: 0 0 6px rgba(0, 240, 255, 0.55); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .g.fresh { animation: glow 250ms ease-out both; }
+  .g.fresh::before, .g.fresh::after { display: none; }
+  .cur { animation: none; }
+}
+
+/* ankh caret */
+.cur {
+  display: inline-block;
+  width: 0.62em;
+  height: 1.1em;
+  vertical-align: -0.22em;
+  margin-left: 1px;
+  color: var(--mag);
+  filter: drop-shadow(0 0 4px var(--mag));
+  animation: blink 1s steps(1, end) infinite;
+}
+.cur svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
+@keyframes blink { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0.1; } }
+
+/* progress bar rows (system voice, never glyphs) */
+.row.bar .no { color: var(--green); }
+.row.bar .code { font: 13px/34px var(--ui-font); color: var(--gold); letter-spacing: 0.02em; white-space: pre-wrap; }
+.bar .meter { color: var(--green); text-shadow: 0 0 6px rgba(57, 255, 156, 0.6); }
+.bar .pct { color: var(--gold); font-variant-numeric: tabular-nums; }
+.bar .done { color: var(--green); font-weight: 700; text-shadow: 0 0 8px rgba(57, 255, 156, 0.7); }
+
+/* boot log */
+.boot { position: absolute; inset: 0; z-index: 3; overflow: auto; padding: 16px; background: var(--stone); font: 13px/1.75 var(--ui-font); color: var(--gold); }
+.bl { display: flex; align-items: baseline; gap: 8px; }
+.bl .t { flex: none; max-width: 85%; }
+.bl .lead { flex: 1; min-width: 12px; border-bottom: 1px dotted rgba(245, 197, 66, 0.3); transform: translateY(-4px); }
+.bl .ok { flex: none; color: var(--green); font-weight: 700; text-shadow: 0 0 6px rgba(57, 255, 156, 0.6); }
+.bl.head { color: var(--mag); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.bl.ready { color: var(--cyan); margin-top: 6px; }
+.bl.skip { color: var(--gold-dim); font-size: 11px; margin-top: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* status bar */
+.status {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 12px;
+  background: #0a0816;
+  border-top: 1px solid rgba(245, 197, 66, 0.45);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  white-space: nowrap;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+.mode { flex: none; padding: 2px 8px; font-weight: 700; letter-spacing: 0.14em; color: var(--bg); background: var(--gold); }
+.mode.busy { background: var(--mag); color: #fff; }
+.status .sp-fill { flex: 1; }
+.status .cnt { color: var(--cyan); }
+
+/* hidden input that catches every key and soft-keyboard event */
+#ta { position: fixed; left: 0; top: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; font-size: 16px; resize: none; pointer-events: none; }
+
+@media (max-width: 560px) {
+  .hint, .title small { display: none; }
+  .no { width: 38px; padding-right: 8px; font-size: 11px; }
+  .row { padding-right: 8px; }
+  .status { gap: 8px; font-size: 10px; }
+}
+@media (max-width: 380px) {
+  .code { font-size: 20px; }
+  .title { letter-spacing: 0.12em; }
+}
+</style>
+
+<div class="app" id="app">
+  <header class="titlebar">
+    <div class="eye" aria-hidden="true">
+      <svg viewBox="0 0 34 24">
+        <path d="M3 4.5 Q16 -0.5 30 3.5"/>
+        <path d="M2 11 Q16.5 2.5 31 11 Q16.5 18.5 2 11Z"/>
+        <circle class="pupil" cx="16.5" cy="10.8" r="3.3"/>
+        <path d="M16.5 15.8 V20 Q16.5 22.6 13.4 22.8"/>
+        <path d="M26 14.5 Q29.5 18 25.8 21.4"/>
+      </svg>
+    </div>
+    <div class="title">Neon Pharaoh<small>Hieroglyph Code Editor</small></div>
+    <button class="btn" id="clear" type="button">Clear</button>
+  </header>
+  <div class="tabs">
+    <div class="tab"><i aria-hidden="true"></i><span id="tab">boot.log</span></div>
+    <div class="hint">tap or mash any key</div>
+  </div>
+  <main class="viewport" id="viewport">
+    <div class="screen" id="screen"><div id="rows"></div></div>
+    <div class="noise"></div>
+    <div class="boot" id="boot" aria-live="off"></div>
+    <div class="scan"></div>
+  </main>
+  <footer class="status">
+    <span class="mode" id="mode">SCRIBE MODE</span>
+    <span id="pos">Ln 1, Col 1</span>
+    <span class="sp-fill"></span>
+    <span class="cnt" id="cnt">0 glyphs</span>
+  </footer>
+</div>
+<textarea id="ta" aria-label="Mash any key to write code" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"></textarea>
+
+<script>
+(function () {
+'use strict';
+
+/* ---------- hidden script (never shown as plain text) ---------- */
+const SRC = String.raw`// tomb_of_ra.js :: sovereign tomb operating system v2099.3
+// property of the eternal pharaoh, do not disturb the dead
+'use strict';
+
+const NILE_DEPTH = 42;
+const MAX_CURSES = 7;
+const SCARAB_LIMIT = 1024;
+const GOLD_RESERVE = 9000000;
+const HEART_WEIGHT = 0.618;
+const FEATHER_WEIGHT = 0.5;
+
+const chamber = {
+  id: 'ra-prime',
+  sealed: true,
+  depth: NILE_DEPTH,
+  hash: null,
+  guards: ['jackal', 'cobra', 'sphinx'],
+  curses: [],
+  treasure: GOLD_RESERVE,
+};
+
+const ledger = new Map();
+const swarm = [];
+const cache = Object.create(null);
+
+class Scarab {
+  constructor(name, power) {
+    this.name = name;
+    this.power = power;
+    this.alive = true;
+    this.cargo = [];
+  }
+
+  ping(target) {
+    if (!this.alive) {
+      return null;
+    }
+    return target.receive(this.power);
+  }
+
+  carry(item) {
+    if (this.cargo.length >= SCARAB_LIMIT) {
+      throw new Error('scarab overloaded');
+    }
+    this.cargo.push(item);
+    return this;
+  }
+
+  retire() {
+    this.alive = false;
+    this.cargo.length = 0;
+    return this;
+  }
+}
+
+class Mummy {
+  constructor(name, wrappings) {
+    this.name = name;
+    this.wrappings = wrappings;
+    this.angry = false;
+  }
+
+  receive(power) {
+    if (power > this.wrappings) {
+      this.angry = true;
+    }
+    return this.angry ? 'groan' : 'sleep';
+  }
+
+  unwrap(layers) {
+    this.wrappings = Math.max(0, this.wrappings - layers);
+    return this.wrappings;
+  }
+}
+
+function hashKey(key) {
+  let h = 5381;
+  for (let i = 0; i < key.length; i++) {
+    h = ((h << 5) + h + key.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+function rollCurse() {
+  const kinds = ['locusts', 'darkness', 'boils', 'static', 'wifi'];
+  const pick = Math.floor(Math.random() * kinds.length);
+  return { kind: kinds[pick], power: pick + 1, born: Date.now() };
+}
+
+function unsealChamber(chamber, key) {
+  if (!chamber.sealed) {
+    return chamber;
+  }
+  const hash = hashKey(key);
+  if (hash !== chamber.hash) {
+    chamber.curses.push(rollCurse());
+    if (chamber.curses.length > MAX_CURSES) {
+      throw new Error('too many curses, tomb locked down');
+    }
+    throw new Error('wrong key, pharaoh is displeased');
+  }
+  chamber.sealed = false;
+  return chamber;
+}
+
+function bribeAnubis(offering) {
+  const value = offering.gold + offering.cats * 12;
+  if (value < 100) {
+    return { accepted: false, reason: 'insulting' };
+  }
+  ledger.set('anubis', (ledger.get('anubis') || 0) + value);
+  chamber.treasure -= offering.gold;
+  return { accepted: true, reason: 'acceptable' };
+}
+
+function weighHeart(heart) {
+  const ratio = heart.mass / FEATHER_WEIGHT;
+  if (ratio > 1 + HEART_WEIGHT) {
+    return 'devoured';
+  }
+  if (ratio < 1 - HEART_WEIGHT) {
+    return 'suspiciously light';
+  }
+  return 'worthy';
+}
+
+function feedCrocodile(snack, mood) {
+  const appetite = mood === 'hungry' ? 3 : 1;
+  const eaten = snack.size * appetite;
+  cache.crocodile = { fed: Date.now(), eaten: eaten };
+  return eaten > snack.size ? 'still hungry' : 'content';
+}
+
+function summonScribe(scroll) {
+  const scribe = {
+    name: 'Nebamun',
+    speed: 88,
+    ink: 'black',
+    scroll: scroll,
+  };
+  scribe.write = function (line) {
+    scribe.scroll += line + '\n';
+    return scribe.scroll.length;
+  };
+  return scribe;
+}
+
+function decryptPapyrus(papyrus, key) {
+  const out = [];
+  for (let i = 0; i < papyrus.length; i++) {
+    const shift = key.charCodeAt(i % key.length) % 26;
+    out.push(String.fromCharCode(papyrus.charCodeAt(i) - shift));
+  }
+  return out.join('');
+}
+
+function routeThroughNile(packet) {
+  const hops = [];
+  let depth = NILE_DEPTH;
+  while (depth > 0 && hops.length < 12) {
+    const current = depth % 7;
+    hops.push({ hop: hops.length, flow: current, packet: packet.id });
+    depth -= current + 1;
+  }
+  packet.route = hops;
+  return packet;
+}
+
+function calibrateEye(eye) {
+  const target = { x: 0, y: 0, z: NILE_DEPTH };
+  eye.x += (target.x - eye.x) * 0.25;
+  eye.y += (target.y - eye.y) * 0.25;
+  eye.z += (target.z - eye.z) * 0.25;
+  eye.locked = Math.abs(eye.z - target.z) < 0.01;
+  return eye;
+}
+
+function embalmCache(cache, ttl) {
+  const now = Date.now();
+  for (const key in cache) {
+    const entry = cache[key];
+    if (entry && now - entry.fed > ttl) {
+      delete cache[key];
+    }
+  }
+  return Object.keys(cache).length;
+}
+
+function raiseObelisk(height) {
+  const blocks = [];
+  for (let level = 0; level < height; level++) {
+    blocks.push({ level: level, width: height - level, gold: level % 3 === 0 });
+  }
+  return blocks;
+}
+
+function tradeWithPtolemy(wares) {
+  let profit = 0;
+  for (const ware of wares) {
+    const price = ware.base * (1 + Math.random() * HEART_WEIGHT);
+    profit += price - ware.cost;
+  }
+  chamber.treasure += profit;
+  return Math.round(profit);
+}
+
+function spawnScarabSwarm(count) {
+  for (let i = 0; i < count && swarm.length < SCARAB_LIMIT; i++) {
+    swarm.push(new Scarab('scarab-' + i, 1 + (i % 9)));
+  }
+  return swarm.length;
+}
+
+function patchCurse(curse) {
+  if (curse.power > 3) {
+    curse.power = curse.power - 2;
+    curse.patched = true;
+  }
+  return curse;
+}
+
+function scanForMummies(corridor) {
+  const found = [];
+  for (const slot of corridor.slots) {
+    if (slot.occupant instanceof Mummy) {
+      found.push(slot.occupant.name);
+    }
+  }
+  return found;
+}
+
+function openCanopicJar(jar) {
+  if (jar.lid !== 'sealed') {
+    return jar.contents;
+  }
+  jar.lid = 'open';
+  jar.contents = jar.contents.map(function (organ) {
+    return organ.toUpperCase();
+  });
+  return jar.contents;
+}
+
+function sealCorridor(corridor) {
+  corridor.sealed = true;
+  corridor.slots.forEach(function (slot) {
+    slot.trap = slot.trap || 'spikes';
+  });
+  return corridor;
+}
+
+async function bootTomb() {
+  const steps = [unsealChamber, bribeAnubis, calibrateEye, embalmCache];
+  for (const step of steps) {
+    const started = Date.now();
+    try {
+      await Promise.resolve(step.name);
+    } catch (err) {
+      chamber.curses.push(rollCurse());
+    }
+    ledger.set(step.name, Date.now() - started);
+  }
+  spawnScarabSwarm(64);
+  return chamber;
+}
+
+function tick(state) {
+  state.age += 1;
+  state.eye = calibrateEye(state.eye);
+  if (state.age % 10 === 0) {
+    embalmCache(cache, 60000);
+  }
+  if (state.age % 100 === 0) {
+    state.curses.push(rollCurse());
+    state.curses = state.curses.map(patchCurse);
+  }
+  return state;
+}
+
+function main() {
+  const state = { age: 0, eye: { x: 9, y: 9, z: 0 }, curses: [] };
+  bootTomb().then(function (tomb) {
+    unsealChamber(tomb, 'open sesame');
+    const timer = setInterval(function () {
+      tick(state);
+      if (state.age > 9999) {
+        clearInterval(timer);
+        sealCorridor({ slots: [], sealed: false });
+      }
+    }, 1000);
+  });
+}
+
+module.exports = {
+  unsealChamber,
+  bribeAnubis,
+  weighHeart,
+  feedCrocodile,
+  summonScribe,
+  decryptPapyrus,
+  routeThroughNile,
+  calibrateEye,
+  embalmCache,
+  raiseObelisk,
+  tradeWithPtolemy,
+  spawnScarabSwarm,
+  patchCurse,
+  scanForMummies,
+  openCanopicJar,
+  sealCorridor,
+  main,
+};
+
+main();
+`;
+
+/* ---------- glyph substitution ---------- */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const POOL = [];
+for (let c = 0x13000; c <= 0x1342E; c++) POOL.push(c);
+
+function buildTokens(pool) {
+  const rnd = mulberry32(0xA7EF13);
+  const p = pool.slice();
+  for (let i = p.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const tmp = p[i]; p[i] = p[j]; p[j] = tmp;
+  }
+  const map = {};
+  for (let c = 33; c <= 126; c++) map[String.fromCharCode(c)] = String.fromCodePoint(p[c - 33]);
+  const out = [];
+  for (const ch of SRC) out.push(map[ch] || ch);
+  return out;
+}
+
+/* drop glyphs that render blank or as .notdef boxes once the font has loaded */
+function filterPool() {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 40;
+  const x = cv.getContext('2d', { willReadFrequently: true });
+  x.font = '24px "Noto Sans Egyptian Hieroglyphs"';
+  x.textBaseline = 'alphabetic';
+  function sig(cp) {
+    x.clearRect(0, 0, 40, 40);
+    x.fillText(String.fromCodePoint(cp), 4, 28);
+    const d = x.getImageData(0, 0, 40, 40).data;
+    let ink = 0, h = 2166136261;
+    for (let i = 3; i < d.length; i += 4) { if (d[i] > 16) ink++; h = Math.imul(h ^ d[i], 16777619); }
+    return { ink: ink, h: h >>> 0 };
+  }
+  const missing = sig(0x1342F);
+  const out = [];
+  for (const cp of POOL) {
+    const s = sig(cp);
+    if (s.ink < 8 || s.h === missing.h) continue;
+    out.push(cp);
+  }
+  return out.length >= 200 ? out : POOL;
+}
+
+let filtered = null;
+let TOK = buildTokens(POOL);
+let pendingRebuild = false;
+
+/* ---------- dom ---------- */
+const $ = (id) => document.getElementById(id);
+const screenEl = $('screen'), rowsEl = $('rows'), bootEl = $('boot'), ta = $('ta');
+const tabEl = $('tab'), posEl = $('pos'), cntEl = $('cnt'), modeEl = $('mode');
+
+const NAMES = ['tomb_of_ra.js', 'sarcophagus.js', 'canopic_jar.js', 'eye_of_horus.js', 'anubis_proxy.js', 'obelisk_core.js'];
+const BOOT_LINES = [
+  'Mounting sarcophagus filesystem',
+  'Calibrating Eye of Horus',
+  'Bypassing curse protocol',
+  'Waking the scribe daemon',
+  'Negotiating with Anubis firewall',
+  'Loading papyrus kernel modules',
+  'Aligning pyramid antennae',
+  'Seeding Nile entropy pool',
+  'Embalming temporary files',
+  'Spinning up canopic jar cache',
+  'Handshaking with Ra uplink',
+];
+const BAR_LABELS = [
+  'Decrypting Book of the Dead', 'Weighing heart against feather', 'Siphoning gold from the treasury',
+  'Defragmenting canopic jars', 'Rerouting the Nile', 'Cracking the sphinx riddle', 'Compiling curse payload',
+  'Upsampling cartouche firewall', 'Spoofing Anubis credentials', 'Mining scarab tokens',
+  'Syncing with the afterlife cloud', 'Reversing mummy ransomware', 'Indexing obelisk database',
+  'Brute forcing pyramid lock', 'Patching pharaoh kernel',
+];
+
+/* ankh caret */
+const cursor = document.createElement('span');
+cursor.className = 'cur';
+cursor.setAttribute('aria-hidden', 'true');
+cursor.innerHTML = '<svg viewBox="0 0 12 20"><ellipse cx="6" cy="5.2" rx="3.3" ry="4.2"/><path d="M6 9.4V19M1.6 12.2H10.4"/></svg>';
+
+/* ---------- state ---------- */
+let ptr = 0, lineNo = 0, col = 0, total = 0, fileGlyphs = 0, fileIdx = 0;
+let sinceBar = 0, barAt = 300 + ((Math.random() * 201) | 0);
+let domGlyphs = 0, needLoop = false;
+let rowsList = [], cur = null, fresh = [];
+let bar = null, labelPool = [];
+let booting = false, bootTimer = 0, bootGen = 0;
+const MAX_DOM_GLYPHS = 5000;
+
+function newRow() {
+  if (cur) cur.el.classList.remove('active');
+  const el = document.createElement('div');
+  el.className = 'row active';
+  const no = document.createElement('span');
+  no.className = 'no';
+  no.textContent = String(++lineNo);
+  const code = document.createElement('span');
+  code.className = 'code';
+  el.appendChild(no);
+  el.appendChild(code);
+  rowsEl.appendChild(el);
+  cur = { el: el, code: code, n: 0 };
+  rowsList.push(cur);
+  col = 0;
+}
+
+function wipe() {
+  rowsEl.textContent = '';
+  rowsList = []; cur = null; fresh = [];
+  domGlyphs = 0; lineNo = 0; ptr = 0; fileGlyphs = 0; needLoop = false;
+  bar = null;
+  setMode(false);
+  if (pendingRebuild) { TOK = buildTokens(filtered || POOL); pendingRebuild = false; }
+  newRow();
+  cur.code.appendChild(cursor);
+}
+
+function newFile() {
+  wipe();
+  fileIdx++;
+  tabEl.textContent = NAMES[fileIdx % NAMES.length];
+}
+
+function setMode(busy) {
+  modeEl.textContent = busy ? 'DECRYPT MODE' : 'SCRIBE MODE';
+  modeEl.classList.toggle('busy', busy);
+}
+
+function status() {
+  posEl.textContent = 'Ln ' + lineNo + ', Col ' + (col + 1);
+  cntEl.textContent = total.toLocaleString('en-US') + ' glyphs';
+}
+
+function rebuildTokens() {
+  if (fileGlyphs === 0) TOK = buildTokens(filtered || POOL);
+  else pendingRebuild = true;
+}
+
+/* ---------- reveal ---------- */
+function reveal() {
+  if (needLoop) newFile();
+  for (let i = 0; i < fresh.length; i++) fresh[i].classList.remove('fresh');
+  fresh = [];
+  const want = 3 + ((Math.random() * 3) | 0);
+  let c = 0, d = 0, run = 0;
+  const flush = function () {
+    if (run > 0) {
+      const s = document.createElement('span');
+      s.className = 'sp';
+      s.style.width = (run * 0.6) + 'em';
+      cur.code.appendChild(s);
+      col += run;
+      run = 0;
+    }
+  };
+  while (ptr < TOK.length) {
+    const t = TOK[ptr];
+    if (t === '\n') { ptr++; run = 0; newRow(); continue; }
+    if (t === ' ') { ptr++; run++; continue; }
+    if (t === '\t') { ptr++; run += 2; continue; }
+    if (c >= want) break;
+    flush();
+    const g = document.createElement('span');
+    g.className = 'g fresh';
+    g.setAttribute('data-g', t);
+    g.style.setProperty('--d', (d * 15) + 'ms');
+    g.textContent = t;
+    cur.code.appendChild(g);
+    fresh.push(g);
+    cur.n++; col++; d++; c++; ptr++;
+  }
+  flush();
+  cur.code.appendChild(cursor);
+  total += c; fileGlyphs += c; sinceBar += c; domGlyphs += c;
+  if (ptr >= TOK.length) needLoop = true;
+  while (domGlyphs > MAX_DOM_GLYPHS && rowsList.length > 4) {
+    const r = rowsList.shift();
+    domGlyphs -= r.n;
+    r.el.remove();
+  }
+}
+
+/* ---------- fake progress bars ---------- */
+function nextLabel() {
+  if (!labelPool.length) {
+    labelPool = BAR_LABELS.slice();
+    for (let i = labelPool.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      const t = labelPool[i]; labelPool[i] = labelPool[j]; labelPool[j] = t;
+    }
+  }
+  return labelPool.pop();
+}
+
+function startBar() {
+  const el = document.createElement('div');
+  el.className = 'row bar';
+  el.innerHTML = '<span class="no">&gt;&gt;</span><span class="code"><span class="lbl"></span> <span class="meter"></span> <span class="pct"></span></span>';
+  el.querySelector('.lbl').textContent = nextLabel();
+  rowsEl.insertBefore(el, cur.el);
+  rowsList.splice(rowsList.length - 1, 0, { el: el, n: 0 });
+  bar = { code: el.querySelector('.code'), meter: el.querySelector('.meter'), pct: el.querySelector('.pct'), p: 0 };
+  setMode(true);
+  for (let i = 0; i < fresh.length; i++) fresh[i].classList.remove('fresh');
+  fresh = [];
+}
+
+function tickBar() {
+  bar.p = Math.min(100, bar.p + 4 + ((Math.random() * 5) | 0));
+  const f = Math.floor(bar.p / 10);
+  bar.meter.textContent = '[' + '#'.repeat(f) + '.'.repeat(10 - f) + ']';
+  bar.pct.textContent = bar.p + '%';
+  if (bar.p >= 100) {
+    const done = document.createElement('span');
+    done.className = 'done';
+    done.textContent = ' DONE';
+    bar.code.appendChild(done);
+    bar = null;
+    sinceBar = 0;
+    barAt = 300 + ((Math.random() * 201) | 0);
+    setMode(false);
+    cur.code.appendChild(cursor);
+  } else {
+    bar.code.appendChild(cursor);
+  }
+}
+
+/* ---------- input ---------- */
+function press() {
+  if (bar) tickBar();
+  else if (sinceBar >= barAt && cur.n === 0 && fileGlyphs > 0 && !needLoop) { startBar(); tickBar(); }
+  else reveal();
+  screenEl.scrollTop = screenEl.scrollHeight;
+  status();
+}
+
+let lastBurst = 0, lastKd = 0;
+function trigger() {
+  const now = performance.now();
+  if (now - lastBurst < 33) return;
+  lastBurst = now;
+  if (booting) { endBoot(); return; }
+  press();
+}
+
+const IGNORED = new Set(['Backspace', 'Delete', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown',
+  'Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock', 'NumLock', 'ScrollLock', 'Escape', 'Tab', 'ContextMenu', 'Dead', 'Insert', 'OS', 'Fn', 'FnLock']);
+
+document.addEventListener('keydown', function (e) {
+  if (e.isComposing || e.key === 'Unidentified' || e.keyCode === 229) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (IGNORED.has(e.key) || /^F\d{1,2}$/.test(e.key)) return;
+  if (e.target && e.target.closest && e.target.closest('button')) return;
+  e.preventDefault();
+  lastKd = performance.now();
+  trigger();
+});
+
+ta.addEventListener('input', function (e) {
+  const t = e.inputType || '';
+  ta.value = '';
+  if (t.indexOf('delete') === 0 || t === 'historyUndo' || t === 'historyRedo') return;
+  if (performance.now() - lastKd < 60) return;
+  trigger();
+});
+ta.addEventListener('compositionend', function () { ta.value = ''; });
+
+document.addEventListener('click', function (e) {
+  if (e.target.closest && e.target.closest('button')) return;
+  ta.focus({ preventScroll: true });
+});
+
+/* ---------- boot log ---------- */
+function bootLine(text, cls, ok) {
+  const row = document.createElement('div');
+  row.className = 'bl' + (cls ? ' ' + cls : '');
+  const t = document.createElement('span');
+  t.className = 't';
+  t.textContent = text;
+  row.appendChild(t);
+  if (ok) {
+    const lead = document.createElement('span');
+    lead.className = 'lead';
+    const o = document.createElement('span');
+    o.className = 'ok';
+    o.textContent = 'OK';
+    row.appendChild(lead);
+    row.appendChild(o);
+  }
+  bootEl.appendChild(row);
+  bootEl.scrollTop = bootEl.scrollHeight;
+}
+
+function startBoot() {
+  booting = true;
+  bootEl.hidden = false;
+  bootEl.textContent = '';
+  tabEl.textContent = 'boot.log';
+  const gen = ++bootGen;
+  bootLine('Neon Pharaoh BIOS v2099.3 // TOMB-OS', 'head');
+  bootLine('press any key to skip', 'skip');
+  let i = 0;
+  (function next() {
+    if (gen !== bootGen) return;
+    if (i < BOOT_LINES.length) {
+      bootLine(BOOT_LINES[i++], '', true);
+      bootTimer = setTimeout(next, 200 + Math.random() * 60);
+    } else {
+      bootLine('> TOMB-OS ready. Mash any key to write code.', 'ready');
+      bootTimer = setTimeout(endBoot, 500);
+    }
+  })();
+}
+
+function endBoot() {
+  if (!booting) return;
+  booting = false;
+  clearTimeout(bootTimer);
+  bootGen++;
+  bootEl.hidden = true;
+  tabEl.textContent = NAMES[fileIdx % NAMES.length];
+  status();
+}
+
+/* ---------- clear / init ---------- */
+function resetAll() {
+  clearTimeout(bootTimer);
+  total = 0; fileIdx = 0; sinceBar = 0; barAt = 300 + ((Math.random() * 201) | 0); labelPool = [];
+  wipe();
+  status();
+  startBoot();
+}
+$('clear').addEventListener('click', function () { resetAll(); ta.focus({ preventScroll: true }); });
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', function () {
+    document.body.style.height = window.visualViewport.height + 'px';
+    window.scrollTo(0, 0);
+    screenEl.scrollTop = screenEl.scrollHeight;
+  });
+}
+
+/* font filter runs once the hieroglyph font is in */
+try {
+  if (document.fonts && document.fonts.load) {
+    const all = POOL.map(function (c) { return String.fromCodePoint(c); }).join('');
+    Promise.race([
+      document.fonts.load('22px "Noto Sans Egyptian Hieroglyphs"', all),
+      new Promise(function (r) { setTimeout(r, 2800); }),
+    ]).then(function () {
+      try { filtered = filterPool(); } catch (err) { filtered = null; }
+      rebuildTokens();
+    }).catch(function () {});
+  }
+} catch (err) { /* keep unfiltered pool */ }
+
+resetAll();
+try { ta.focus({ preventScroll: true }); } catch (err) { /* needs a tap */ }
+})();
+</script>
