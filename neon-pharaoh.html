@@ -889,13 +889,29 @@ function showAlert() {
 }
 
 /* press 0: autopilot types by itself, then asks Y/N */
-const AUTO_MS = 120000; /* 2 minutes. Set to 10000 for 10 seconds. */
-let autoOn = false, autoTimer = 0, prompt = null;
+const AUTO_LONG = 120000; /* key 0: 2 minutes */
+const AUTO_SHORT = 10000; /* key 9: 10 seconds */
+const HACK_MS = 5000; /* after answering Y */
+const HACK_LINES = [
+  'Injecting scarab payload into %ip',
+  'Spoofing MAC %hex',
+  'Brute forcing sphinx gate %hex',
+  'Dumping canopic hashes 0x%hex',
+  'Escalating privileges to PHARAOH',
+  'Tunnelling via Nile proxy %ip:%port',
+  'Exfiltrating papyrus %hex.dat',
+  'Patching curse handler @0x%hex',
+  'Bypassing cobra firewall rule %n',
+  'Handshake with %ip',
+  'Rewriting cartouche registry %hex',
+  'Cloning sarcophagus keycard %hex',
+];
+let autoOn = false, autoTimer = 0, prompt = null, hackOn = false, hackTimer = 0;
 
-function startAuto() {
+function startAuto(ms) {
   autoOn = true;
   setMode(true);
-  const end = performance.now() + AUTO_MS;
+  const end = performance.now() + ms;
   (function loop() {
     if (!autoOn) return;
     if (performance.now() >= end) { endAuto(); return; }
@@ -926,6 +942,67 @@ function answerPrompt(yes) {
   setMode(false);
   cur.code.appendChild(cursor);
   screenEl.scrollTop = screenEl.scrollHeight;
+  if (yes) startHack();
+}
+
+/* Y: five seconds of fake breach output plus a loading bar, then it stops */
+function startHack() {
+  hackOn = true;
+  setMode(true, 'BREACH MODE');
+  const el = document.createElement('div');
+  el.className = 'row bar';
+  el.innerHTML = '<span class="no">&gt;&gt;</span><span class="code"><span class="lbl">Breaching Anubis mainframe</span> <span class="meter"></span> <span class="pct"></span></span>';
+  rowsEl.insertBefore(el, cur.el);
+  const obj = { el: el, n: 0 };
+  rowsList.splice(rowsList.length - 1, 0, obj);
+  const code = el.querySelector('.code'), meter = el.querySelector('.meter'), pct = el.querySelector('.pct');
+  const fill = function (re, f) { return function (s) { return s.replace(re, f); }; };
+  const rnd = function (n) { return (Math.random() * n) | 0; };
+  const sys = function (text, ok) {
+    const l = document.createElement('div');
+    l.className = 'row bar';
+    l.innerHTML = '<span class="no">&gt;&gt;</span><span class="code"></span>';
+    const c = l.querySelector('.code');
+    c.textContent = text + ' ';
+    if (ok) {
+      const o = document.createElement('span');
+      o.className = 'meter';
+      o.textContent = 'OK';
+      c.appendChild(o);
+    }
+    rowsEl.insertBefore(l, el);
+    rowsList.splice(rowsList.indexOf(obj), 0, { el: l, n: 0 });
+  };
+  const line = function () {
+    let t = HACK_LINES[rnd(HACK_LINES.length)];
+    t = t.replace(/%hex/g, function () { return (rnd(0xfffffff) + 0x10000000).toString(16); })
+      .replace(/%ip/g, function () { return '10.' + rnd(255) + '.' + rnd(255) + '.' + (1 + rnd(253)); })
+      .replace(/%port/g, function () { return String(1024 + rnd(60000)); })
+      .replace(/%n/g, function () { return String(rnd(900)); });
+    sys(t, Math.random() < 0.7);
+  };
+  const start = performance.now();
+  hackTimer = setInterval(function () {
+    const p = Math.min(100, Math.floor((performance.now() - start) / HACK_MS * 100));
+    const f = Math.floor(p / 10);
+    meter.textContent = '[' + '#'.repeat(f) + '.'.repeat(10 - f) + ']';
+    pct.textContent = p + '%';
+    if (p < 100) {
+      if (Math.random() < 0.8) line();
+      if (Math.random() < 0.3) line();
+    } else {
+      clearInterval(hackTimer);
+      const done = document.createElement('span');
+      done.className = 'done';
+      done.textContent = ' DONE';
+      code.appendChild(done);
+      sys('Connection closed. No traces left.', false);
+      hackOn = false;
+      setMode(false);
+    }
+    while (rowsList.length > 300) { const r = rowsList.shift(); domGlyphs -= r.n; r.el.remove(); }
+    screenEl.scrollTop = screenEl.scrollHeight;
+  }, 70);
 }
 
 /* returns true when the key was handled here and must not type code */
@@ -933,15 +1010,16 @@ function special(ch) {
   const k = String(ch).toLowerCase();
   if (k === 'q') { showAlert(); return true; }
   if (prompt) { if (k === 'y' || k === 'n') answerPrompt(k === 'y'); return true; }
-  if (autoOn) return true;
-  if (ch === '0' && !booting) { startAuto(); return true; }
+  if (autoOn || hackOn) return true;
+  if (ch === '0' && !booting) { startAuto(AUTO_LONG); return true; }
+  if (ch === '9' && !booting) { startAuto(AUTO_SHORT); return true; }
   return false;
 }
 
 let lastBurst = 0, lastKd = 0;
 function trigger() {
   const now = performance.now();
-  if (autoOn || prompt) return;
+  if (autoOn || prompt || hackOn) return;
   if (now - lastBurst < 33) return;
   lastBurst = now;
   if (booting) { endBoot(); return; }
@@ -1033,7 +1111,8 @@ function endBoot() {
 function resetAll() {
   clearTimeout(bootTimer);
   clearTimeout(autoTimer);
-  autoOn = false; prompt = null;
+  clearInterval(hackTimer);
+  autoOn = false; prompt = null; hackOn = false;
   total = 0; fileIdx = 0; sinceBar = 0; barAt = 300 + ((Math.random() * 201) | 0); labelPool = [];
   wipe();
   status();
