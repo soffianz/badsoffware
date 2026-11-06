@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+Egyptian+Hieroglyphs&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=JetBrains+Mono:wght@400;700&display=swap">
 <style>
 /* Layout: one full-height tomb terminal. Title bar, file tab, scrolling glyph code with gutter, status bar. Single dark look by design. */
 :root {
@@ -14,7 +14,7 @@
   --gold: #f5c542;
   --gold-dim: #8f7a3a;
   --green: #39ff9c;
-  --glyph-font: 'Noto Sans Egyptian Hieroglyphs', 'Segoe UI Historic', 'Noto Sans Symbols', serif;
+  --glyph-font: 'DotGothic16', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'MS Gothic', monospace;
   --ui-font: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: dark;
 }
@@ -289,7 +289,7 @@ body {
         <path d="M26 14.5 Q29.5 18 25.8 21.4"/>
       </svg>
     </div>
-    <div class="title">Neon Pharaoh<small>Hieroglyph Code Editor</small></div>
+    <div class="title">Neon Pharaoh<small>Cyber Kana Code Editor</small></div>
     <button class="btn" id="clear" type="button">Clear</button>
   </header>
   <div class="tabs">
@@ -641,8 +641,12 @@ function mulberry32(a) {
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
+/* matrix pool: half-width katakana, digits, a few symbols, cyberpunk kanji */
 const POOL = [];
-for (let c = 0x13000; c <= 0x1342E; c++) POOL.push(c);
+for (let c = 0xFF66; c <= 0xFF9D; c++) POOL.push(c);
+for (let c = 0x30; c <= 0x39; c++) POOL.push(c);
+Array.from(':.=*+-<>|').forEach(function (ch) { POOL.push(ch.charCodeAt(0)); });
+Array.from('電脳神影闇刃龍零壱弐参死生夢魂狂血鬼機械網光夜雷炎氷').forEach(function (ch) { POOL.push(ch.charCodeAt(0)); });
 
 function buildTokens(pool) {
   const rnd = mulberry32(0xA7EF13);
@@ -663,7 +667,7 @@ function filterPool() {
   const cv = document.createElement('canvas');
   cv.width = cv.height = 40;
   const x = cv.getContext('2d', { willReadFrequently: true });
-  x.font = '24px "Noto Sans Egyptian Hieroglyphs"';
+  x.font = '24px "DotGothic16", "Noto Sans JP", sans-serif';
   x.textBaseline = 'alphabetic';
   function sig(cp) {
     x.clearRect(0, 0, 40, 40);
@@ -673,14 +677,14 @@ function filterPool() {
     for (let i = 3; i < d.length; i += 4) { if (d[i] > 16) ink++; h = Math.imul(h ^ d[i], 16777619); }
     return { ink: ink, h: h >>> 0 };
   }
-  const missing = sig(0x1342F);
+  const missing = sig(0xE0FF);
   const out = [];
   for (const cp of POOL) {
     const s = sig(cp);
     if (s.ink < 8 || s.h === missing.h) continue;
     out.push(cp);
   }
-  return out.length >= 200 ? out : POOL;
+  return out.length >= 94 ? out : POOL;
 }
 
 let filtered = null;
@@ -997,7 +1001,7 @@ try {
   if (document.fonts && document.fonts.load) {
     const all = POOL.map(function (c) { return String.fromCodePoint(c); }).join('');
     Promise.race([
-      document.fonts.load('22px "Noto Sans Egyptian Hieroglyphs"', all),
+      document.fonts.load('22px "DotGothic16"', all),
       new Promise(function (r) { setTimeout(r, 2800); }),
     ]).then(function () {
       try { filtered = filterPool(); } catch (err) { filtered = null; }
