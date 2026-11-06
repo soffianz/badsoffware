@@ -310,7 +310,7 @@ body {
   </footer>
 </div>
 <textarea id="ta" aria-label="Mash any key to write code" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"></textarea>
-<div class="alert" id="alert" role="alert" hidden>Curse detected</div>
+<div class="alert" id="alert" role="alert" hidden>Alert!</div>
 
 <script>
 (function () {
@@ -767,9 +767,9 @@ function newFile() {
   tabEl.textContent = NAMES[fileIdx % NAMES.length];
 }
 
-function setMode(busy) {
-  modeEl.textContent = busy ? 'DECRYPT MODE' : 'SCRIBE MODE';
-  modeEl.classList.toggle('busy', busy);
+function setMode(busy, text) {
+  modeEl.textContent = text || (autoOn ? 'AUTOPILOT' : (busy ? 'DECRYPT MODE' : 'SCRIBE MODE'));
+  modeEl.classList.toggle('busy', !!busy || autoOn);
 }
 
 function status() {
@@ -888,9 +888,60 @@ function showAlert() {
   alertTimer = setTimeout(function () { a.hidden = true; }, 1000);
 }
 
+/* press 0: autopilot types by itself, then asks Y/N */
+const AUTO_MS = 120000; /* 2 minutes. Set to 10000 for 10 seconds. */
+let autoOn = false, autoTimer = 0, prompt = null;
+
+function startAuto() {
+  autoOn = true;
+  setMode(true);
+  const end = performance.now() + AUTO_MS;
+  (function loop() {
+    if (!autoOn) return;
+    if (performance.now() >= end) { endAuto(); return; }
+    press();
+    autoTimer = setTimeout(loop, 45 + Math.random() * 60);
+  })();
+}
+
+function endAuto() {
+  if (bar) { bar.p = 96; tickBar(); }
+  autoOn = false;
+  for (let i = 0; i < fresh.length; i++) fresh[i].classList.remove('fresh');
+  fresh = [];
+  const el = document.createElement('div');
+  el.className = 'row bar';
+  el.innerHTML = '<span class="no">&gt;&gt;</span><span class="code">Execute payload? [Y/N] </span>';
+  rowsEl.insertBefore(el, cur.el);
+  rowsList.splice(rowsList.length - 1, 0, { el: el, n: 0 });
+  prompt = { code: el.querySelector('.code') };
+  prompt.code.appendChild(cursor);
+  setMode(true, 'AWAITING Y/N');
+  screenEl.scrollTop = screenEl.scrollHeight;
+}
+
+function answerPrompt(yes) {
+  prompt.code.textContent = 'Execute payload? [Y/N] > ' + (yes ? 'Y  executing...' : 'N  aborted');
+  prompt = null;
+  setMode(false);
+  cur.code.appendChild(cursor);
+  screenEl.scrollTop = screenEl.scrollHeight;
+}
+
+/* returns true when the key was handled here and must not type code */
+function special(ch) {
+  const k = String(ch).toLowerCase();
+  if (k === 'q') { showAlert(); return true; }
+  if (prompt) { if (k === 'y' || k === 'n') answerPrompt(k === 'y'); return true; }
+  if (autoOn) return true;
+  if (ch === '0' && !booting) { startAuto(); return true; }
+  return false;
+}
+
 let lastBurst = 0, lastKd = 0;
 function trigger() {
   const now = performance.now();
+  if (autoOn || prompt) return;
   if (now - lastBurst < 33) return;
   lastBurst = now;
   if (booting) { endBoot(); return; }
@@ -906,7 +957,7 @@ document.addEventListener('keydown', function (e) {
   if (IGNORED.has(e.key) || /^F\d{1,2}$/.test(e.key)) return;
   if (e.target && e.target.closest && e.target.closest('button')) return;
   e.preventDefault();
-  if (e.key === 'q' || e.key === 'Q') { showAlert(); return; }
+  if (special(e.key)) return;
   lastKd = performance.now();
   trigger();
 });
@@ -915,7 +966,7 @@ ta.addEventListener('input', function (e) {
   const t = e.inputType || '';
   ta.value = '';
   if (t.indexOf('delete') === 0 || t === 'historyUndo' || t === 'historyRedo') return;
-  if (e.data && e.data.toLowerCase() === 'q') { showAlert(); return; }
+  if (e.data && special(e.data.slice(-1))) return;
   if (performance.now() - lastKd < 60) return;
   trigger();
 });
@@ -981,6 +1032,8 @@ function endBoot() {
 /* ---------- clear / init ---------- */
 function resetAll() {
   clearTimeout(bootTimer);
+  clearTimeout(autoTimer);
+  autoOn = false; prompt = null;
   total = 0; fileIdx = 0; sinceBar = 0; barAt = 300 + ((Math.random() * 201) | 0); labelPool = [];
   wipe();
   status();
