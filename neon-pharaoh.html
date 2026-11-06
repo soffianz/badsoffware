@@ -972,7 +972,7 @@ function sysRowBefore() {
   return el.querySelector('.code');
 }
 
-async function typeLine(text, status, speed) {
+async function typeLine(text, status, speed, delay) {
   const c = sysRowBefore();
   const node = document.createTextNode('');
   c.appendChild(node);
@@ -981,6 +981,7 @@ async function typeLine(text, status, speed) {
     screenEl.scrollTop = screenEl.scrollHeight;
     await sleep(speed * (0.6 + Math.random() * 0.8));
   }
+  if (delay) await sleep(delay);
   if (status) {
     const o = document.createElement('span');
     o.className = status.cls;
@@ -1049,14 +1050,14 @@ async function runLogin(end) {
   await sleep(250);
   if (attempt < 3) {
     /* verification fails, flag it, then go idle until 3 is pressed again */
-    await typeLine('Verifying credentials ...', { cls: 'fail', label: ' FAILED' }, 11);
+    await typeLine('Verifying credentials ...', { cls: 'fail', label: ' FAILED' }, 11, 2000);
     loginTry++;
     await sleep(250);
     failBanner();
     finishTask();
     return;
   }
-  await typeLine('Verifying credentials ...', { cls: 'meter', label: ' Access granted' }, 11);
+  await typeLine('Verifying credentials ...', { cls: 'meter', label: ' Access granted' }, 11, 2000);
   loginTry = 0;
   await sleep(300);
   await typeLine('root@gw-01:~# apply --mode "Encryption Masking"', null, 20);
