@@ -675,7 +675,7 @@ function newFile() {
 }
 
 function setMode(busy, text) {
-  modeEl.textContent = text || (autoOn ? 'AUTOPILOT' : (busy ? 'DECRYPT MODE' : 'SCRIBE MODE'));
+  modeEl.textContent = text || (autoOn ? 'BLACKHAT MODE' : (busy ? 'DECRYPT MODE' : 'SCRIBE MODE'));
   modeEl.classList.toggle('busy', !!busy || autoOn);
 }
 
