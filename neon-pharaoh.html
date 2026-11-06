@@ -846,10 +846,10 @@ function showAlert() {
 
 /* press 0: autopilot types by itself, then asks Y/N */
 const AUTO_LONG = 120000; /* key 0: 2 minutes */
-const AUTO_SHORT = 10000; /* key 9: 10 seconds */
-const AUTO_CHAOS = 180000; /* key 1: 3 minutes of chaos */
-const AUTO_TASK = 300000; /* key 2: 5 minutes of download and build theatre */
-const AUTO_LOGIN = 20000; /* key 3: 20 seconds of account logins */
+const AUTO_SHORT = 10000; /* key 3: short hack, 10 seconds */
+const AUTO_CHAOS = 180000; /* key 2: long dangerous hack, 3 minutes */
+const AUTO_TASK = 300000; /* key 9: 5 minutes of download and build theatre */
+const AUTO_LOGIN = 20000; /* key 1: 20 seconds of account logins */
 const HACK_MS = 5000; /* after answering Y */
 const HACK_LINES = [
   'Injecting payload into %ip',
@@ -1233,10 +1233,10 @@ function special(ch) {
   if (prompt) { if (k === 'y' || k === 'n') answerPrompt(k === 'y'); return true; }
   if (autoOn || hackOn) { if (ch === ' ') stopSequence(); return true; }
   if (ch === '0' && !booting) { startAuto(AUTO_LONG, '0'); return true; }
-  if (ch === '9' && !booting) { startAuto(AUTO_SHORT, '9'); return true; }
-  if (ch === '1' && !booting) { startAuto(AUTO_CHAOS, '1'); return true; }
-  if (ch === '2' && !booting) { startAuto(AUTO_TASK, '2'); return true; }
-  if (ch === '3' && !booting) { startAuto(AUTO_LOGIN, '3'); return true; }
+  if (ch === '1' && !booting) { startAuto(AUTO_LOGIN, '3'); return true; }
+  if (ch === '2' && !booting) { startAuto(AUTO_CHAOS, '1'); return true; }
+  if (ch === '3' && !booting) { startAuto(AUTO_SHORT, '9'); return true; }
+  if (ch === '9' && !booting) { startAuto(AUTO_TASK, '2'); return true; }
   return false;
 }
 
