@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=JetBrains+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+Egyptian+Hieroglyphs&display=swap">
 <style>
 /* Layout: one full-height hacker terminal. Title bar, file tab, scrolling glyph code with gutter, status bar. Single dark look by design. */
 :root {
@@ -14,7 +14,7 @@
   --gold: #f5c542;
   --gold-dim: #8f7a3a;
   --green: #39ff9c;
-  --glyph-font: 'DotGothic16', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'MS Gothic', monospace;
+  --glyph-font: 'DotGothic16', 'Noto Sans Egyptian Hieroglyphs', 'Segoe UI Historic', 'Noto Sans Symbols', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'MS Gothic', monospace;
   --ui-font: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: dark;
 }
@@ -287,7 +287,7 @@ body {
         <path d="M17 12.4 V16.5"/>
       </svg>
     </div>
-    <div class="title">BSW Protocol<small>Cyber Kana Code Editor</small></div>
+    <div class="title">BSW Protocol<small>Cyber Glyph Code Editor</small></div>
     <button class="btn" id="clear" type="button">Clear</button>
   </header>
   <div class="tabs">
@@ -538,12 +538,12 @@ function mulberry32(a) {
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
-/* matrix pool: half-width katakana, digits, a few symbols, cyberpunk kanji */
+/* mixed pool: mostly hieroglyphs and matrix symbols, a little katakana and kanji */
 const POOL = [];
-for (let c = 0xFF66; c <= 0xFF9D; c++) POOL.push(c);
+for (let i = 0; i < 56; i++) POOL.push(0x13000 + i * 19 + 3);
 for (let c = 0x30; c <= 0x39; c++) POOL.push(c);
-Array.from(':.=*+-<>|').forEach(function (ch) { POOL.push(ch.charCodeAt(0)); });
-Array.from('電脳神影闇刃龍零壱弐参死生夢魂狂血鬼機械網光夜雷炎氷').forEach(function (ch) { POOL.push(ch.charCodeAt(0)); });
+Array.from(':.=*+-<>|\u039b\u039e\u03a3\u03a9\u03a8\u03a6\u25c6\u25c7\u25b2\u25bd').forEach(function (ch) { POOL.push(ch.charCodeAt(0)); });
+Array.from('\uff76\uff7a\uff8a\uff90\uff8b\uff73\uff7c\uff85\uff93\uff86\u96fb\u8133\u95c7\u96f6').forEach(function (ch) { POOL.push(ch.charCodeAt(0)); });
 
 function buildTokens(pool) {
   const rnd = mulberry32(0xA7EF13);
@@ -564,7 +564,7 @@ function filterPool() {
   const cv = document.createElement('canvas');
   cv.width = cv.height = 40;
   const x = cv.getContext('2d', { willReadFrequently: true });
-  x.font = '24px "DotGothic16", "Noto Sans JP", sans-serif';
+  x.font = '24px "DotGothic16", "Noto Sans Egyptian Hieroglyphs", "Noto Sans JP", sans-serif';
   x.textBaseline = 'alphabetic';
   function sig(cp) {
     x.clearRect(0, 0, 40, 40);
@@ -1040,7 +1040,7 @@ try {
   if (document.fonts && document.fonts.load) {
     const all = POOL.map(function (c) { return String.fromCodePoint(c); }).join('');
     Promise.race([
-      document.fonts.load('22px "DotGothic16"', all),
+      Promise.all([document.fonts.load('22px "DotGothic16"', all), document.fonts.load('22px "Noto Sans Egyptian Hieroglyphs"', all)]),
       new Promise(function (r) { setTimeout(r, 2800); }),
     ]).then(function () {
       try { filtered = filterPool(); } catch (err) { filtered = null; }
