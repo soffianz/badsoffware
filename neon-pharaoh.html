@@ -724,7 +724,7 @@ function newFile() {
 }
 
 function setMode(busy, text) {
-  modeEl.textContent = text || (autoOn ? (autoKind === '4' ? 'MAINTENANCE MODE' : autoKind === '3' ? 'LOGIN MODE' : 'BLACKHAT MODE') : (busy ? 'DECRYPT MODE' : 'SCRIBE MODE'));
+  modeEl.textContent = text || (autoOn ? (autoKind === '4' ? 'MAINTENANCE MODE' : autoKind === '5' ? 'SETUP MODE' : autoKind === '3' ? 'LOGIN MODE' : 'BLACKHAT MODE') : (busy ? 'DECRYPT MODE' : 'SCRIBE MODE'));
   modeEl.classList.toggle('busy', !!busy || autoOn);
 }
 
@@ -850,6 +850,7 @@ function showAlert() {
 const AUTO_LONG = 120000; /* key 0: hack out, 2 minutes of logging out and wiping traces */
 const AUTO_SHORT = 10000; /* key 3: short hack, 10 seconds */
 const AUTO_CHAOS = 180000; /* key 2: long dangerous hack, 3 minutes */
+const AUTO_TRACK = 45000; /* key 5: tracking infrastructure setup, 45 seconds */
 const AUTO_MAINT = 180000; /* key 4: maintenance mode, 3 minutes */
 const AUTO_LOGIN = 20000; /* key 1: 20 seconds of account logins */
 const HACK_MS = 5000; /* after answering Y */
@@ -1214,8 +1215,75 @@ const STAGES = [
   ] },
 ];
 
-/* key 4: maintenance mode, 14 stages across the run, every line shown once */
-function runMaintenance(end, ms) {
+const TRACK_STAGES = [
+  { name: 'PROVISIONING INFRASTRUCTURE', lines: [
+    'Allocating compute cluster trk-core-%n',
+    'Reserving 12 static IPs in AS64512',
+    'Creating private subnet 10.%n.0.0/16',
+    'Attaching encrypted storage vol-%hex',
+    'Configuring bastion host access policy',
+    'Spinning up 6 relay nodes across 3 regions'
+  ] },
+  { name: 'COLLECTOR SETUP', lines: [
+    'Deploying collector daemon v3.2.1',
+    'Binding listener on port %port',
+    'Registering ingest endpoint https://ingest.bsw.net/v1',
+    'Enabling TLS 1.3 with certificate %hex',
+    'Setting ingest buffer to 512 MB',
+    'Collector heartbeat established'
+  ] },
+  { name: 'AGENT PACKAGING', lines: [
+    'Building lightweight agent package %hex',
+    'Signing agent binary with key kid-%hex',
+    'Generating unique device identifiers',
+    'Randomising beacon intervals between 30 and 90 seconds',
+    'Staging agent bundle on artifact server',
+    'Agent rollout manifest ready for %n hosts'
+  ] },
+  { name: 'DATA PIPELINE', lines: [
+    'Creating message queue trk-events-%n',
+    'Provisioning stream processor with 8 partitions',
+    'Defining event schema version 7',
+    'Connecting to time series database',
+    'Setting retention policy to 365 days',
+    'Pipeline throughput test at 48,000 events per second'
+  ] },
+  { name: 'GEOLOCATION AND ENRICHMENT', lines: [
+    'Loading IP geolocation database build %hex',
+    'Linking carrier and ASN lookup tables',
+    'Enabling reverse DNS enrichment',
+    'Calibrating location accuracy to 12 metres',
+    'Mapping device fingerprints to profiles',
+    'Enrichment cache warmed with %n entries'
+  ] },
+  { name: 'ACCESS CONTROL AND ENCRYPTION', lines: [
+    'Generating AES-256 master key %hex',
+    'Sealing keys inside hardware security module',
+    'Creating read-only analyst role',
+    'Enforcing mutual TLS between all nodes',
+    'Rotating service tokens every 24 hours',
+    'Audit log destination configured'
+  ] },
+  { name: 'STEALTH CONFIGURATION', lines: [
+    'Masking collector banner and server headers',
+    'Routing outbound traffic through relay chain',
+    'Suppressing diagnostic output on all nodes',
+    'Randomising packet timing and size',
+    'Obfuscating collector hostnames',
+    'Rotating relay addresses on a 6 hour schedule'
+  ] },
+  { name: 'VERIFICATION AND LAUNCH', lines: [
+    'Sending test events from 5 regions',
+    'Verifying end to end delivery under 200 ms',
+    'Dashboard connected to live stream',
+    'Alert thresholds configured',
+    'Failover node promoted and ready',
+    'All launch checks passed'
+  ] },
+];
+
+/* keys 4 and 5: staged workflow across the run, every line shown once */
+function runStages(end, ms, STAGES, finalText) {
   const start = performance.now(), n = STAGES.length, stageLen = ms / n;
   let si = -1, li = 0, nextAt = 0, sb = null;
   const closeBar = function () {
@@ -1236,7 +1304,7 @@ function runMaintenance(end, ms) {
       const c = sysRowBefore();
       const d = document.createElement('span');
       d.className = 'done';
-      d.textContent = 'TASK COMPLETED';
+      d.textContent = finalText;
       c.appendChild(d);
       finishTask();
       return;
@@ -1281,7 +1349,7 @@ function startAuto(ms, kind) {
   autoKind = kind || '';
   labelPool = [];
   nextNet = performance.now() + 2000;
-  tint = autoKind === '1' ? ['c-red', 'c-red', 'c-mag'] : (autoKind === '3' || autoKind === '4') ? ['c-grn', 'c-grn', 'c-gold'] : null;
+  tint = autoKind === '1' ? ['c-red', 'c-red', 'c-mag'] : (autoKind === '3' || autoKind === '4' || autoKind === '5') ? ['c-grn', 'c-grn', 'c-gold'] : null;
   tintP = autoKind === '1' ? 0.06 : 0.14;
   if (autoKind === '1') {
     const src = filtered || POOLS;
@@ -1294,7 +1362,8 @@ function startAuto(ms, kind) {
   setMode(true);
   const end = performance.now() + ms;
   if (autoKind === '3') { runLogin(end); return; }
-  if (autoKind === '4') { runMaintenance(end, ms); return; }
+  if (autoKind === '4') { runStages(end, ms, STAGES, 'TASK COMPLETED'); return; }
+  if (autoKind === '5') { runStages(end, ms, TRACK_STAGES, 'Stealth tracking engagement on'); return; }
   (function loop() {
     if (!autoOn) return;
     const now = performance.now();
@@ -1437,6 +1506,7 @@ function special(ch) {
   if (ch === '0' && !booting) { startAuto(AUTO_LONG, '0'); return true; }
   if (ch === '1' && !booting) { startAuto(AUTO_LOGIN, '3'); return true; }
   if (ch === '2' && !booting) { startAuto(AUTO_CHAOS, '1'); return true; }
+  if (ch === '5' && !booting) { startAuto(AUTO_TRACK, '5'); return true; }
   if (ch === '4' && !booting) { startAuto(AUTO_MAINT, '4'); return true; }
   if (ch === '3' && !booting) { startAuto(AUTO_SHORT, '9'); return true; }
   return false;
