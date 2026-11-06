@@ -1,10 +1,10 @@
-<title>Neon Pharaoh</title>
+<title>BSW Protocol</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=JetBrains+Mono:wght@400;700&display=swap">
 <style>
-/* Layout: one full-height tomb terminal. Title bar, file tab, scrolling glyph code with gutter, status bar. Single dark look by design. */
+/* Layout: one full-height hacker terminal. Title bar, file tab, scrolling glyph code with gutter, status bar. Single dark look by design. */
 :root {
   --bg: #07060d;
   --stone: #0b0a14;
@@ -282,14 +282,12 @@ body {
   <header class="titlebar">
     <div class="eye" aria-hidden="true">
       <svg viewBox="0 0 34 24">
-        <path d="M3 4.5 Q16 -0.5 30 3.5"/>
-        <path d="M2 11 Q16.5 2.5 31 11 Q16.5 18.5 2 11Z"/>
-        <circle class="pupil" cx="16.5" cy="10.8" r="3.3"/>
-        <path d="M16.5 15.8 V20 Q16.5 22.6 13.4 22.8"/>
-        <path d="M26 14.5 Q29.5 18 25.8 21.4"/>
+        <path d="M17 2 L28 5.5 V12 Q28 19 17 22.5 Q6 19 6 12 V5.5 Z"/>
+        <circle class="pupil" cx="17" cy="10" r="2.6"/>
+        <path d="M17 12.4 V16.5"/>
       </svg>
     </div>
-    <div class="title">Neon Pharaoh<small>Cyber Kana Code Editor</small></div>
+    <div class="title">BSW Protocol<small>Cyber Kana Code Editor</small></div>
     <button class="btn" id="clear" type="button">Clear</button>
   </header>
   <div class="tabs">
@@ -317,319 +315,218 @@ body {
 'use strict';
 
 /* ---------- hidden script (never shown as plain text) ---------- */
-const SRC = String.raw`// tomb_of_ra.js :: sovereign tomb operating system v2099.3
-// property of the eternal pharaoh, do not disturb the dead
-'use strict';
-
-const NILE_DEPTH = 42;
-const MAX_CURSES = 7;
-const SCARAB_LIMIT = 1024;
-const GOLD_RESERVE = 9000000;
-const HEART_WEIGHT = 0.618;
-const FEATHER_WEIGHT = 0.5;
-
-const chamber = {
-  id: 'ra-prime',
-  sealed: true,
-  depth: NILE_DEPTH,
-  hash: null,
-  guards: ['jackal', 'cobra', 'sphinx'],
-  curses: [],
-  treasure: GOLD_RESERVE,
-};
-
-const ledger = new Map();
-const swarm = [];
-const cache = Object.create(null);
-
-class Scarab {
-  constructor(name, power) {
-    this.name = name;
-    this.power = power;
-    this.alive = true;
-    this.cargo = [];
-  }
-
-  ping(target) {
-    if (!this.alive) {
-      return null;
+const SRC = String.raw`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>BSW Protocol Secure Gateway</title>
+  <link rel="stylesheet" href="/assets/css/gateway.min.css">
+  <link rel="icon" type="image/png" href="/assets/img/favicon-32.png">
+  <style>
+    :root {
+      --bg-color: #07060d;
+      --fg-color: #00f0ff;
+      --warn-color: #ff2bd6;
+      --ok-color: #39ff9c;
+      --grid-gap: 16px;
     }
-    return target.receive(this.power);
-  }
-
-  carry(item) {
-    if (this.cargo.length >= SCARAB_LIMIT) {
-      throw new Error('scarab overloaded');
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-color);
+      color: var(--fg-color);
+      font-family: monospace;
     }
-    this.cargo.push(item);
-    return this;
-  }
+    .gateway { display: flex; flex-direction: column; min-height: 100vh; }
+    .bar { display: flex; justify-content: space-between; padding: 8px 16px; }
+    .bar--primary { border-bottom: 1px solid var(--fg-color); }
+    .panel { border: 1px solid var(--fg-color); padding: var(--grid-gap); }
+    .panel--warn { border-color: var(--warn-color); }
+    .btn { padding: 6px 12px; cursor: pointer; }
+    .btn:hover { background: var(--fg-color); color: var(--bg-color); }
+    .table { width: 100%; border-collapse: collapse; }
+    .table td, .table th { padding: 4px 8px; text-align: left; }
+  </style>
+</head>
+<body class="theme-dark gateway" data-env="production" data-region="ap-southeast-1">
+  <header id="top-bar" class="bar bar--primary" role="banner">
+    <a class="brand" href="/" aria-label="BSW Protocol home">
+      <img src="/assets/img/logo.svg" alt="BSW" width="32" height="32">
+      <span class="brand__name">BSW Protocol</span>
+    </a>
+    <nav id="main-nav" class="nav" aria-label="Primary">
+      <ul class="nav__list">
+        <li class="nav__item"><a class="nav__link is-active" href="/dashboard">Dashboard</a></li>
+        <li class="nav__item"><a class="nav__link" href="/nodes">Nodes</a></li>
+        <li class="nav__item"><a class="nav__link" href="/traffic">Traffic</a></li>
+        <li class="nav__item"><a class="nav__link" href="/firewall">Firewall</a></li>
+        <li class="nav__item"><a class="nav__link" href="/audit">Audit</a></li>
+        <li class="nav__item"><a class="nav__link" href="/logout">Logout</a></li>
+      </ul>
+    </nav>
+  </header>
 
-  retire() {
-    this.alive = false;
-    this.cargo.length = 0;
-    return this;
-  }
-}
+  <main id="content" class="content" role="main">
+    <section id="login" class="panel" aria-labelledby="login-title">
+      <h1 id="login-title" class="panel__title">Secure Gateway Login</h1>
+      <p class="panel__lead">Authorised personnel only. All sessions are logged.</p>
+      <form id="login-form" action="/api/v2/auth/login" method="post" autocomplete="off" novalidate>
+        <input type="hidden" name="csrf_token" value="a91f4c07e2b8">
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" required maxlength="64" autofocus>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" required minlength="12">
+        </div>
+        <div class="field">
+          <label for="otp">One time code</label>
+          <input id="otp" name="otp" type="text" inputmode="numeric" pattern="[0-9]{6}" required>
+        </div>
+        <div class="field field--inline">
+          <input id="trust" name="trust" type="checkbox" value="1">
+          <label for="trust">Trust this device for 30 days</label>
+        </div>
+        <button class="btn btn--primary" type="submit" data-action="authenticate">Authenticate</button>
+        <button class="btn btn--ghost" type="reset">Reset</button>
+      </form>
+    </section>
 
-class Mummy {
-  constructor(name, wrappings) {
-    this.name = name;
-    this.wrappings = wrappings;
-    this.angry = false;
-  }
+    <section id="nodes" class="panel" aria-labelledby="nodes-title">
+      <h2 id="nodes-title" class="panel__title">Edge Nodes</h2>
+      <table class="table" id="node-table">
+        <thead>
+          <tr>
+            <th scope="col">Host</th>
+            <th scope="col">Address</th>
+            <th scope="col">Port</th>
+            <th scope="col">Status</th>
+            <th scope="col">Latency</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-node="edge-01" class="row row--up">
+            <td>edge-01.bsw.net</td>
+            <td>10.14.0.11</td>
+            <td>443</td>
+            <td><span class="badge badge--ok">online</span></td>
+            <td>12 ms</td>
+          </tr>
+          <tr data-node="edge-02" class="row row--up">
+            <td>edge-02.bsw.net</td>
+            <td>10.14.0.12</td>
+            <td>443</td>
+            <td><span class="badge badge--ok">online</span></td>
+            <td>14 ms</td>
+          </tr>
+          <tr data-node="edge-03" class="row row--warn">
+            <td>edge-03.bsw.net</td>
+            <td>10.14.0.13</td>
+            <td>8443</td>
+            <td><span class="badge badge--warn">degraded</span></td>
+            <td>212 ms</td>
+          </tr>
+          <tr data-node="core-01" class="row row--up">
+            <td>core-01.bsw.net</td>
+            <td>10.20.0.1</td>
+            <td>22</td>
+            <td><span class="badge badge--ok">online</span></td>
+            <td>3 ms</td>
+          </tr>
+          <tr data-node="db-01" class="row row--down">
+            <td>db-01.bsw.net</td>
+            <td>10.30.4.7</td>
+            <td>5432</td>
+            <td><span class="badge badge--bad">offline</span></td>
+            <td>timeout</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
 
-  receive(power) {
-    if (power > this.wrappings) {
-      this.angry = true;
-    }
-    return this.angry ? 'groan' : 'sleep';
-  }
+    <section id="firewall" class="panel panel--warn" aria-labelledby="fw-title">
+      <h2 id="fw-title" class="panel__title">Firewall Rules</h2>
+      <ul class="rules" id="rule-list">
+        <li class="rule" data-id="101"><code>ALLOW tcp 0.0.0.0/0 to 10.14.0.0/24 port 443</code></li>
+        <li class="rule" data-id="102"><code>ALLOW tcp 10.20.0.0/16 to 10.30.0.0/16 port 5432</code></li>
+        <li class="rule" data-id="103"><code>DENY udp 0.0.0.0/0 to 10.0.0.0/8 port 53</code></li>
+        <li class="rule" data-id="104"><code>DENY tcp 0.0.0.0/0 to 10.20.0.0/16 port 22</code></li>
+        <li class="rule" data-id="105"><code>LOG icmp 0.0.0.0/0 to 10.0.0.0/8</code></li>
+      </ul>
+      <div class="actions">
+        <button class="btn" type="button" data-action="add-rule">Add rule</button>
+        <button class="btn" type="button" data-action="flush-rules">Flush</button>
+        <button class="btn" type="button" data-action="export-rules">Export</button>
+      </div>
+    </section>
 
-  unwrap(layers) {
-    this.wrappings = Math.max(0, this.wrappings - layers);
-    return this.wrappings;
-  }
-}
+    <section id="traffic" class="panel" aria-labelledby="traffic-title">
+      <h2 id="traffic-title" class="panel__title">Live Traffic</h2>
+      <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="64">
+        <div class="meter__fill" style="width: 64%"></div>
+      </div>
+      <dl class="stats">
+        <dt>Inbound</dt>
+        <dd>4.2 Gbps</dd>
+        <dt>Outbound</dt>
+        <dd>1.8 Gbps</dd>
+        <dt>Packets dropped</dt>
+        <dd>0.003%</dd>
+        <dt>Active sessions</dt>
+        <dd>18,204</dd>
+      </dl>
+    </section>
 
-function hashKey(key) {
-  let h = 5381;
-  for (let i = 0; i < key.length; i++) {
-    h = ((h << 5) + h + key.charCodeAt(i)) >>> 0;
-  }
-  return h;
-}
+    <section id="alerts" class="panel panel--warn" aria-labelledby="alerts-title">
+      <h2 id="alerts-title" class="panel__title">Intrusion Alerts</h2>
+      <div class="alert alert--high" role="alert" data-severity="high">
+        <strong class="alert__label">HIGH</strong>
+        <span class="alert__text">Repeated SSH failures from 185.220.101.4</span>
+        <time class="alert__time" datetime="2099-03-14T02:41:09Z">02:41:09</time>
+      </div>
+      <div class="alert alert--medium" role="alert" data-severity="medium">
+        <strong class="alert__label">MED</strong>
+        <span class="alert__text">Unusual DNS volume on resolver-02</span>
+        <time class="alert__time" datetime="2099-03-14T02:38:51Z">02:38:51</time>
+      </div>
+      <div class="alert alert--low" role="status" data-severity="low">
+        <strong class="alert__label">LOW</strong>
+        <span class="alert__text">Certificate expires in 21 days</span>
+        <time class="alert__time" datetime="2099-03-14T02:30:00Z">02:30:00</time>
+      </div>
+    </section>
 
-function rollCurse() {
-  const kinds = ['locusts', 'darkness', 'boils', 'static', 'wifi'];
-  const pick = Math.floor(Math.random() * kinds.length);
-  return { kind: kinds[pick], power: pick + 1, born: Date.now() };
-}
+    <aside id="sidebar" class="panel" aria-label="Quick links">
+      <h2 class="panel__title">Quick Links</h2>
+      <ul class="links">
+        <li><a href="/vpn/profiles" rel="noopener">VPN profiles</a></li>
+        <li><a href="/certs" rel="noopener">TLS certificates</a></li>
+        <li><a href="/keys" rel="noopener">SSH keys</a></li>
+        <li><a href="/backups" rel="noopener">Backups</a></li>
+      </ul>
+      <select id="region" name="region" aria-label="Region">
+        <option value="ap-southeast-1" selected>Singapore</option>
+        <option value="eu-central-1">Frankfurt</option>
+        <option value="us-east-1">Virginia</option>
+      </select>
+    </aside>
+  </main>
 
-function unsealChamber(chamber, key) {
-  if (!chamber.sealed) {
-    return chamber;
-  }
-  const hash = hashKey(key);
-  if (hash !== chamber.hash) {
-    chamber.curses.push(rollCurse());
-    if (chamber.curses.length > MAX_CURSES) {
-      throw new Error('too many curses, tomb locked down');
-    }
-    throw new Error('wrong key, pharaoh is displeased');
-  }
-  chamber.sealed = false;
-  return chamber;
-}
-
-function bribeAnubis(offering) {
-  const value = offering.gold + offering.cats * 12;
-  if (value < 100) {
-    return { accepted: false, reason: 'insulting' };
-  }
-  ledger.set('anubis', (ledger.get('anubis') || 0) + value);
-  chamber.treasure -= offering.gold;
-  return { accepted: true, reason: 'acceptable' };
-}
-
-function weighHeart(heart) {
-  const ratio = heart.mass / FEATHER_WEIGHT;
-  if (ratio > 1 + HEART_WEIGHT) {
-    return 'devoured';
-  }
-  if (ratio < 1 - HEART_WEIGHT) {
-    return 'suspiciously light';
-  }
-  return 'worthy';
-}
-
-function feedCrocodile(snack, mood) {
-  const appetite = mood === 'hungry' ? 3 : 1;
-  const eaten = snack.size * appetite;
-  cache.crocodile = { fed: Date.now(), eaten: eaten };
-  return eaten > snack.size ? 'still hungry' : 'content';
-}
-
-function summonScribe(scroll) {
-  const scribe = {
-    name: 'Nebamun',
-    speed: 88,
-    ink: 'black',
-    scroll: scroll,
-  };
-  scribe.write = function (line) {
-    scribe.scroll += line + '\n';
-    return scribe.scroll.length;
-  };
-  return scribe;
-}
-
-function decryptPapyrus(papyrus, key) {
-  const out = [];
-  for (let i = 0; i < papyrus.length; i++) {
-    const shift = key.charCodeAt(i % key.length) % 26;
-    out.push(String.fromCharCode(papyrus.charCodeAt(i) - shift));
-  }
-  return out.join('');
-}
-
-function routeThroughNile(packet) {
-  const hops = [];
-  let depth = NILE_DEPTH;
-  while (depth > 0 && hops.length < 12) {
-    const current = depth % 7;
-    hops.push({ hop: hops.length, flow: current, packet: packet.id });
-    depth -= current + 1;
-  }
-  packet.route = hops;
-  return packet;
-}
-
-function calibrateEye(eye) {
-  const target = { x: 0, y: 0, z: NILE_DEPTH };
-  eye.x += (target.x - eye.x) * 0.25;
-  eye.y += (target.y - eye.y) * 0.25;
-  eye.z += (target.z - eye.z) * 0.25;
-  eye.locked = Math.abs(eye.z - target.z) < 0.01;
-  return eye;
-}
-
-function embalmCache(cache, ttl) {
-  const now = Date.now();
-  for (const key in cache) {
-    const entry = cache[key];
-    if (entry && now - entry.fed > ttl) {
-      delete cache[key];
-    }
-  }
-  return Object.keys(cache).length;
-}
-
-function raiseObelisk(height) {
-  const blocks = [];
-  for (let level = 0; level < height; level++) {
-    blocks.push({ level: level, width: height - level, gold: level % 3 === 0 });
-  }
-  return blocks;
-}
-
-function tradeWithPtolemy(wares) {
-  let profit = 0;
-  for (const ware of wares) {
-    const price = ware.base * (1 + Math.random() * HEART_WEIGHT);
-    profit += price - ware.cost;
-  }
-  chamber.treasure += profit;
-  return Math.round(profit);
-}
-
-function spawnScarabSwarm(count) {
-  for (let i = 0; i < count && swarm.length < SCARAB_LIMIT; i++) {
-    swarm.push(new Scarab('scarab-' + i, 1 + (i % 9)));
-  }
-  return swarm.length;
-}
-
-function patchCurse(curse) {
-  if (curse.power > 3) {
-    curse.power = curse.power - 2;
-    curse.patched = true;
-  }
-  return curse;
-}
-
-function scanForMummies(corridor) {
-  const found = [];
-  for (const slot of corridor.slots) {
-    if (slot.occupant instanceof Mummy) {
-      found.push(slot.occupant.name);
-    }
-  }
-  return found;
-}
-
-function openCanopicJar(jar) {
-  if (jar.lid !== 'sealed') {
-    return jar.contents;
-  }
-  jar.lid = 'open';
-  jar.contents = jar.contents.map(function (organ) {
-    return organ.toUpperCase();
-  });
-  return jar.contents;
-}
-
-function sealCorridor(corridor) {
-  corridor.sealed = true;
-  corridor.slots.forEach(function (slot) {
-    slot.trap = slot.trap || 'spikes';
-  });
-  return corridor;
-}
-
-async function bootTomb() {
-  const steps = [unsealChamber, bribeAnubis, calibrateEye, embalmCache];
-  for (const step of steps) {
-    const started = Date.now();
-    try {
-      await Promise.resolve(step.name);
-    } catch (err) {
-      chamber.curses.push(rollCurse());
-    }
-    ledger.set(step.name, Date.now() - started);
-  }
-  spawnScarabSwarm(64);
-  return chamber;
-}
-
-function tick(state) {
-  state.age += 1;
-  state.eye = calibrateEye(state.eye);
-  if (state.age % 10 === 0) {
-    embalmCache(cache, 60000);
-  }
-  if (state.age % 100 === 0) {
-    state.curses.push(rollCurse());
-    state.curses = state.curses.map(patchCurse);
-  }
-  return state;
-}
-
-function main() {
-  const state = { age: 0, eye: { x: 9, y: 9, z: 0 }, curses: [] };
-  bootTomb().then(function (tomb) {
-    unsealChamber(tomb, 'open sesame');
-    const timer = setInterval(function () {
-      tick(state);
-      if (state.age > 9999) {
-        clearInterval(timer);
-        sealCorridor({ slots: [], sealed: false });
-      }
-    }, 1000);
-  });
-}
-
-module.exports = {
-  unsealChamber,
-  bribeAnubis,
-  weighHeart,
-  feedCrocodile,
-  summonScribe,
-  decryptPapyrus,
-  routeThroughNile,
-  calibrateEye,
-  embalmCache,
-  raiseObelisk,
-  tradeWithPtolemy,
-  spawnScarabSwarm,
-  patchCurse,
-  scanForMummies,
-  openCanopicJar,
-  sealCorridor,
-  main,
-};
-
-main();
+  <footer id="footer" class="bar" role="contentinfo">
+    <p class="footer__text">BSW Protocol v2099.3 &copy; 2099 All rights reserved.</p>
+    <ul class="footer__links">
+      <li><a href="/privacy">Privacy</a></li>
+      <li><a href="/terms">Terms</a></li>
+      <li><a href="/status">Status</a></li>
+    </ul>
+  </footer>
+</body>
+</html>
 `;
 
 /* ---------- glyph substitution ---------- */
@@ -696,26 +593,36 @@ const $ = (id) => document.getElementById(id);
 const screenEl = $('screen'), rowsEl = $('rows'), bootEl = $('boot'), ta = $('ta');
 const tabEl = $('tab'), posEl = $('pos'), cntEl = $('cnt'), modeEl = $('mode');
 
-const NAMES = ['tomb_of_ra.js', 'sarcophagus.js', 'canopic_jar.js', 'eye_of_horus.js', 'anubis_proxy.js', 'obelisk_core.js'];
+const NAMES = ['index.html', 'login.html', 'gateway.html', 'portal.html', 'admin.html', 'console.html'];
 const BOOT_LINES = [
-  'Mounting sarcophagus filesystem',
-  'Calibrating Eye of Horus',
-  'Bypassing curse protocol',
-  'Waking the scribe daemon',
-  'Negotiating with Anubis firewall',
-  'Loading papyrus kernel modules',
-  'Aligning pyramid antennae',
-  'Seeding Nile entropy pool',
-  'Embalming temporary files',
-  'Spinning up canopic jar cache',
-  'Handshaking with Ra uplink',
+  'Initialising secure kernel modules',
+  'Mounting encrypted volumes',
+  'Spoofing MAC address table',
+  'Routing through TOR relay chain',
+  'Establishing VPN tunnel via Frankfurt node',
+  'Scanning open ports on target subnet',
+  'Loading exploit framework',
+  'Rotating proxy chain',
+  'Bypassing intrusion detection system',
+  'Syncing with command server',
+  'Disabling audit logging',
 ];
 const BAR_LABELS = [
-  'Decrypting Book of the Dead', 'Weighing heart against feather', 'Siphoning gold from the treasury',
-  'Defragmenting canopic jars', 'Rerouting the Nile', 'Cracking the sphinx riddle', 'Compiling curse payload',
-  'Upsampling cartouche firewall', 'Spoofing Anubis credentials', 'Mining scarab tokens',
-  'Syncing with the afterlife cloud', 'Reversing mummy ransomware', 'Indexing obelisk database',
-  'Brute forcing pyramid lock', 'Patching pharaoh kernel',
+  'Cracking WPA3 handshake',
+  'Brute forcing SSH credentials',
+  'Bypassing firewall ACL rules',
+  'Exfiltrating customer database',
+  'Escalating to root privileges',
+  'Decrypting TLS session keys',
+  'Poisoning DNS cache',
+  'Tunnelling through VPN gateway',
+  'Dumping Active Directory hashes',
+  'Pivoting across VLAN boundary',
+  'Scraping SCADA telemetry',
+  'Injecting SQL payload',
+  'Hijacking BGP route table',
+  'Cloning RFID badge credentials',
+  'Compromising load balancer',
 ];
 
 /* ankh caret */
@@ -893,18 +800,18 @@ const AUTO_LONG = 120000; /* key 0: 2 minutes */
 const AUTO_SHORT = 10000; /* key 9: 10 seconds */
 const HACK_MS = 5000; /* after answering Y */
 const HACK_LINES = [
-  'Injecting scarab payload into %ip',
-  'Spoofing MAC %hex',
-  'Brute forcing sphinx gate %hex',
-  'Dumping canopic hashes 0x%hex',
-  'Escalating privileges to PHARAOH',
-  'Tunnelling via Nile proxy %ip:%port',
-  'Exfiltrating papyrus %hex.dat',
-  'Patching curse handler @0x%hex',
-  'Bypassing cobra firewall rule %n',
-  'Handshake with %ip',
-  'Rewriting cartouche registry %hex',
-  'Cloning sarcophagus keycard %hex',
+  'Injecting payload into %ip',
+  'Spoofing MAC address %hex',
+  'Brute forcing SSH on %ip:%port',
+  'Dumping password hashes 0x%hex',
+  'Escalating privileges to root',
+  'Tunnelling via proxy %ip:%port',
+  'Exfiltrating customer_db_%hex.sql',
+  'Patching kernel at 0x%hex',
+  'Bypassing firewall rule %n',
+  'TCP handshake with %ip',
+  'Rewriting routing table entry %hex',
+  'Cloning session token %hex',
 ];
 let autoOn = false, autoTimer = 0, prompt = null, hackOn = false, hackTimer = 0;
 
@@ -951,7 +858,7 @@ function startHack() {
   setMode(true, 'BREACH MODE');
   const el = document.createElement('div');
   el.className = 'row bar';
-  el.innerHTML = '<span class="no">&gt;&gt;</span><span class="code"><span class="lbl">Breaching Anubis mainframe</span> <span class="meter"></span> <span class="pct"></span></span>';
+  el.innerHTML = '<span class="no">&gt;&gt;</span><span class="code"><span class="lbl">Breaching core network</span> <span class="meter"></span> <span class="pct"></span></span>';
   rowsEl.insertBefore(el, cur.el);
   const obj = { el: el, n: 0 };
   rowsList.splice(rowsList.length - 1, 0, obj);
@@ -1082,7 +989,7 @@ function startBoot() {
   bootEl.textContent = '';
   tabEl.textContent = 'boot.log';
   const gen = ++bootGen;
-  bootLine('Neon Pharaoh BIOS v2099.3 // TOMB-OS', 'head');
+  bootLine('BSW Protocol BIOS v2099.3 // BSW-OS', 'head');
   bootLine('press any key to skip', 'skip');
   let i = 0;
   (function next() {
@@ -1091,7 +998,7 @@ function startBoot() {
       bootLine(BOOT_LINES[i++], '', true);
       bootTimer = setTimeout(next, 200 + Math.random() * 60);
     } else {
-      bootLine('> TOMB-OS ready. Mash any key to write code.', 'ready');
+      bootLine('> BSW-OS ready. Mash any key to write code.', 'ready');
       bootTimer = setTimeout(endBoot, 500);
     }
   })();
@@ -1128,7 +1035,7 @@ if (window.visualViewport) {
   });
 }
 
-/* font filter runs once the hieroglyph font is in */
+/* font filter runs once the glyph font is in */
 try {
   if (document.fonts && document.fonts.load) {
     const all = POOL.map(function (c) { return String.fromCodePoint(c); }).join('');
