@@ -538,22 +538,46 @@ function mulberry32(a) {
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
-/* mixed pool: mostly hieroglyphs and matrix symbols, a little katakana and kanji */
-const POOL = [];
-for (let i = 0; i < 56; i++) POOL.push(0x13000 + i * 19 + 3);
-for (let c = 0x30; c <= 0x39; c++) POOL.push(c);
-Array.from(':.=*+-<>|\u039b\u039e\u03a3\u03a9\u03a8\u03a6\u25c6\u25c7\u25b2\u25bd').forEach(function (ch) { POOL.push(ch.charCodeAt(0)); });
-Array.from('\uff76\uff7a\uff8a\uff90\uff8b\uff73\uff7c\uff85\uff93\uff86\u96fb\u8133\u95c7\u96f6').forEach(function (ch) { POOL.push(ch.charCodeAt(0)); });
-
-function buildTokens(pool) {
+/* glyph families: Japanese 40%, Matrix 40%, Egyptian 20% of what lands on screen */
+const POOLS = { jp: [], mx: [], eg: [] };
+for (let c = 0xFF66; c <= 0xFF9D; c++) POOLS.jp.push(c);
+Array.from('\u96fb\u8133\u795e\u5f71\u95c7\u5203\u9f8d\u96f6\u58f1\u5f10\u53c2\u6b7b\u751f\u5922\u9b42\u72c2\u8840\u9b3c\u6a5f\u68b0\u7db2\u5149\u591c\u96f7\u708e\u6c37').forEach(function (ch) { POOLS.jp.push(ch.charCodeAt(0)); });
+for (let c = 0x30; c <= 0x39; c++) POOLS.mx.push(c);
+Array.from(':.=*+-<>|\u039b\u039e\u03a3\u03a9\u03a8\u03a6\u0394\u03a0\u0398\u0393\u25c6\u25c7\u25b2\u25bd\u25a0\u25a1\u2506\u2508\u2503\u254b\u00a6\u00ac\u00b1\u00a7\u00a4\u00a5\u2206\u2211\u2207\u2202\u221e\u2260\u2248').forEach(function (ch) { POOLS.mx.push(ch.charCodeAt(0)); });
+for (let i = 0; i < 46; i++) POOLS.eg.push(0x13000 + i * 23 + 3);
+const MIN_POOL = { jp: 45, mx: 45, eg: 25 };
+function buildTokens(pools) {
   const rnd = mulberry32(0xA7EF13);
-  const p = pool.slice();
-  for (let i = p.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
-    const tmp = p[i]; p[i] = p[j]; p[j] = tmp;
+  const shuf = function (a) {
+    a = a.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      const t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  };
+  const P = { jp: shuf(pools.jp), mx: shuf(pools.mx), eg: shuf(pools.eg) };
+  const freq = {};
+  let tot = 0;
+  for (const ch of SRC) {
+    const c = ch.charCodeAt(0);
+    if (c > 32 && c < 127) { freq[ch] = (freq[ch] || 0) + 1; tot++; }
   }
+  const chars = [];
+  for (let c = 33; c <= 126; c++) chars.push(String.fromCharCode(c));
+  chars.sort(function (a, b) { return (freq[b] || 0) - (freq[a] || 0); });
+  const target = { jp: 0.4 * tot, mx: 0.4 * tot, eg: 0.2 * tot };
+  const got = { jp: 0, mx: 0, eg: 0 };
   const map = {};
-  for (let c = 33; c <= 126; c++) map[String.fromCharCode(c)] = String.fromCodePoint(p[c - 33]);
+  chars.forEach(function (ch) {
+    let best = null, bd = -Infinity;
+    ['jp', 'mx', 'eg'].forEach(function (k) {
+      const d = target[k] - got[k];
+      if (P[k].length && d > bd) { bd = d; best = k; }
+    });
+    map[ch] = String.fromCodePoint(P[best].pop());
+    got[best] += freq[ch] || 0;
+  });
   const out = [];
   for (const ch of SRC) out.push(map[ch] || ch);
   return out;
@@ -575,17 +599,19 @@ function filterPool() {
     return { ink: ink, h: h >>> 0 };
   }
   const missing = sig(0xE0FF);
-  const out = [];
-  for (const cp of POOL) {
-    const s = sig(cp);
-    if (s.ink < 8 || s.h === missing.h) continue;
-    out.push(cp);
-  }
-  return out.length >= 94 ? out : POOL;
+  const out = {};
+  ['jp', 'mx', 'eg'].forEach(function (k) {
+    const kept = POOLS[k].filter(function (cp) {
+      const sg = sig(cp);
+      return sg.ink >= 2 && sg.h !== missing.h;
+    });
+    out[k] = kept.length >= MIN_POOL[k] ? kept : POOLS[k];
+  });
+  return out;
 }
 
 let filtered = null;
-let TOK = buildTokens(POOL);
+let TOK = buildTokens(POOLS);
 let pendingRebuild = false;
 
 /* ---------- dom ---------- */
@@ -663,7 +689,7 @@ function wipe() {
   domGlyphs = 0; lineNo = 0; ptr = 0; fileGlyphs = 0; needLoop = false;
   bar = null;
   setMode(false);
-  if (pendingRebuild) { TOK = buildTokens(filtered || POOL); pendingRebuild = false; }
+  if (pendingRebuild) { TOK = buildTokens(filtered || POOLS); pendingRebuild = false; }
   newRow();
   cur.code.appendChild(cursor);
 }
@@ -685,7 +711,7 @@ function status() {
 }
 
 function rebuildTokens() {
-  if (fileGlyphs === 0) TOK = buildTokens(filtered || POOL);
+  if (fileGlyphs === 0) TOK = buildTokens(filtered || POOLS);
   else pendingRebuild = true;
 }
 
@@ -1038,7 +1064,7 @@ if (window.visualViewport) {
 /* font filter runs once the glyph font is in */
 try {
   if (document.fonts && document.fonts.load) {
-    const all = POOL.map(function (c) { return String.fromCodePoint(c); }).join('');
+    const all = [].concat(POOLS.jp, POOLS.mx, POOLS.eg).map(function (c) { return String.fromCodePoint(c); }).join('');
     Promise.race([
       Promise.all([document.fonts.load('22px "DotGothic16"', all), document.fonts.load('22px "Noto Sans Egyptian Hieroglyphs"', all)]),
       new Promise(function (r) { setTimeout(r, 2800); }),
