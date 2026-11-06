@@ -860,7 +860,7 @@ function endAuto() {
   fresh = [];
   const el = document.createElement('div');
   el.className = 'row bar';
-  el.innerHTML = '<span class="no">&gt;&gt;</span><span class="code">Execute payload? [Y/N] </span>';
+  el.innerHTML = '<span class="no">&gt;&gt;</span><span class="code">Execute Payload on 7734800? [Y/N] </span>';
   rowsEl.insertBefore(el, cur.el);
   rowsList.splice(rowsList.length - 1, 0, { el: el, n: 0 });
   prompt = { code: el.querySelector('.code') };
@@ -870,7 +870,7 @@ function endAuto() {
 }
 
 function answerPrompt(yes) {
-  prompt.code.textContent = 'Execute payload? [Y/N] > ' + (yes ? 'Y  executing...' : 'N  aborted');
+  prompt.code.textContent = 'Execute Payload on 7734800? [Y/N] > ' + (yes ? 'Y  executing...' : 'N  aborted');
   prompt = null;
   setMode(false);
   cur.code.appendChild(cursor);
@@ -927,7 +927,7 @@ function startHack() {
       clearInterval(hackTimer);
       const done = document.createElement('span');
       done.className = 'done';
-      done.textContent = ' DONE';
+      done.textContent = ' FULL ACCESS GRANTED';
       code.appendChild(done);
       sys('Connection closed. No traces left.', false);
       hackOn = false;
