@@ -1092,12 +1092,25 @@ function startHack() {
   }, 70);
 }
 
+/* spacebar halts any running sequence and drops back to normal typing */
+function stopSequence() {
+  clearTimeout(autoTimer);
+  clearInterval(hackTimer);
+  if (bar) { bar.p = 96; tickBar(); }
+  autoOn = false;
+  hackOn = false;
+  stopChaos();
+  setMode(false);
+  cur.code.appendChild(cursor);
+  screenEl.scrollTop = screenEl.scrollHeight;
+}
+
 /* returns true when the key was handled here and must not type code */
 function special(ch) {
   const k = String(ch).toLowerCase();
   if (k === 'q') { showAlert(); return true; }
   if (prompt) { if (k === 'y' || k === 'n') answerPrompt(k === 'y'); return true; }
-  if (autoOn || hackOn) return true;
+  if (autoOn || hackOn) { if (ch === ' ') stopSequence(); return true; }
   if (ch === '0' && !booting) { startAuto(AUTO_LONG, '0'); return true; }
   if (ch === '9' && !booting) { startAuto(AUTO_SHORT, '9'); return true; }
   if (ch === '1' && !booting) { startAuto(AUTO_CHAOS, '1'); return true; }
