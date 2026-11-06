@@ -209,6 +209,8 @@ body {
 .row.bar .code { font: 12px/19px var(--ui-font); color: var(--gold); letter-spacing: 0.02em; white-space: pre-wrap; }
 .bar .meter { color: var(--green); text-shadow: 0 0 6px rgba(57, 255, 156, 0.6); }
 .bar .pct { color: var(--gold); font-variant-numeric: tabular-nums; }
+.row.stagerow .lbl { color: var(--cyan); font-weight: 700; letter-spacing: 0.08em; text-shadow: 0 0 8px rgba(0, 240, 255, 0.5); }
+.row.stagerow .no { color: var(--cyan); }
 .row.failrow { background: rgba(255, 58, 58, 0.16); }
 .row.failrow .no { color: #ff3a3a; }
 .row.failrow .code { color: #ff3a3a; font-weight: 700; letter-spacing: 0.22em; text-shadow: 0 0 10px rgba(255, 58, 58, 0.8); }
@@ -722,7 +724,7 @@ function newFile() {
 }
 
 function setMode(busy, text) {
-  modeEl.textContent = text || (autoOn ? (autoKind === '3' ? 'LOGIN MODE' : 'BLACKHAT MODE') : (busy ? 'DECRYPT MODE' : 'SCRIBE MODE'));
+  modeEl.textContent = text || (autoOn ? (autoKind === '4' ? 'MAINTENANCE MODE' : autoKind === '3' ? 'LOGIN MODE' : 'BLACKHAT MODE') : (busy ? 'DECRYPT MODE' : 'SCRIBE MODE'));
   modeEl.classList.toggle('busy', !!busy || autoOn);
 }
 
@@ -848,6 +850,7 @@ function showAlert() {
 const AUTO_LONG = 120000; /* key 0: hack out, 2 minutes of logging out and wiping traces */
 const AUTO_SHORT = 10000; /* key 3: short hack, 10 seconds */
 const AUTO_CHAOS = 180000; /* key 2: long dangerous hack, 3 minutes */
+const AUTO_MAINT = 180000; /* key 4: maintenance mode, 3 minutes */
 const AUTO_LOGIN = 20000; /* key 1: 20 seconds of account logins */
 const HACK_MS = 5000; /* after answering Y */
 const HACK_LINES = [
@@ -1068,12 +1071,217 @@ async function runLogin(end) {
   finishTask();
 }
 
+const STAGES = [
+  { name: 'ENTERING MAINTENANCE MODE', lines: [
+    'Broadcasting maintenance notice to 214 connected clients',
+    'Draining load balancer pool lb-prod-%n',
+    'Setting health check endpoint to 503',
+    'Pausing scheduled jobs in cron-runner-%n',
+    'Suspending autoscaling group asg-web-%n',
+    'Taking snapshot of active session table %hex',
+    'Disabling new logins for non-admin accounts',
+    'Maintenance banner published to status page'
+  ] },
+  { name: 'BACKUP AND SNAPSHOT', lines: [
+    'Creating LVM snapshot vg0/root-%hex',
+    'Dumping database schema to /backup/schema_%hex.sql',
+    'Compressing /var/www with zstd level 19',
+    'Uploading archive to s3://bsw-backups/%hex.tar.zst',
+    'Verifying backup checksum sha256:%hex',
+    'Replicating snapshot to secondary region',
+    'Pruning backups older than 30 days',
+    'Backup catalogue updated with %n objects'
+  ] },
+  { name: 'OPERATING SYSTEM PATCHING', lines: [
+    'Refreshing package index from mirror.bsw.net',
+    'Downloading linux-image-6.8.0-45 (72 MB)',
+    'Applying security patch CVE-2025-%n',
+    'Rebuilding initramfs for kernel 6.8.0-45',
+    'Updating microcode to revision 0x%hex',
+    'Installing openssl 3.0.13 replacing 3.0.11',
+    'Updating GRUB configuration',
+    'Scheduling reboot window for node-%n'
+  ] },
+  { name: 'PACKAGE AND DEPENDENCY UPDATES', lines: [
+    'Resolving dependency tree for 138 packages',
+    'Upgrading nginx 1.24.0 to 1.26.1',
+    'Upgrading postgresql-16 16.2 to 16.4',
+    'Upgrading nodejs 20.11 to 20.17',
+    'Pinning redis-server at 7.2.5',
+    'Removing 9 obsolete packages',
+    'Autoremove freed 412 MB',
+    'Verifying package signatures with GPG key %hex'
+  ] },
+  { name: 'DATABASE MAINTENANCE', lines: [
+    'Running VACUUM FULL on table sessions',
+    'Reindexing table orders, %n indexes',
+    'Analysing query planner statistics',
+    'Archiving rows older than 90 days from audit_log',
+    'Resizing connection pool to 120',
+    'Checking replication lag on replica-%n',
+    'Rebuilding materialised view daily_revenue',
+    'Integrity check passed on 48 tablespaces'
+  ] },
+  { name: 'DISK AND LOG CLEANUP', lines: [
+    'Rotating /var/log/nginx/access.log',
+    'Truncating 6 oversized log files',
+    'Clearing /tmp, freed %n MB',
+    'Pruning unused Docker images',
+    'Removing orphaned volumes vol-%hex',
+    'Running fstrim on /dev/nvme0n1',
+    'Disk usage on /dev/sda1 reduced from 87% to 41%',
+    'Compressing archived logs with gzip -9'
+  ] },
+  { name: 'CERTIFICATE AND KEY ROTATION', lines: [
+    'Requesting new certificate for *.bsw.net',
+    'Validating domain ownership via DNS-01',
+    'Installing certificate chain, expires in 90 days',
+    'Rotating API signing key kid-%hex',
+    'Re-encrypting secrets in vault path secret/prod',
+    'Revoking expired token set %hex',
+    'Updating trust store with 3 new root CAs',
+    'Reloading TLS configuration on edge-%n'
+  ] },
+  { name: 'SECURITY SCAN', lines: [
+    'Starting vulnerability scan on 10.14.0.0/24',
+    'Scanning open ports on %ip',
+    'Checking 212 packages against CVE database',
+    'Auditing sudoers and SSH configuration',
+    'Detecting configuration drift on 14 hosts',
+    'Verifying file integrity with AIDE database',
+    'Running rootkit check (rkhunter 1.4.6)',
+    'Scan report saved to /reports/scan_%hex.json'
+  ] },
+  { name: 'NETWORK AND FIREWALL', lines: [
+    'Reloading firewall ruleset, %n rules',
+    'Updating BGP prefix list for AS64512',
+    'Flushing ARP cache on switch-%n',
+    'Rotating VPN pre-shared keys',
+    'Syncing NTP with pool.ntp.org, offset 2 ms',
+    'Rebalancing DNS records for api.bsw.net',
+    'Testing failover to secondary uplink',
+    'Latency to gateway %ip measured at 3 ms'
+  ] },
+  { name: 'CACHE AND CDN', lines: [
+    'Purging CDN cache for 1,204 objects',
+    'Warming edge cache from origin',
+    'Flushing Redis cache on cache-%n',
+    'Rebuilding search index shard %hex',
+    'Regenerating static asset manifest',
+    'Invalidating session cache entries',
+    'Compressing images in /assets, saved 38%',
+    'Cache hit ratio restored to 94%'
+  ] },
+  { name: 'SERVICE RESTARTS', lines: [
+    'Restarting nginx.service',
+    'Restarting postgresql@16-main.service',
+    'Restarting redis-server.service',
+    'Restarting worker pool with %n processes',
+    'Reloading systemd daemon configuration',
+    'Rolling restart of api deployment',
+    'Waiting for readiness probes on %ip',
+    'All 24 services reporting active'
+  ] },
+  { name: 'HEALTH CHECKS', lines: [
+    'GET /healthz returned 200 in 12 ms',
+    'Database connectivity check passed',
+    'Queue depth within limits, %n messages',
+    'Memory usage at 38% on app-%n',
+    'CPU load average 0.42 on db-01',
+    'Disk IO latency under 4 ms',
+    'Synthetic login test passed',
+    'Synthetic checkout test passed'
+  ] },
+  { name: 'MONITORING AND ALERTS', lines: [
+    'Re-enabling alert rules for 86 monitors',
+    'Clearing suppressed alerts from maintenance window',
+    'Resetting uptime counters',
+    'Updating Grafana dashboards, %n panels',
+    'Reconnecting log shippers to collector-%n',
+    'Verifying metrics ingestion rate',
+    'Posting maintenance summary to ops channel',
+    'Audit entry written %hex'
+  ] },
+  { name: 'EXITING MAINTENANCE MODE', lines: [
+    'Restoring load balancer pool lb-prod-%n',
+    'Re-enabling autoscaling group asg-web-%n',
+    'Health check endpoint set to 200',
+    'Resuming scheduled jobs in cron-runner-%n',
+    'Re-enabling logins for all accounts',
+    'Removing maintenance banner from status page',
+    'Ramping traffic back to 100%',
+    'Maintenance window closed'
+  ] },
+];
+
+/* key 4: maintenance mode, 14 stages across the run, every line shown once */
+function runMaintenance(end, ms) {
+  const start = performance.now(), n = STAGES.length, stageLen = ms / n;
+  let si = -1, li = 0, nextAt = 0, sb = null;
+  const closeBar = function () {
+    if (!sb) return;
+    sb.meter.textContent = '[##########]';
+    sb.pct.textContent = '100%';
+    const d = document.createElement('span');
+    d.className = 'done';
+    d.textContent = ' DONE';
+    sb.code.appendChild(d);
+    sb = null;
+  };
+  (function loop() {
+    if (!autoOn) return;
+    const now = performance.now(), el = now - start;
+    if (el >= ms) {
+      closeBar();
+      const c = sysRowBefore();
+      const d = document.createElement('span');
+      d.className = 'done';
+      d.textContent = 'TASK COMPLETED';
+      c.appendChild(d);
+      finishTask();
+      return;
+    }
+    const idx = Math.min(n - 1, Math.floor(el / stageLen));
+    if (idx !== si) {
+      closeBar();
+      si = idx; li = 0; nextAt = now + 500;
+      const c = sysRowBefore();
+      c.parentNode.classList.add('stagerow');
+      c.innerHTML = '<span class="lbl"></span> <span class="meter"></span> <span class="pct"></span>';
+      c.querySelector('.lbl').textContent = STAGES[si].name;
+      sb = { code: c, meter: c.querySelector('.meter'), pct: c.querySelector('.pct') };
+    }
+    if (sb) {
+      const p = Math.floor(Math.min(1, (el - si * stageLen) / stageLen) * 100), k = Math.floor(p / 10);
+      sb.meter.textContent = '[' + '#'.repeat(k) + '.'.repeat(10 - k) + ']';
+      sb.pct.textContent = p + '%';
+    }
+    const L = STAGES[si].lines;
+    if (now >= nextAt && li < L.length) {
+      const c = sysRowBefore();
+      c.textContent = fillTpl(L[li++]) + ' ';
+      if (Math.random() < 0.45) {
+        const o = document.createElement('span');
+        o.className = 'meter';
+        o.textContent = 'OK';
+        c.appendChild(o);
+      }
+      nextAt = now + stageLen / (L.length + 1) * (0.7 + Math.random() * 0.6);
+    }
+    if (ptr > TOK.length - 400) { ptr = 0; needLoop = false; }
+    reveal();
+    screenEl.scrollTop = screenEl.scrollHeight;
+    status();
+    autoTimer = setTimeout(loop, 70 + rnd(60));
+  })();
+}
+
 function startAuto(ms, kind) {
   autoOn = true;
   autoKind = kind || '';
   labelPool = [];
   nextNet = performance.now() + 2000;
-  tint = autoKind === '1' ? ['c-red', 'c-red', 'c-mag'] : autoKind === '3' ? ['c-grn', 'c-grn', 'c-gold'] : null;
+  tint = autoKind === '1' ? ['c-red', 'c-red', 'c-mag'] : (autoKind === '3' || autoKind === '4') ? ['c-grn', 'c-grn', 'c-gold'] : null;
   tintP = autoKind === '1' ? 0.06 : 0.14;
   if (autoKind === '1') {
     const src = filtered || POOLS;
@@ -1086,6 +1294,7 @@ function startAuto(ms, kind) {
   setMode(true);
   const end = performance.now() + ms;
   if (autoKind === '3') { runLogin(end); return; }
+  if (autoKind === '4') { runMaintenance(end, ms); return; }
   (function loop() {
     if (!autoOn) return;
     const now = performance.now();
@@ -1228,6 +1437,7 @@ function special(ch) {
   if (ch === '0' && !booting) { startAuto(AUTO_LONG, '0'); return true; }
   if (ch === '1' && !booting) { startAuto(AUTO_LOGIN, '3'); return true; }
   if (ch === '2' && !booting) { startAuto(AUTO_CHAOS, '1'); return true; }
+  if (ch === '4' && !booting) { startAuto(AUTO_MAINT, '4'); return true; }
   if (ch === '3' && !booting) { startAuto(AUTO_SHORT, '9'); return true; }
   return false;
 }
