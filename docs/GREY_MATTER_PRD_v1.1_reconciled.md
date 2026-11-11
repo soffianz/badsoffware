@@ -148,3 +148,26 @@ Not done yet:
 - Object categories and mass values for each block and building.
 - Fictional in-game names and reskinned visuals.
 - Hazard placement (electrical, fire, chemical, industrial) on the map.
+
+## 13. USJ 11 in the game (step 3)
+
+The Grey Matter build now lives in the repo at `greymatter/index.html` (copied from the published artifact) and runs on the USJ 11 map instead of Consumer Central.
+
+How it works:
+- `tools/embed_usj11.py` embeds `data/usj11/usj11_game.json` into the page between `/*USJ-DATA*/` markers. It finds a clear 9 x 9 spot next to the Arcadia towers for Dad's house, and shifts every coordinate so that spot is the origin. Run it again whenever the map data changes.
+- In the page, `buildUSJ11()` places the real terrace rows and buildings, scatters props by zone, adds traffic, and builds a floor from the real roads, fields and the USJ 11 boundary. Everything else (goo, powers, collapse, comic, audio) is unchanged.
+- Play bounds are now a rectangle that matches the map. Terrace rows are eaten by depth, not length, so the goo is never walled in by rows it cannot yet eat.
+- Stage thresholds are computed from what each stage can actually eat (35%, 27% and 30% of the previous stage's pool), so every evolution is reachable.
+
+Test results (headless bot, `test/gm_bot.cjs`, seeded, naive nearest-target play):
+- Adaptive at 16 s (house collapse), Advanced at about 135 s, Critical Mass at about 258 s.
+- 50% eaten at about 320 s, 90% at about 510 s, 99% at about 565 s, City Consumed screen reached at about 700 s.
+- 1,017 objects, total mass about 5,000. No script errors.
+
+Known gaps (not done yet):
+- Dad's house is in the park beside Arcadia (the nearest free 9 x 9 spot), not inside the towers, because the real buildings leave no room for the 8 x 8 lab.
+- The Arcadia finale towers are not yet a distinct last objective. They are big, glowing landmarks that need Critical Mass, but nothing tells the player they are the finale.
+- No zone HUD, landmark progress or zone-flip transformation yet. Landmarks only have a beacon.
+- No hazards, mass loss or regeneration yet.
+- In-game names are not reskinned, and the old Consumer Central builder is still in the file, unused.
+- Not yet tested on a real phone.

@@ -69,7 +69,8 @@ ROADCODE = {"secondary": 0, "secondary_link": 1, "tertiary": 2, "tertiary_link":
 GROUNDCODE = {"park": 0, "pitch": 1}
 
 out = {
-    "bounds": [round(bx0 - hx - 1.5, 2), round(bx1 - hx + 1.5, 2), round(bz0 - hz - 1.5, 2), round(bz1 - hz + 1.5, 2)],
+    "bounds": [round(min(bx0, *[b[0] for _, b in boxes]) - hx - 1.5, 2), round(max(bx1, *[b[1] for _, b in boxes]) - hx + 1.5, 2),
+               round(min(bz0, *[b[2] for _, b in boxes]) - hz - 1.5, 2), round(max(bz1, *[b[3] for _, b in boxes]) - hz + 1.5, 2)],
     "zones": [{"id": z["id"], "name": z["name"], "seed": T(z["seed"])} for z in G["zones"]],
     "landmarks": G["landmarks"],
     "boundary": [T(p) for p in G["boundary"]],
