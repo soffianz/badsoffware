@@ -18,6 +18,9 @@ Platform: single-file browser game (three.js, portrait, phone-first, Android Chr
 | Format | Arcade run, as built. Not a persistent campaign. |
 | Strategy layer | One landmark per zone. No full hub or capture simulation. |
 | Map | Real USJ 11 layout and buildings, reskinned. Replaces the fictional Consumer Central layout. |
+| Win condition | City consumed (eat everything). Landmarks are zone-flip milestones. |
+| Run length | About 8 to 10 minutes. |
+| Consumability | Everything is consumable. |
 | Hazards | Full PRD version: chain-reaction hazards, mass loss, zero-mass regeneration. |
 | Regeneration cost | Return at 10% mass, keep your evolution stage and unlocked powers. Clock keeps running, combo resets. |
 | Tone | Satire early, darker late game. |
@@ -41,13 +44,13 @@ Platform: single-file browser game (three.js, portrait, phone-first, Android Chr
 |---|---|
 | Persistent campaign, cross-session world state | Cut. World state persists within a run only. Optional mid-run resume is a later nice-to-have. |
 | Production hubs auto-growing tendril networks, tendril simulation | Replaced. Tendrils are visual, spreading from eaten matter and flipped landmarks. No logic network, no branching and merging simulation. |
-| Capture all five districts as the win | Changed. See open question 1. |
+| Capture all five districts as the win | Changed. Win is City consumed. Landmarks are milestones. |
 | Native Android, object pooling, modular engine architecture | Replaced by the single-file browser approach. Keep systems separated inside the file where practical. |
 | Hybrid OSM, satellite and photo mapping pipeline | Reduced. Use OSM for road and building footprints, then compress to the 96 x 96 tile grid. |
 | 100 m buffer, one persistent world, no zone gating | Buffer kept as Outer Edge scenery. No gating, as built. |
 | Section 19 "locked, no new features" | Replaced by section 7 below. |
 | Name "Badsoftware" | Correct name is **Badsoffware**. |
-| Small stage "one short tendril" | Reconcile with art: the build's Basic stage currently has no limbs. See open question 4. |
+| Small stage "one short tendril" | Dropped. Keep the build's limb counts (0, 2, 3, 3). |
 
 ## 5. Changes to the build
 
@@ -72,15 +75,20 @@ Explore, eat small things, grow, evolve, unlock powers, eat bigger things, trigg
 5. Keep gameplay numbers in `CFG`.
 6. Use sensible defaults for unspecified details, and note them in `DECISIONS.md`.
 
-## 8. Open questions
+## 8. Resolved questions and what is left
 
-1. **Win condition.** Recommended: keep "City consumed" (eat everything) as the finish, with the five landmarks as milestones that flip zones and score bonuses. Alternative: the run ends when all five landmarks are eaten. Needs a decision.
-2. **Real places.** USJ 11 has schools, a surau and real homes. Recommended: keep real road layout and building footprints, but use fictional shop and building names and make anything religious or school-related non-destructible or visually generic. Needs a decision.
-3. **Run length.** Real USJ 11 is larger than a few-minute run allows. Compression target needs setting after the map pass, so the full run stays short.
-4. **Stage limbs.** Match the approved art (1, 2, 3, 3 limbs) or keep the build's current limb counts.
-5. **Kids.** Confirm that the two Kids mini agents are meant to be the daughters, and how much that should show in the intro comic.
-6. **Dad's house.** Which real USJ 11 location is the start point?
-7. **Mid-run save.** Needed, or a run is always played in one go?
+Resolved by Soff:
+
+1. **Win condition:** "City consumed" (eat everything) ends the run. The five landmarks are milestones that flip zones and give score bonuses.
+2. **Real places:** everything is consumable, including schools and places of worship. No special-casing.
+3. **Run length:** a full run takes about 8 to 10 minutes. The USJ 11 map is compressed to fit.
+4. **Stage limbs:** keep the current build (0, 2, 3, 3). The approved-art counts (1, 2, 3, 3) are not used.
+5. **Kids:** the two Kids mini agents are a quiet nod to Soff's daughters. Keep the name and the joke, hint at it in the intro comic, nothing explicit.
+6. **Mid-run save:** not needed. Pause only.
+
+Still open:
+
+7. **Dad's house start point:** which real USJ 11 location. To be proposed during the map pass and chosen by button.
 
 ## 9. Suggested order of work
 
