@@ -116,3 +116,19 @@ Implications:
 - 2,956 house footprints is too many objects for a phone. Houses get merged into terrace blocks of roughly 4 to 8, targeting a few hundred eatable objects in total.
 - Real names stay in the data file only. In-game names are fictional.
 - Relation-based (multipolygon) buildings are not yet extracted.
+
+## 11. Map pass decisions (Soff)
+
+| Topic | Decision |
+|---|---|
+| Zone layout | Journey from the south-west: 1 Arcadia and the southern edge (start), 2 southern terraces, 3 middle fields and schools, 4 northern terraces, 5 north-east edge (shops, Wisma TNB, MBSJ town hall). |
+| Finale | Arcadia, full circle. The Arcadia towers are the last landmark eaten. |
+| House density | Aggressive merging, about 200 to 300 objects for all terrace housing. |
+
+Defaults I am applying, to be changed if wrong:
+- The Arcadia towers are too big for the opening stages (size gating), so the player leaves, grows and comes back for them. That is how "full circle" works without a loop on the map.
+- Dad's house is a single unit inside Arcadia. Eating it triggers the collapse start as built.
+- Zone 1's own landmark is a smaller building in the Arcadia and southern-edge area, chosen in the next step.
+- The town hall, Wisma TNB and the shops in zone 5 are consumable objects, and one of them is zone 5's landmark.
+
+Next step: block the map into the game grid (object clustering, zone polygons, landmark picks) and generate a first game-ready map file.
