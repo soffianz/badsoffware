@@ -156,8 +156,14 @@ start = {"x": dad["x"], "z": dad["z"], "object": dad["id"]}
 for t in towers:
     t["role"] = "finale_arcadia_tower"
 
+LANDMARK_OVERRIDE = {5: "b222514811"}   # chosen by Soff: Wisma TNB tower is zone 5's landmark
 landmarks = {}
 for z in range(1, 6):
+    if z in LANDMARK_OVERRIDE:
+        o = next(o for o in objects if o["id"] == LANDMARK_OVERRIDE[z])
+        o["role"] = f"landmark_z{z}"
+        landmarks[z] = o["id"]
+        continue
     cand = [o for o in objects if o["zone"] == z and o["kind"] == "building" and not o.get("arcadia")
             and o.get("type") not in ("place_of_worship",) and o["size"] in ("medium", "large", "massive")
             and "role" not in o and o.get("real_name") not in ("Surau al-Muttaqun",)]
