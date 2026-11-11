@@ -88,7 +88,7 @@ Resolved by Soff:
 
 Still open:
 
-7. **Dad's house start point:** which real USJ 11 location. To be proposed during the map pass and chosen by button.
+7. **Dad's house start point:** resolved. Arcadia Apartments, in the south-west of USJ 11 (see section 10).
 
 ## 9. Suggested order of work
 
@@ -99,3 +99,20 @@ Still open:
 5. Zone flip and landmark cinematic.
 6. Darker late-game tone pass (visuals, toasts).
 7. Balance and phone testing.
+
+## 10. Map pass findings (step 1)
+
+Data: OpenStreetMap, fetched on 2026-11-11, processed by `tools/usj11_process.py` into `data/usj11/usj11_osm.json` (coordinates in metres from the USJ 11 centroid). Preview: `data/usj11/usj11_preview.png`.
+
+- USJ 11 is about 0.85 km2. With the 100 m buffer the playable area is roughly 1,015 m by 1,395 m.
+- 3,051 buildings: 2,956 terrace or semi-detached house footprints, 82 medium, 6 large, 2 massive, 5 tiny. 2,517 are inside USJ 11, 534 in the buffer.
+- Roads: a ring road round the edge, a grid of residential streets inside, tertiary and secondary roads on the outside.
+- **Arcadia Apartments** (OSM way 222153547, about 27,000 m2, six buildings including three of the largest in USJ 11) sits in the south-west corner, not the centre. Dad's house starts there.
+- USJ 11 itself is almost entirely terraced houses. The commercial strip (banks, 99 Speedmart, petrol stations, Taipan shops), Wisma TNB and the MBSJ town hall are all in the buffer on the east and north edges.
+- Two large open fields and the school and kindergarten sit in the middle.
+
+Implications:
+- The run is a journey from the south-west corner to the north-east, not a spread outward from the centre.
+- 2,956 house footprints is too many objects for a phone. Houses get merged into terrace blocks of roughly 4 to 8, targeting a few hundred eatable objects in total.
+- Real names stay in the data file only. In-game names are fictional.
+- Relation-based (multipolygon) buildings are not yet extracted.
