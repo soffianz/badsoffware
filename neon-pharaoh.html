@@ -1801,8 +1801,9 @@ async function askBot() {
   chatBusy = true;
   chatSend.disabled = true;
   const out = addMsg('bot', 'Thinking...');
-  const base = plainLines.slice();
-  if (base[base.length - 1] !== '') base.push('');
+  let base = plainLines.slice();
+  if (base.length === 1 && base[0] === '') base = [];
+  else if (base[base.length - 1] !== '') base.push('');
   const showResult = function (res) {
     if (!chatOn || !res) return;
     plainLines = base.concat(res.split('\n'));
