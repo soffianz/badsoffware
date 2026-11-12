@@ -264,6 +264,28 @@ body {
   .flash.on { animation: none; opacity: 0.5; }
 }
 
+/* chat mode (key =) */
+[hidden] { display: none !important; }
+#plain .row { min-height: 22px; }
+#plain .no { line-height: 22px; }
+#plain .code { font: 14px/22px var(--ui-font); color: #e8ffff; white-space: pre-wrap; overflow-wrap: anywhere; text-shadow: 0 0 4px rgba(0, 240, 255, 0.35); }
+#plain .cur { vertical-align: -0.3em; }
+.chat { flex: none; display: flex; flex-direction: column; min-height: 0; background: #0a0816; border-top: 1px solid rgba(245, 197, 66, 0.45); }
+.chatlog { overflow-y: auto; max-height: 32vh; min-height: 44px; padding: 8px 12px; font: 12px/1.55 var(--ui-font); scrollbar-width: thin; scrollbar-color: rgba(245, 197, 66, 0.35) transparent; }
+.msg { display: flex; gap: 10px; margin: 0 0 7px; }
+.msg .who { flex: none; width: 58px; padding-top: 2px; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.msg.user .who { color: var(--gold); }
+.msg.bot .who { color: var(--mag); }
+.msg.sys .who { color: var(--gold-dim); }
+.msg .txt { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: #d9f9ff; }
+.msg.bot .txt { color: var(--cyan); }
+.msg.sys .txt { color: var(--gold-dim); }
+.chatform { display: flex; gap: 8px; padding: 8px 12px; border-top: 1px dashed rgba(245, 197, 66, 0.25); }
+#chatin { flex: 1; min-width: 0; box-sizing: border-box; padding: 8px 10px; font: 16px var(--ui-font); color: #fff; background: var(--bg); border: 1px solid var(--gold); border-radius: 0; outline: none; }
+#chatin:focus { border-color: var(--mag); box-shadow: 0 0 10px rgba(255, 43, 214, 0.45); }
+#chatin::placeholder { color: var(--gold-dim); }
+.chatform .btn:disabled { opacity: 0.45; cursor: default; }
+
 /* Q alert (in-page, since browser alert() is blocked in artifacts) */
 .alert {
   position: fixed;
@@ -317,12 +339,19 @@ body {
     <div class="hint">tap or mash any key</div>
   </div>
   <main class="viewport" id="viewport">
-    <div class="screen" id="screen"><div id="rows"></div></div>
+    <div class="screen" id="screen"><div id="rows"></div><div id="plain" hidden></div></div>
     <div class="noise"></div>
     <div class="boot" id="boot" aria-live="off"></div>
     <div class="scan"></div>
     <div class="flash" id="flash"></div>
   </main>
+  <section class="chat" id="chat" hidden aria-label="Assistant chat">
+    <div class="chatlog" id="chatlog" aria-live="polite"></div>
+    <form class="chatform" id="chatform" autocomplete="off">
+      <input id="chatin" type="text" maxlength="500" placeholder="Ask the BSW assistant anything" autocomplete="off" autocapitalize="sentences" spellcheck="true" aria-label="Message to the assistant">
+      <button class="btn" id="chatsend" type="submit">Send</button>
+    </form>
+  </section>
   <footer class="status">
     <span class="mode" id="mode">SCRIBE MODE</span>
     <span id="pos">Ln 1, Col 1</span>
@@ -1529,6 +1558,11 @@ const IGNORED = new Set(['Backspace', 'Delete', 'ArrowUp', 'ArrowDown', 'ArrowLe
 document.addEventListener('keydown', function (e) {
   if (e.isComposing || e.key === 'Unidentified' || e.keyCode === 229) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === '=') { e.preventDefault(); toggleChat(); return; }
+  if (chatOn) {
+    if (!(e.target && e.target.closest && e.target.closest('#chat'))) plainKey(e);
+    return;
+  }
   if (IGNORED.has(e.key) || /^F\d{1,2}$/.test(e.key)) return;
   if (e.target && e.target.closest && e.target.closest('button')) return;
   e.preventDefault();
@@ -1540,6 +1574,13 @@ document.addEventListener('keydown', function (e) {
 ta.addEventListener('input', function (e) {
   const t = e.inputType || '';
   ta.value = '';
+  if (e.data && e.data.indexOf('=') >= 0) { toggleChat(); return; }
+  if (chatOn) {
+    if (t === 'insertLineBreak') plainEnter();
+    else if (t.indexOf('delete') === 0) plainBack();
+    else if (e.data) plainType(e.data);
+    return;
+  }
   if (t.indexOf('delete') === 0 || t === 'historyUndo' || t === 'historyRedo') return;
   if (e.data && special(e.data.slice(-1))) return;
   if (performance.now() - lastKd < 60) return;
@@ -1548,7 +1589,7 @@ ta.addEventListener('input', function (e) {
 ta.addEventListener('compositionend', function () { ta.value = ''; });
 
 document.addEventListener('click', function (e) {
-  if (e.target.closest && e.target.closest('button')) return;
+  if (e.target.closest && (e.target.closest('button') || e.target.closest('#chat'))) return;
   ta.focus({ preventScroll: true });
 });
 
@@ -1604,8 +1645,186 @@ function endBoot() {
   status();
 }
 
+/* ---------- chat mode: press = to toggle, Clear also exits ---------- */
+const chatEl = $('chat'), chatLog = $('chatlog'), chatIn = $('chatin'), chatForm = $('chatform'), chatSend = $('chatsend'), plainEl = $('plain');
+let chatOn = false, chatBusy = false, chatAbort = null, chatHistory = [], plainLines = [''], sampleP = null;
+
+const CHAT_PREAMBLE = [
+  'You are BSW Assistant, the in-app chatbot inside BSW Protocol, a toy hacker-style code editor where mashing keys types fake code.',
+  'Chat like a friendly, sharp in-app assistant. Answer whatever the user asks, briefly (under 120 words), in plain text with no markdown.',
+  'If asked about the app: key 1 runs a login sequence, 2 a long hack, 3 a short hack, 0 a hack out, 4 maintenance mode, 5 a tracking setup,',
+  'Q shows an alert, Space stops a running sequence, = toggles this chat, and Clear resets the editor.',
+  'All sequences are on-screen theatre, not real hacking. Never give real instructions for breaking into systems.',
+].join(' ');
+
+function getSample() {
+  if (!sampleP) {
+    sampleP = (window.claude && window.claude.use ? Promise.resolve(window.claude.use('sample')) : Promise.resolve(null)).catch(function () { return null; });
+  }
+  return sampleP;
+}
+
+function addMsg(kind, text) {
+  const m = document.createElement('div');
+  m.className = 'msg ' + kind;
+  const w = document.createElement('span');
+  w.className = 'who';
+  w.textContent = kind === 'user' ? 'You' : kind === 'bot' ? 'BSW AI' : 'System';
+  const t = document.createElement('span');
+  t.className = 'txt';
+  t.textContent = text;
+  m.appendChild(w);
+  m.appendChild(t);
+  chatLog.appendChild(m);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return t;
+}
+
+/* plain typing surface shown while chat mode is on */
+function renderPlain() {
+  plainEl.textContent = '';
+  for (let i = 0; i < plainLines.length; i++) {
+    const row = document.createElement('div');
+    row.className = 'row' + (i === plainLines.length - 1 ? ' active' : '');
+    const no = document.createElement('span');
+    no.className = 'no';
+    no.textContent = String(i + 1);
+    const code = document.createElement('span');
+    code.className = 'code';
+    code.textContent = plainLines[i];
+    row.appendChild(no);
+    row.appendChild(code);
+    if (i === plainLines.length - 1) code.appendChild(cursor);
+    plainEl.appendChild(row);
+  }
+  const last = plainLines[plainLines.length - 1];
+  posEl.textContent = 'Ln ' + plainLines.length + ', Col ' + (last.length + 1);
+  cntEl.textContent = plainLines.join('\n').length + ' chars';
+  screenEl.scrollTop = screenEl.scrollHeight;
+}
+function plainType(str) {
+  str = String(str).replace(/[\u0000-\u001f\u007f]/g, '');
+  if (!str) return;
+  plainLines[plainLines.length - 1] += str;
+  renderPlain();
+}
+function plainEnter() {
+  if (plainLines.length < 500) plainLines.push('');
+  renderPlain();
+}
+function plainBack() {
+  const i = plainLines.length - 1;
+  if (plainLines[i].length) plainLines[i] = Array.from(plainLines[i]).slice(0, -1).join('');
+  else if (i > 0) plainLines.pop();
+  renderPlain();
+}
+function plainKey(e) {
+  if (e.key === 'Backspace') { e.preventDefault(); plainBack(); }
+  else if (e.key === 'Enter') { e.preventDefault(); plainEnter(); }
+  else if (e.key.length === 1) { e.preventDefault(); plainType(e.key); }
+}
+
+function enterChat() {
+  if (chatOn) return;
+  if (booting) endBoot();
+  if (prompt) answerPrompt(false);
+  if (autoOn || hackOn) stopSequence();
+  chatOn = true;
+  plainLines = [''];
+  rowsEl.hidden = true;
+  plainEl.hidden = false;
+  chatEl.hidden = false;
+  tabEl.textContent = 'notes.txt';
+  modeEl.textContent = 'CHAT MODE';
+  modeEl.classList.add('busy');
+  renderPlain();
+  addMsg('sys', 'BSW Assistant online. Ask anything. Press = or Clear to leave chat mode.');
+  chatIn.focus();
+}
+
+function exitChat() {
+  if (!chatOn) return;
+  chatOn = false;
+  if (chatAbort) { chatAbort.abort(); chatAbort = null; }
+  chatBusy = false;
+  chatSend.disabled = false;
+  chatHistory = [];
+  chatLog.textContent = '';
+  chatIn.value = '';
+  plainEl.hidden = true;
+  plainEl.textContent = '';
+  chatEl.hidden = true;
+  rowsEl.hidden = false;
+  tabEl.textContent = NAMES[fileIdx % NAMES.length];
+  setMode(false);
+  cur.code.appendChild(cursor);
+  screenEl.scrollTop = screenEl.scrollHeight;
+  status();
+  ta.focus({ preventScroll: true });
+}
+
+function toggleChat() { if (chatOn) exitChat(); else enterChat(); }
+
+async function askBot() {
+  const sample = await getSample();
+  if (!chatOn) return;
+  if (!sample) {
+    chatHistory.pop();
+    addMsg('sys', 'Chat is not available in this view. Open the page in claude.ai to talk to the assistant.');
+    return;
+  }
+  chatBusy = true;
+  chatSend.disabled = true;
+  const out = addMsg('bot', 'Thinking...');
+  const ac = new AbortController();
+  chatAbort = ac;
+  let turns = chatHistory.slice(-12);
+  while (turns.length && turns[0].role !== 'user') turns.shift();
+  const msgs = turns.map(function (m, i) {
+    return { role: m.role, content: i === 0 ? CHAT_PREAMBLE + '\n\nConversation starts here.\n\n' + m.content : m.content };
+  });
+  try {
+    const r = await sample(msgs, {
+      onText: function (o) { out.textContent = o.text; chatLog.scrollTop = chatLog.scrollHeight; },
+      signal: ac.signal,
+      cache: false,
+      modelTier: 'quick',
+    });
+    const text = (r && r.text) ? r.text : '';
+    out.textContent = text || '(no reply)';
+    chatHistory.push({ role: 'assistant', content: text || '(no reply)' });
+  } catch (err) {
+    if (ac.signal.aborted) return;
+    const code = err && err.code;
+    out.textContent = code === 'not_granted' ? 'Chat was not allowed for this page. You can allow it from the artifact permissions menu.'
+      : code === 'rate_limited' ? 'Too many messages. Give it a moment and try again.'
+      : 'The assistant could not answer. Try again.';
+    chatHistory.pop();
+  } finally {
+    if (chatAbort === ac) chatAbort = null;
+    chatBusy = false;
+    chatSend.disabled = false;
+    chatLog.scrollTop = chatLog.scrollHeight;
+    if (chatOn) chatIn.focus();
+  }
+}
+
+chatForm.addEventListener('submit', function (e) {
+  e.preventDefault();
+  const text = chatIn.value.trim();
+  if (!text || chatBusy) return;
+  chatIn.value = '';
+  addMsg('user', text);
+  chatHistory.push({ role: 'user', content: text });
+  askBot();
+});
+chatIn.addEventListener('input', function () {
+  if (chatIn.value.indexOf('=') >= 0) { chatIn.value = chatIn.value.replace(/=/g, ''); toggleChat(); }
+});
+
 /* ---------- clear / init ---------- */
 function resetAll() {
+  exitChat();
   clearTimeout(bootTimer);
   clearTimeout(autoTimer);
   clearInterval(hackTimer);
