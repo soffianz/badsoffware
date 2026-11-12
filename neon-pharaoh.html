@@ -1651,11 +1651,21 @@ let chatOn = false, chatBusy = false, chatAbort = null, chatHistory = [], plainL
 
 const CHAT_PREAMBLE = [
   'You are BSW Assistant, the in-app chatbot inside BSW Protocol, a toy hacker-style code editor where mashing keys types fake code.',
-  'Chat like a friendly, sharp in-app assistant. Answer whatever the user asks, briefly (under 120 words), in plain text with no markdown.',
+  'Chat like a friendly, sharp in-app assistant. Answer whatever the user asks. Keep every answer short and concise, one to three sentences unless the user asks for more, in plain text with no markdown.',
   'If asked about the app: key 1 runs a login sequence, 2 a long hack, 3 a short hack, 0 a hack out, 4 maintenance mode, 5 a tracking setup,',
   'Q shows an alert, Space stops a running sequence, = toggles this chat, and Clear resets the editor.',
   'All sequences are on-screen theatre, not real hacking. Never give real instructions for breaking into systems.',
+  'You also know the WhatsApp transcript given below the line TRANSCRIPT. Answer questions about it accurately and only from its text: who said what, when, topics, quotes, counts and summaries.',
+  'If the transcript does not say, tell the user it is not in the transcript instead of guessing. Messages are in a mix of English and Malay.',
 ].join(' ');
+
+let transcriptP = null;
+function getTranscript() {
+  if (!transcriptP) {
+    transcriptP = fetch('ciao_transcript.txt').then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
+  }
+  return transcriptP;
+}
 
 function getSample() {
   if (!sampleP) {
@@ -1767,6 +1777,7 @@ function toggleChat() { if (chatOn) exitChat(); else enterChat(); }
 
 async function askBot() {
   const sample = await getSample();
+  const transcript = await getTranscript();
   if (!chatOn) return;
   if (!sample) {
     chatHistory.pop();
@@ -1781,14 +1792,14 @@ async function askBot() {
   let turns = chatHistory.slice(-12);
   while (turns.length && turns[0].role !== 'user') turns.shift();
   const msgs = turns.map(function (m, i) {
-    return { role: m.role, content: i === 0 ? CHAT_PREAMBLE + '\n\nConversation starts here.\n\n' + m.content : m.content };
+    return { role: m.role, content: i === 0 ? CHAT_PREAMBLE + (transcript ? '\n\nTRANSCRIPT\n' + transcript : '') + '\n\nConversation starts here.\n\n' + m.content : m.content };
   });
   try {
     const r = await sample(msgs, {
       onText: function (o) { out.textContent = o.text; chatLog.scrollTop = chatLog.scrollHeight; },
       signal: ac.signal,
       cache: false,
-      modelTier: 'quick',
+      modelTier: 'default',
     });
     const text = (r && r.text) ? r.text : '';
     out.textContent = text || '(no reply)';
