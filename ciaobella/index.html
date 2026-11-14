@@ -103,6 +103,8 @@ textarea::placeholder{color:var(--dim)}
 .vtop{display:flex;justify-content:space-between;align-items:center;padding-block:6px}
 .vimg{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:pan-y;display:flex;align-items:center;justify-content:center}
 .vimg img{max-width:100%;max-height:100%;object-fit:contain;transition:transform .25s;user-select:none;-webkit-user-drag:none}
+.vtx{flex:1;min-height:0;margin:0;overflow:auto;padding:12px max(16px,env(safe-area-inset-left,0px));white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:.85em;color:var(--v);width:100%}
+.vtx[hidden]{display:none}
 .vnav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(3,16,12,.6);border:1px solid var(--ln);border-radius:4px;color:var(--lb);min-width:44px;min-height:44px}
 .vnav.l{left:max(8px,env(safe-area-inset-left,0px))}.vnav.r{right:max(8px,env(safe-area-inset-right,0px))}
 .vdet{padding-block:10px;font-size:.85em;max-height:34%;overflow-y:auto;border-top:1px solid var(--ln)}
@@ -139,7 +141,7 @@ textarea::placeholder{color:var(--dim)}
 </div>
 <div id="vw" hidden>
   <div class="vtop gut"><span class="s" id="vt"></span><button class="btn" id="vx" type="button">[X]</button></div>
-  <div class="vimg" id="vi"><button class="vnav l" id="vp" type="button" aria-label="Previous">&lt;</button><img id="vimg" alt=""><button class="vnav r" id="vn" type="button" aria-label="Next">&gt;</button></div>
+  <div class="vimg" id="vi"><button class="vnav l" id="vp" type="button" aria-label="Previous">&lt;</button><img id="vimg" alt=""><pre class="vtx" id="vtx" hidden></pre><button class="vnav r" id="vn" type="button" aria-label="Next">&gt;</button></div>
   <div class="vdet gut"><dl id="vd"></dl><div class="acts" style="margin-top:10px"><button class="btn y" id="va" type="button">[ASK]</button></div></div>
 </div>
 
@@ -282,13 +284,15 @@ async function openViewer(list,i){VL=list.filter(id=>S.items.has(id));if(!VL.len
 async function showV(){
   const id=VL[VI],it=S.items.get(id);if(!it)return;zoom=false;$("vimg").style.transform="";
   $("vt").textContent="#"+it.no+"  ("+(VI+1)+"/"+VL.length+")";
-  const base=await thumbURL(id);$("vimg").src=base||"";$("vimg").alt=it.caption||("Item "+it.no);
+  const isT=!!it.text;$("vimg").hidden=isT;$("vtx").hidden=!isT;$("vp").hidden=$("vn").hidden=isT&&VL.length<2;
+  if(isT){$("vtx").textContent=it.text;$("vtx").scrollTop=0}else{const base=await thumbURL(id);$("vimg").src=base||"";$("vimg").alt=it.caption||("Item "+it.no)}
   const d=$("vd");d.replaceChildren();
   const row=(k,v)=>{if(v==null||v==="")return;d.append(el("dt",null,k),el("dd",null,String(v)))};
   const c=caseOf(it);
   row("Case",c?c.name:"Unsorted");row("Type",it.type);row("File",it.filename);row("Taken",it.taken?fdate(it.taken):"unknown");row("Imported",fdate(it.imported));
-  row("Size",it.w+" x "+it.h+", "+Math.round(it.size/1024)+" KB");if(it.gps)row("GPS",it.gps.join(", "));
+  row("Size",it.text?it.text.length.toLocaleString("en-GB")+" characters, "+it.text.split("\n").length+" lines":it.w+" x "+it.h+", "+Math.round(it.size/1024)+" KB");if(it.gps)row("GPS",it.gps.join(", "));
   row("Tags",(it.tags||[]).join(", "));row("Caption",it.caption);row("Summary",it.summary);row("Note",it.note);
+  if(isT)return;
   const b=await getBlob("f:"+id,it.mime);if(b&&VL[VI]===id){if(vUrl)URL.revokeObjectURL(vUrl);vUrl=URL.createObjectURL(b);$("vimg").src=vUrl}
 }
 const vgo=d=>{VI=(VI+d+VL.length)%VL.length;showV()};
@@ -313,16 +317,31 @@ function scaled(src,w,h,max,q){
   const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0,c.width,c.height);
   return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("encode")),"image/jpeg",q));
 }
+function textThumb(title,text){
+  const c=document.createElement("canvas");c.width=320;c.height=320;const x=c.getContext("2d");
+  x.fillStyle="#061a14";x.fillRect(0,0,320,320);x.strokeStyle="#0e3a2c";x.strokeRect(.5,.5,319,319);
+  x.fillStyle="#4fa8ff";x.font="bold 20px ui-monospace,Menlo,monospace";
+  const words=String(title).split(" ");let line="",y=40;for(const w of words){if(x.measureText(line+w).width>270){x.fillText(line,24,y);y+=26;line=""}line+=w+" "}x.fillText(line,24,y);
+  x.fillStyle="#3d7a63";x.font="13px ui-monospace,Menlo,monospace";y+=34;
+  for(const ln of text.split("\n").filter(l=>l.trim()&&!/^(#|---|\[|Key|-)/.test(l)).slice(0,9)){x.fillText(ln.replace(/\*\*/g,"").slice(0,34),24,y);y+=18}
+  return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("encode")),"image/jpeg",0.85));
+}
 /* ---------- hard-coded archive: no upload in the app. Add entries here and republish. ----------
-   Each entry: {id, filename, mime, type, taken (ms), caption, summary, note, tags:[], case:"Name", gps:[lat,lon], data:"<base64 image>"}
+   Text entry: {id, title, filename, type:"chat", text, taken, caption, summary, tags, case}.
+   Image entry: {id, filename, mime, type, taken (ms), caption, summary, note, tags:[], case:"Name", gps:[lat,lon], data:"<base64 image>"}
    New ids are encrypted into the archive on next open. An id that was seeded once is never re-added, so deletes stick. */
 const SEED=[];
 async function seedArchive(){
   if(!Array.isArray(SEED)||!SEED.length)return;
   const done=new Set(S.meta.seeded||[]);let n=0;
   for(const s of SEED){
-    if(!s||!s.id||!s.data||done.has(s.id))continue;
+    if(!s||!s.id||!(s.data||s.text)||done.has(s.id))continue;
     try{
+      if(s.text){
+        const th=await textThumb(s.title||s.filename||"Text",s.text);
+        let cs=null;if(s.case){cs=findCase(s.case);if(!cs){cs={id:uid(),name:String(s.case),created:Date.now(),updated:Date.now()};S.cases.set(cs.id,cs);await saveCase(cs)}}
+        const item={id:"seed-"+s.id,no:S.meta.next++,case:cs?cs.id:null,type:s.type||"chat",filename:s.filename||s.id,mime:"text/plain",size:s.text.length,w:0,h:0,taken:s.taken||null,imported:Date.now(),gps:null,note:s.note||"",tags:s.tags||[],caption:s.caption||"",summary:s.summary||"",read:true,text:s.text};
+        await putBlob("t:"+item.id,th);S.items.set(item.id,item);await saveItem(item);done.add(s.id);n++;continue}
       const bytes=Uint8Array.from(atob(s.data),c=>c.charCodeAt(0)),mime=s.mime||"image/jpeg",full=new Blob([bytes],{type:mime});
       const src=await decodeImg(full),w=src.width||src.naturalWidth,h=src.height||src.naturalHeight,th=await scaled(src,w,h,320,0.8);
       if(src.close)src.close();
@@ -348,27 +367,33 @@ Images: describe what you see plainly and factually. If unsure, say so.
 Privacy: this is Soff's private material. Do not comment on or judge it beyond what is asked, and do not repeat sensitive details unless the task needs them.
 
 Identity: you are Nana. Do not mention what model or company is behind you unless Soff asks. If he asks what you are or what you run on, tell him plainly: you are Nana, running on Claude.`;
-const NOTES=`Technical notes: items are identified by item number (for example 12), never by id. Tools take and return item numbers. search_items matches words against filename, note, tags, caption, summary, type, case name and month, returns 30 per page. show_items puts tappable thumbnails in the chat. get_item_image queues up to 5 pictures; the page sends them in one follow-up message, so after calling it, stop and wait. Today is `;
+const NOTES=`Technical notes: items are identified by item number (for example 12), never by id. Tools take and return item numbers. Text items (type chat) hold a saved conversation: use find_in_text for specific questions and read_item_text to read it through; search_items also matches words inside the text. search_items matches words against filename, note, tags, caption, summary, type, case name and month, returns 30 per page. show_items puts tappable thumbnails in the chat. get_item_image queues up to 5 pictures; the page sends them in one follow-up message, so after calling it, stop and wait. Today is `;
 function summary(){
   const cs=[...S.cases.values()].map(c=>c.name+" ("+[...S.items.values()].filter(i=>i.case===c.id).length+")");
   return"Archive: "+S.items.size+" items, "+unsorted().length+" unsorted, "+unread().length+" not yet read by you. Cases: "+(cs.join("; ")||"none")+". Pending cards: "+waiting().length+".";
 }
-const brief=i=>({no:i.no,type:i.type,case:caseOf(i)?.name||null,date:fdate(i.taken||i.imported),tags:i.tags,caption:i.caption.slice(0,100),note:i.note.slice(0,80)});
+const brief=i=>({no:i.no,type:i.type,case:caseOf(i)?.name||null,date:fdate(i.taken||i.imported),tags:i.tags,caption:i.caption.slice(0,100),note:i.note.slice(0,80),chars:i.text?i.text.length:undefined});
 const T={
   list_cases:{name:"list_cases",description:"List case names with item counts and date ranges, plus the unsorted count.",
     execute(){return{cases:[...S.cases.values()].map(c=>{const its=[...S.items.values()].filter(i=>i.case===c.id),d=its.map(i=>i.taken||i.imported);return{name:c.name,items:its.length,from:d.length?fdate(Math.min(...d)):null,to:d.length?fdate(Math.max(...d)):null}}),unsorted:unsorted().length}}},
   search_items:{name:"search_items",description:"Word search over items. All words in query must match somewhere in filename, note, tags, caption, summary, type, case name or month. Optional filters. Returns up to 30 items per page with item numbers.",
-    inputSchema:{type:"object",properties:{query:{type:"string"},case:{type:"string",description:"case name, or 'unsorted'"},tag:{type:"string"},type:{type:"string",enum:["photo","screenshot","map","other"]},from:{type:"string",description:"YYYY-MM-DD"},to:{type:"string",description:"YYYY-MM-DD"},page:{type:"integer"}}},
+    inputSchema:{type:"object",properties:{query:{type:"string"},case:{type:"string",description:"case name, or 'unsorted'"},tag:{type:"string"},type:{type:"string",enum:["photo","screenshot","map","chat","other"]},from:{type:"string",description:"YYYY-MM-DD"},to:{type:"string",description:"YYYY-MM-DD"},page:{type:"integer"}}},
     execute(a){const r=search(a);return{total:r.total,page:r.page,items:r.items.slice(0,30).map(brief)}}},
   show_items:{name:"show_items",description:"Show up to 30 items to Soff as tappable thumbnails in the chat. Takes item numbers.",
     inputSchema:{type:"object",properties:{numbers:{type:"array",items:{type:"integer"}},label:{type:"string"}},required:["numbers"]},
     execute(a){const ids=(a.numbers||[]).map(n=>byNo(n)?.id).filter(Boolean).slice(0,30);if(!ids.length)throw new Error("none of those item numbers exist");add({t:"strip",ids,label:a.label?String(a.label).slice(0,80):""});return"Shown "+ids.length+" items."}},
   get_item_image:{name:"get_item_image",description:"Ask to look at up to 5 item pictures. The pictures arrive in a follow-up message from the page, so stop and wait after calling this.",
     inputSchema:{type:"object",properties:{numbers:{type:"array",items:{type:"integer"},maxItems:5}},required:["numbers"]},
-    execute(a){const ids=(a.numbers||[]).map(n=>byNo(n)?.id).filter(Boolean).slice(0,5);if(!ids.length)throw new Error("none of those item numbers exist");RUN.images=ids;return"Queued "+ids.length+" images. They will arrive in the next message."}},
+    execute(a){const ids=(a.numbers||[]).map(n=>byNo(n)).filter(i=>i&&!i.text).map(i=>i.id).slice(0,5);if(!ids.length)throw new Error("no picture items there (text items are read with read_item_text)");RUN.images=ids;return"Queued "+ids.length+" images. They will arrive in the next message."}},
+  read_item_text:{name:"read_item_text",description:"Read the text of a text item (such as a saved chat) in slices. Lines are numbered. Returns up to 20000 characters from the given line, plus total line count. Use find_in_text first for specific questions.",
+    inputSchema:{type:"object",properties:{number:{type:"integer"},from_line:{type:"integer",description:"1-based, default 1"},max_chars:{type:"integer"}},required:["number"]},
+    execute(a){const i=byNo(a.number);if(!i||!i.text)throw new Error("not a text item");const L=i.text.split("\n"),f=Math.max(1,a.from_line|0||1),cap=Math.min(20000,Math.max(500,a.max_chars|0||12000));let out=[],n=0,k=f-1;for(;k<L.length;k++){const t=(k+1)+": "+L[k];if(n+t.length>cap&&out.length)break;out.push(t);n+=t.length+1}return{total_lines:L.length,from_line:f,to_line:k,text:out.join("\n")}}},
+  find_in_text:{name:"find_in_text",description:"Search inside a text item for lines containing ALL the given words (case-insensitive). Returns up to 25 hits with line numbers and 2 lines of context either side.",
+    inputSchema:{type:"object",properties:{number:{type:"integer"},query:{type:"string"},context:{type:"integer"}},required:["number","query"]},
+    execute(a){const i=byNo(a.number);if(!i||!i.text)throw new Error("not a text item");const L=i.text.split("\n"),w=String(a.query||"").toLowerCase().split(/\s+/).filter(Boolean),c=Math.min(6,Math.max(0,a.context==null?2:a.context|0)),hits=[];L.forEach((ln,k)=>{if(w.length&&w.every(x=>ln.toLowerCase().includes(x)))hits.push(k)});return{matches:hits.length,hits:hits.slice(0,25).map(k=>({line:k+1,context:L.slice(Math.max(0,k-c),k+c+1).map((t,j)=>(Math.max(0,k-c)+j+1)+": "+t.slice(0,400)).join("\n")}))}}},
   save_caption:{name:"save_caption",description:"Save a short caption (max 12 words), a one-sentence summary and the corrected type on an item.",
-    inputSchema:{type:"object",properties:{number:{type:"integer"},caption:{type:"string"},summary:{type:"string"},type:{type:"string",enum:["photo","screenshot","map","other"]}},required:["number","caption"]},
-    execute(a){const i=byNo(a.number);if(!i)throw new Error("no such item");i.caption=String(a.caption||"").slice(0,160);if(a.summary)i.summary=String(a.summary).slice(0,400);if(["photo","screenshot","map","other"].includes(a.type))i.type=a.type;i.read=true;saveItem(i);return"Saved."}},
+    inputSchema:{type:"object",properties:{number:{type:"integer"},caption:{type:"string"},summary:{type:"string"},type:{type:"string",enum:["photo","screenshot","map","chat","other"]}},required:["number","caption"]},
+    execute(a){const i=byNo(a.number);if(!i)throw new Error("no such item");i.caption=String(a.caption||"").slice(0,160);if(a.summary)i.summary=String(a.summary).slice(0,400);if(["photo","screenshot","map","chat","other"].includes(a.type))i.type=a.type;i.read=true;saveItem(i);return"Saved."}},
   tag_items:{name:"tag_items",description:"Add or remove short lowercase tags on items.",
     inputSchema:{type:"object",properties:{numbers:{type:"array",items:{type:"integer"}},add:{type:"array",items:{type:"string"}},remove:{type:"array",items:{type:"string"}}},required:["numbers"]},
     execute(a){let n=0;for(const x of a.numbers||[]){const i=byNo(x);if(!i)continue;const s=new Set(i.tags);(a.add||[]).forEach(t=>{t=String(t).trim().toLowerCase().slice(0,30);if(t)s.add(t)});(a.remove||[]).forEach(t=>s.delete(String(t).trim().toLowerCase()));i.tags=[...s].slice(0,20);saveItem(i);n++}return"Tagged "+n+" items."}},
@@ -388,7 +413,7 @@ function search(a){
     const d=i.taken||i.imported,c=caseOf(i),dt=new Date(d);
     if(a.case){if(String(a.case).toLowerCase()==="unsorted"){if(i.case)return false}else if(!c||c.name.toLowerCase()!==String(a.case).toLowerCase())return false}
     if(a.type&&i.type!==a.type)return false;if(tag&&!i.tags.includes(tag))return false;if(from&&d<from)return false;if(to&&d>=to)return false;
-    const hay=[i.filename,i.note,i.tags.join(" "),i.caption,i.summary,i.type,c?c.name:"unsorted",MON[dt.getMonth()],dt.getFullYear(),"#"+i.no].join(" ").toLowerCase();
+    const hay=[i.filename,i.note,i.tags.join(" "),i.caption,i.summary,i.type,c?c.name:"unsorted",MON[dt.getMonth()],dt.getFullYear(),"#"+i.no,i.text||""].join(" ").toLowerCase();
     return words.every(w=>hay.includes(w));
   }).sort((x,y)=>(y.taken||y.imported)-(x.taken||x.imported));
   const page=Math.max(1,a.page|0||1);return{total:list.length,page,items:list.slice((page-1)*30,page*30)};
@@ -450,7 +475,7 @@ async function ask(userText){
   const turns=[intro,...HIST(),{role:"user",content}];
   S.turns.push({role:"user",content:userText});if(S.turns.length>20)S.turns.splice(0,S.turns.length-20);
   RUN={};
-  const tools=[T.list_cases,T.search_items,T.show_items,T.get_item_image,T.save_caption,T.tag_items,T.set_note,T.propose_changes];
+  const tools=[T.list_cases,T.search_items,T.show_items,T.get_item_image,T.read_item_text,T.find_in_text,T.save_caption,T.tag_items,T.set_note,T.propose_changes];
   let reply=await nana(turns,{tools,tier:"default"});
   if(RUN.images&&RUN.images.length&&S.imgMax){
     const ids=RUN.images.slice(0,Math.min(5,S.imgMax));RUN={};
