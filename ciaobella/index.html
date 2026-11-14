@@ -97,7 +97,8 @@ textarea:focus{outline:0;border-color:var(--v);box-shadow:0 0 12px rgba(125,255,
 textarea::placeholder{color:var(--dim)}
 #plus{font-size:1.5em}
 #go.stop{color:var(--al);border-color:var(--al)}
-#fi{display:none}
+#fi{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none}
+label.btn{cursor:pointer;-webkit-user-select:none;user-select:none}
 
 /* viewer */
 #vw{position:fixed;inset:0;z-index:50;background:rgba(3,16,12,.97);display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
@@ -134,11 +135,11 @@ textarea::placeholder{color:var(--dim)}
   <footer class="gut">
     <div class="focus" id="focus"></div>
     <div class="comp">
-      <button class="btn" id="plus" type="button" aria-label="Add photos">+</button>
+      <label class="btn" id="plus" for="fi" role="button" tabindex="0" aria-label="Add photos">+</label>
       <textarea id="msg" rows="1" placeholder="Ask Nana" aria-label="Message to Nana" enterkeyhint="send"></textarea>
       <button class="btn" id="go" type="button" aria-label="Send">SEND</button>
     </div>
-    <input id="fi" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/gif,.heic,.heif" multiple>
+    <input id="fi" type="file" accept="image/*" multiple>
   </footer>
 </div>
 <div id="vw" hidden>
@@ -557,13 +558,15 @@ $("go").onclick=send;
 $("msg").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&matchMedia("(hover:hover)").matches){e.preventDefault();send()}});
 function fit(){const m=$("msg");m.style.height="auto";m.style.height=Math.min(m.scrollHeight,132)+"px"}
 $("msg").addEventListener("input",fit);
-$("plus").onclick=()=>$("fi").click();
+$("plus").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("fi").click()}});
 $("fi").onchange=async e=>{
-  const files=[...e.target.files];e.target.value="";if(!files.length||S.busy)return;
-  clearChips();S.busy=true;
-  const ids=await importFiles(files);S.busy=false;
-  if(ids.length){if(S.online&&S.sample)await intake(ids);else sys("Nana is offline. Saved unsorted.")}
-  status();
+  const files=[...e.target.files];e.target.value="";if(!files.length)return;
+  if(S.busy){sys("Nana is busy. Add them again in a moment.",true);return}
+  clearChips();S.busy=true;let ids=[];
+  try{ids=await importFiles(files)}catch(err){sys("Import failed: "+(err&&err.message||"unknown error"),true)}
+  S.busy=false;
+  try{if(ids.length){if(S.online&&S.sample)await intake(ids);else sys("Nana is offline. Saved unsorted.")}}catch(err){sys("Reading stopped: "+(err&&err.message||"unknown error"),true)}
+  S.busy=false;setBusy(false);status();
 };
 let armT=null;
 $("new").onclick=()=>{
