@@ -95,10 +95,7 @@ footer{border-top:1px solid var(--ln);background:var(--bg);padding-bottom:8px}
 textarea{flex:1;min-width:0;resize:none;background:var(--panel);color:var(--v);border:1px solid var(--ln);border-radius:6px;padding:10px 12px;font:16px/1.4 var(--mono);max-height:132px;min-height:44px;caret-color:var(--v)}
 textarea:focus{outline:0;border-color:var(--v);box-shadow:0 0 12px rgba(125,255,196,.35)}
 textarea::placeholder{color:var(--dim)}
-#plus{font-size:1.5em}
 #go.stop{color:var(--al);border-color:var(--al)}
-#fi{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none}
-label.btn{cursor:pointer;-webkit-user-select:none;user-select:none}
 
 /* viewer */
 #vw{position:fixed;inset:0;z-index:50;background:rgba(3,16,12,.97);display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
@@ -135,11 +132,9 @@ label.btn{cursor:pointer;-webkit-user-select:none;user-select:none}
   <footer class="gut">
     <div class="focus" id="focus"></div>
     <div class="comp">
-      <label class="btn" id="plus" for="fi" role="button" tabindex="0" aria-label="Add photos">+</label>
       <textarea id="msg" rows="1" placeholder="Ask Nana" aria-label="Message to Nana" enterkeyhint="send"></textarea>
       <button class="btn" id="go" type="button" aria-label="Send">SEND</button>
     </div>
-    <input id="fi" type="file" accept="image/*" multiple>
   </footer>
 </div>
 <div id="vw" hidden>
@@ -309,25 +304,6 @@ $("va").onclick=()=>{const id=VL[VI];if(!S.focus.includes(id))S.focus.push(id);d
  addEventListener("keydown",e=>{if($("vw").hidden)return;if(e.key==="Escape")$("vx").onclick();if(e.key==="ArrowRight")vgo(1);if(e.key==="ArrowLeft")vgo(-1)})}
 function drawFocus(){const f=$("focus");f.replaceChildren();for(const id of S.focus){const it=S.items.get(id);if(!it)continue;const b=el("button","fc","#"+it.no+" ×");b.type="button";b.onclick=()=>{S.focus=S.focus.filter(x=>x!==id);drawFocus()};f.append(b)}}
 
-/* ---------- import: EXIF, decode, thumbnails ---------- */
-function exif(buf){
-  try{const v=new DataView(buf);if(v.getUint16(0)!==0xFFD8)return{};let o=2;
-    while(o<v.byteLength-4){const m=v.getUint16(o);if(m===0xFFE1){if(v.getUint32(o+4)!==0x45786966)return{};return tiff(v,o+10)}if((m&0xFF00)!==0xFF00)break;o+=2+v.getUint16(o+2)}}catch(e){}
-  return{};
-}
-function tiff(v,b){
-  const le=v.getUint16(b)===0x4949,u16=o=>v.getUint16(o,le),u32=o=>v.getUint32(o,le),res={};
-  const ifd=off=>{const out={},n=u16(b+off);for(let i=0;i<n;i++){const e=b+off+2+i*12;out[u16(e)]={count:u32(e+4),vo:e+8}}return out};
-  const str=en=>{const o=en.count>4?b+u32(en.vo):en.vo;let s="";for(let i=0;i<en.count-1;i++)s+=String.fromCharCode(v.getUint8(o+i));return s};
-  const rat=en=>{const o=b+u32(en.vo),r=[];for(let i=0;i<en.count;i++)r.push(u32(o+i*8)/(u32(o+i*8+4)||1));return r};
-  const i0=ifd(u32(b+4));
-  if(i0[0x8769]){const ex=ifd(u32(i0[0x8769].vo)),d=ex[0x9003]||ex[0x9004];
-    if(d){const m=str(d).match(/(\d+):(\d+):(\d+) (\d+):(\d+):(\d+)/);if(m)res.taken=new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5],+m[6]).getTime()}}
-  if(i0[0x8825]){const g=ifd(u32(i0[0x8825].vo));
-    if(g[2]&&g[4]){const la=rat(g[2]),lo=rat(g[4]);let lat=la[0]+la[1]/60+la[2]/3600,lon=lo[0]+lo[1]/60+lo[2]/3600;
-      if(g[1]&&str(g[1])==="S")lat=-lat;if(g[3]&&str(g[3])==="W")lon=-lon;res.gps=[+lat.toFixed(5),+lon.toFixed(5)]}}
-  return res;
-}
 async function decodeImg(blob){
   try{return await createImageBitmap(blob)}catch(e){}
   return new Promise((res,rej)=>{const u=URL.createObjectURL(blob),i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error("decode"));i.src=u});
@@ -337,37 +313,25 @@ function scaled(src,w,h,max,q){
   const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0,c.width,c.height);
   return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("encode")),"image/jpeg",q));
 }
-const OKEXT=/\.(jpe?g|png|webp|heic|heif|gif)$/i;
-async function prepare(file){
-  if(file.size>25*1024*1024)throw new Error("over 25 MB");
-  if(!/^image\//.test(file.type)&&!OKEXT.test(file.name))throw new Error("not a supported image");
-  if(/pdf/i.test(file.type))throw new Error("PDFs are not supported");
-  const buf=await file.arrayBuffer();
-  const ex=/jpe?g/i.test(file.type)||/\.jpe?g$/i.test(file.name)?exif(buf):{};
-  const isHeic=/hei[cf]/i.test(file.type)||/\.hei[cf]$/i.test(file.name),isGif=/gif/i.test(file.type);
-  let src;try{src=await decodeImg(file)}catch(e){throw new Error(isHeic?"this browser cannot read HEIC":"could not decode")}
-  const w=src.width||src.naturalWidth,h=src.height||src.naturalHeight;
-  let full=file,mime=file.type||"image/jpeg",name=file.name||"image";
-  if(isHeic||isGif||!/^image\/(jpeg|png|webp)$/.test(mime)){full=await scaled(src,w,h,Math.max(w,h),0.92);mime="image/jpeg";name=name.replace(/\.[a-z0-9]+$/i,"")+".jpg"}
-  const th=await scaled(src,w,h,320,0.8);
-  if(src.close)src.close();
-  const isShot=/screen ?shot|screenshot|scr_|screen_/i.test(name)||(mime==="image/png"&&!ex.taken&&!ex.gps);
-  const type=/map/i.test(name)?"map":isShot?"screenshot":"photo";
-  const id=uid();
-  const item={id,no:S.meta.next++,case:null,type,filename:name,mime,size:full.size,w,h,taken:ex.taken||file.lastModified||null,imported:Date.now(),gps:ex.gps||null,note:"",tags:[],caption:"",summary:"",read:false};
-  return{item,full,th};
-}
-async function importFiles(files){
-  const ids=[],fails=[];
-  const prog=add({t:"s",text:"Encrypting "+files.length+" file"+(files.length===1?"":"s")+"..."},false);
-  for(const f of files){
-    try{const{item,full,th}=await prepare(f);await putBlob("f:"+item.id,full);await putBlob("t:"+item.id,th);S.items.set(item.id,item);await saveItem(item);ids.push(item.id)}
-    catch(e){fails.push((f.name||"file")+": "+(e.message||"failed"))}
+/* ---------- hard-coded archive: no upload in the app. Add entries here and republish. ----------
+   Each entry: {id, filename, mime, type, taken (ms), caption, summary, note, tags:[], case:"Name", gps:[lat,lon], data:"<base64 image>"}
+   New ids are encrypted into the archive on next open. An id that was seeded once is never re-added, so deletes stick. */
+const SEED=[];
+async function seedArchive(){
+  if(!Array.isArray(SEED)||!SEED.length)return;
+  const done=new Set(S.meta.seeded||[]);let n=0;
+  for(const s of SEED){
+    if(!s||!s.id||!s.data||done.has(s.id))continue;
+    try{
+      const bytes=Uint8Array.from(atob(s.data),c=>c.charCodeAt(0)),mime=s.mime||"image/jpeg",full=new Blob([bytes],{type:mime});
+      const src=await decodeImg(full),w=src.width||src.naturalWidth,h=src.height||src.naturalHeight,th=await scaled(src,w,h,320,0.8);
+      if(src.close)src.close();
+      let cs=null;if(s.case){cs=findCase(s.case);if(!cs){cs={id:uid(),name:String(s.case),created:Date.now(),updated:Date.now()};S.cases.set(cs.id,cs);await saveCase(cs)}}
+      const item={id:"seed-"+s.id,no:S.meta.next++,case:cs?cs.id:null,type:s.type||"photo",filename:s.filename||s.id,mime,size:bytes.length,w,h,taken:s.taken||null,imported:Date.now(),gps:s.gps||null,note:s.note||"",tags:s.tags||[],caption:s.caption||"",summary:s.summary||"",read:!!s.caption};
+      await putBlob("f:"+item.id,full);await putBlob("t:"+item.id,th);S.items.set(item.id,item);await saveItem(item);done.add(s.id);n++;
+    }catch(e){}
   }
-  prog.remove();saveChat();status();
-  if(ids.length)add({t:"strip",ids,label:"Added "+ids.length+(ids.length===1?" item":" items")+", unsorted."});
-  for(const f of fails)sys("Skipped "+f,true);
-  return ids;
+  S.meta.seeded=[...done];if(n)saveChat();
 }
 
 /* ---------- Nana ---------- */
@@ -558,16 +522,6 @@ $("go").onclick=send;
 $("msg").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&matchMedia("(hover:hover)").matches){e.preventDefault();send()}});
 function fit(){const m=$("msg");m.style.height="auto";m.style.height=Math.min(m.scrollHeight,132)+"px"}
 $("msg").addEventListener("input",fit);
-$("plus").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("fi").click()}});
-$("fi").onchange=async e=>{
-  const files=[...e.target.files];e.target.value="";if(!files.length)return;
-  if(S.busy){sys("Nana is busy. Add them again in a moment.",true);return}
-  clearChips();S.busy=true;let ids=[];
-  try{ids=await importFiles(files)}catch(err){sys("Import failed: "+(err&&err.message||"unknown error"),true)}
-  S.busy=false;
-  try{if(ids.length){if(S.online&&S.sample)await intake(ids);else sys("Nana is offline. Saved unsorted.")}}catch(err){sys("Reading stopped: "+(err&&err.message||"unknown error"),true)}
-  S.busy=false;setBusy(false);status();
-};
 let armT=null;
 $("new").onclick=()=>{
   const b=$("new");
@@ -584,7 +538,7 @@ $("new").onclick=()=>{
 /* ---------- welcome + boot ---------- */
 function welcome(){
   const n=S.items.size,u=unsorted().length,w=waiting().length,r=unread().length;
-  const t="Welcome back, Soff. "+(n?n+(n===1?" item":" items")+" on file, "+u+" unsorted, "+w+(w===1?" card":" cards")+" waiting.":"The archive is empty. Tap + to add photos, screenshots or maps.");
+  const t="Welcome back, Soff. "+(n?n+(n===1?" item":" items")+" on file, "+u+" unsorted, "+w+(w===1?" card":" cards")+" waiting.":"The archive is empty.");
   const m=el("div","msg n");m.append(el("span","pre","NANA> "),el("span","body",t));conv.append(m);
   const list=[];
   if(S.online){
@@ -604,6 +558,7 @@ async function boot(){
     else if(k==="chat"&&Array.isArray(v))S.chat=v;else if(k==="turns"&&Array.isArray(v))S.turns=v;else if(k==="meta")S.meta=v;
   }
   const max=Math.max(0,...[...S.items.values()].map(i=>i.no));if(S.meta.next<=max)S.meta.next=max+1;
+  await seedArchive();
   try{S.sample=window.claude&&claude.use?await claude.use("sample"):null}catch(e){S.sample=null}
   if(S.sample){try{const l=await S.sample.limits();S.imgMax=(l.images&&l.images.maxCount)||0}catch(e){S.imgMax=0}}
   S.online=!!S.sample;orb(S.online?"idle":"offline");
