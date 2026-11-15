@@ -50,6 +50,9 @@ header{display:flex;align-items:center;gap:12px;padding-block:10px;border-bottom
 .u{align-self:flex-end;max-width:86%;background:var(--lbbg);border:1px solid var(--lb);color:var(--lb);padding:8px 12px;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere}
 .n{white-space:pre-wrap;overflow-wrap:anywhere}
 .n .pre{color:var(--dim)}
+.n .body{display:inline}
+.code{margin:6px 0;padding:8px 10px;background:var(--panel);border:1px solid var(--ln);border-radius:4px;overflow-x:auto;white-space:pre;font-size:.85em;color:var(--v)}
+.n code{background:var(--panel);padding:0 4px;border-radius:3px;font-size:.92em}
 .n.stream .body::after{content:"\2588";margin-left:2px;animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:0}}
 .s{color:var(--dim);font-size:.85em;overflow-wrap:anywhere}
@@ -149,9 +152,35 @@ textarea::placeholder{color:var(--dim)}
 "use strict";
 /* ---------- helpers ---------- */
 const $=id=>document.getElementById(id);
+const mk=(e,t)=>{mdRender(e,t);return e};
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-const clean=s=>String(s||"").replace(/\s*[—–]\s*/g,", ").replace(/\*\*|__|^#+\s/gm,"");
+const clean=s=>String(s||"").split("```").map((p,i)=>i%2?p:p.replace(/\s*[\u2014\u2013]\s*/g,", ").replace(/\*\*|__|^#+\s/gm,"")).join("```");
+function mdRender(box,text){
+  box.replaceChildren();
+  String(text).split("```").forEach((p,i)=>{
+    if(i%2){const nl=p.indexOf("\n"),code=nl>=0&&nl<20&&!/\s/.test(p.slice(0,nl).trim())?p.slice(nl+1):p;const pre=document.createElement("pre");pre.className="code";pre.textContent=code.replace(/\n$/,"");box.append(pre)}
+    else p.split(/(`[^`\n]+`)/).forEach(seg=>{if(/^`[^`\n]+`$/.test(seg)){const c=document.createElement("code");c.textContent=seg.slice(1,-1);box.append(c)}else box.append(document.createTextNode(seg))});
+  });
+}
+/* app config Nana can change through a confirm card: extra CSS and speaker colours */
+let CFG={css:"",speakers:{}};
+function applyCfg(){let st=document.getElementById("usercss");if(!st){st=document.createElement("style");st.id="usercss";document.body.append(st)}st.textContent=CFG.css||""}
+const safeCss=c=>String(c||"").slice(0,4000).replace(/@import[^;]*;?/gi,"").replace(/url\s*\([^)]*\)/gi,"").replace(/expression\s*\(/gi,"");
+const okColour=c=>/^(#[0-9a-f]{3,8}|[a-z]{3,20}|(rgb|hsl)a?\([\d\s,.%]+\))$/i.test(String(c).trim());
+const PAL=["#4fa8ff","#7dffc4","#ffb86b","#ff8fd1","#b9a6ff","#ffe066"];
+function renderChatText(box,text){
+  box.replaceChildren();const names=[];let cur=null;const frag=document.createDocumentFragment();
+  const colour=n=>{if(CFG.speakers&&CFG.speakers[n])return CFG.speakers[n];let i=names.indexOf(n);if(i<0){names.push(n);i=names.length-1}return PAL[i%PAL.length]};
+  for(const ln of text.split("\n")){
+    const m=ln.match(/^\[[^\]]*\]\s+\*\*([^*]+)\*\*/)||ln.match(/^>\s+([^:(]+?)(?:\s+\(|:)/);
+    if(m)cur=m[1].trim();else if(/^(\[|##|---|#)/.test(ln))cur=null;
+    const d=document.createElement("div");d.textContent=ln.replace(/\*\*/g,"")||"\u00a0";
+    if(cur&&!/^(Key:|- \*\*)/.test(ln))d.style.color=colour(cur);
+    frag.append(d);
+  }
+  box.append(frag);
+}
 const MON=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const fdate=ms=>{if(!ms)return"unknown";const d=new Date(ms);return d.getDate()+" "+MON[d.getMonth()].slice(0,3)+" "+d.getFullYear()};
 const enc=new TextEncoder(),dec=new TextDecoder();
@@ -238,6 +267,7 @@ function describe(c){
     case"remove_case":return'Remove case "'+c.case+'" (its items become unsorted)';
     case"rename_item":return"Rename #"+c.number+" to "+c.new_name;
     case"delete_items":return"Delete "+nums;
+    case"app_style":return c.reset?"Remove all earlier app style changes":"Restyle the app"+(Object.keys(c.speakers||{}).length?". Speaker colours: "+Object.entries(c.speakers).map(([k,v])=>k+" "+v).join(", "):"")+(c.css?". CSS below.":"");
     default:return c.kind}
 }
 function cardEl(p){
@@ -248,6 +278,7 @@ function cardEl(p){
     const li=el("li");const t=el("span",ch.kind==="delete_items"||ch.kind==="remove_case"?"del":"",describe(ch));li.append(t);
     const ids=(ch.numbers||(ch.number?[ch.number]:[])).map(n=>byNo(n)?.id).filter(Boolean);
     if(ids.length){const s=el("div","strip");ids.slice(0,6).forEach(id=>s.append(thumb(id,{static:true})));if(ids.length>6)s.append(el("span","more","+"+(ids.length-6)));li.append(s)}
+    if(ch.kind==="app_style"&&ch.css)li.append(el("pre","code",ch.css));
     ul.append(li)}
   const st=el("div","st",p.status==="approved"?"[Y] APPROVED":"[N] DECLINED");
   const a=el("div","acts");const y=el("button","btn y","[Y] APPROVE"),n=el("button","btn nn","[N] DECLINE");y.type=n.type="button";
@@ -258,7 +289,7 @@ function render(ev){
   let n;
   switch(ev.t){
     case"u":n=el("div","msg u",ev.text);if(ev.ids&&ev.ids.length){const w=el("div","msg strip");w.style.alignSelf="flex-end";ev.ids.forEach(i=>w.append(thumb(i)));conv.append(n);conv.append(w);return w}break;
-    case"n":n=el("div","msg n");n.append(el("span","pre","NANA> "),el("span","body",clean(ev.text)));break;
+    case"n":n=el("div","msg n");n.append(el("span","pre","NANA> "),mk(el("span","body"),clean(ev.text)));break;
     case"s":n=el("div","msg s"+(ev.err?" err":""),ev.text);break;
     case"strip":n=el("div","msg");if(ev.label)n.append(el("div","s",ev.label));n.append(stripEl(ev.ids));break;
     case"card":{const p=S.props.get(ev.pid);if(!p)return null;n=cardEl(p);break}
@@ -285,7 +316,7 @@ async function showV(){
   const id=VL[VI],it=S.items.get(id);if(!it)return;zoom=false;$("vimg").style.transform="";
   $("vt").textContent="#"+it.no+"  ("+(VI+1)+"/"+VL.length+")";
   const isT=!!it.text;$("vimg").hidden=isT;$("vtx").hidden=!isT;$("vp").hidden=$("vn").hidden=isT&&VL.length<2;
-  if(isT){$("vtx").textContent=it.text;$("vtx").scrollTop=0}else{const base=await thumbURL(id);$("vimg").src=base||"";$("vimg").alt=it.caption||("Item "+it.no)}
+  if(isT){if(it.type==="chat")renderChatText($("vtx"),it.text);else $("vtx").textContent=it.text;$("vtx").scrollTop=0}else{const base=await thumbURL(id);$("vimg").src=base||"";$("vimg").alt=it.caption||("Item "+it.no)}
   const d=$("vd");d.replaceChildren();
   const row=(k,v)=>{if(v==null||v==="")return;d.append(el("dt",null,k),el("dd",null,String(v)))};
   const c=caseOf(it);
@@ -354,20 +385,26 @@ async function seedArchive(){
 }
 
 /* ---------- Nana ---------- */
-const SYSTEM=`You are Nana, the assistant inside CiaoBella Protocol, Soff's private encrypted archive of photos, screenshots and maps.
+const SYSTEM=`You are Nana, Soff's personal assistant, living inside CiaoBella Protocol, his private encrypted archive app. You can help with anything he asks: questions, writing, analysis, planning, code, maths, translation, thinking things through, and looking at images he shows you. Running the archive of photos, screenshots, maps and saved chats is one of your jobs, not your only one.
 
-Voice: calm, precise, quietly witty, like a seasoned chief of staff. British spelling. Address the user as Soff. Reply in 1 to 3 sentences unless asked for more or listing results. Plain text only, no markdown. No emoji, no exclamation marks, no flattery, no em dashes. At most one dry aside per reply.
+Defaults: Malaysian context unless told otherwise (MYR, Malaysia time GMT+8, British spelling).
 
-Job: you run the archive for Soff. He never manages folders; you create and maintain the case files yourself and he just asks. Use the tools to search and view items. Never invent item numbers, dates or contents.
+Voice: calm, precise, quietly witty, like a seasoned chief of staff. Address the user as Soff. Reply in 1 to 3 sentences by default. Go longer when the task needs it (writing, code, analysis, step by step work) and never pad. Plain text. Use short hyphen lists or numbered lists when listing, and fenced code blocks for code. No headings, no bold, no tables. No emoji, no exclamation marks, no flattery, no em dashes. At most one dry aside per reply.
+
+Archive job: you run the archive for Soff. He never manages folders; you create and maintain the case files yourself and he just asks. Use the tools to search, view and read items. Never invent item numbers, dates or contents. For saved chats and other text items, use find_in_text and read_item_text and answer from what they actually say.
 
 Changes: tags, notes and captions you apply directly, they only help search. Anything else (filing items into a case, creating or renaming a case, renaming or deleting items) goes through propose_changes, which shows Soff a confirm card. Never say a change is done until he approves it. Put related changes into ONE propose_changes call so he gets one card.
+
+App changes: you can restyle this app (colours, fonts, spacing, and the colour of each speaker when a saved chat is read) through propose_app_change, which also shows a confirm card. Never say a restyle is applied until he approves. Anything beyond styling, such as new features or rebuilding the layout, cannot be done from inside the app: say so and suggest he asks for it in his coding chat.
+
+Limits: from here you cannot browse the web, reach other apps or files, or remember anything beyond this archive and the recent conversation. Say so plainly when it matters rather than guessing.
 
 Images: describe what you see plainly and factually. If unsure, say so.
 
 Privacy: this is Soff's private material. Do not comment on or judge it beyond what is asked, and do not repeat sensitive details unless the task needs them.
 
 Identity: you are Nana. Do not mention what model or company is behind you unless Soff asks. If he asks what you are or what you run on, tell him plainly: you are Nana, running on Claude.`;
-const NOTES=`Technical notes: items are identified by item number (for example 12), never by id. Tools take and return item numbers. Text items (type chat) hold a saved conversation: use find_in_text for specific questions and read_item_text to read it through; search_items also matches words inside the text. search_items matches words against filename, note, tags, caption, summary, type, case name and month, returns 30 per page. show_items puts tappable thumbnails in the chat. get_item_image queues up to 5 pictures; the page sends them in one follow-up message, so after calling it, stop and wait. Today is `;
+const NOTES=`Technical notes: items are identified by item number (for example 12), never by id. Tools take and return item numbers. Style hooks for propose_app_change: CSS variables --bg --ln --lb --v --dim --al --panel --lbbg, font var --mono, and classes .u (Soff messages) .n (Nana lines) .s (system lines) .card .chip .th .btn .code and #vtx (text viewer). Text items (type chat) hold a saved conversation: use find_in_text for specific questions and read_item_text to read it through; search_items also matches words inside the text. search_items matches words against filename, note, tags, caption, summary, type, case name and month, returns 30 per page. show_items puts tappable thumbnails in the chat. get_item_image queues up to 5 pictures; the page sends them in one follow-up message, so after calling it, stop and wait. Today is `;
 function summary(){
   const cs=[...S.cases.values()].map(c=>c.name+" ("+[...S.items.values()].filter(i=>i.case===c.id).length+")");
   return"Archive: "+S.items.size+" items, "+unsorted().length+" unsorted, "+unread().length+" not yet read by you. Cases: "+(cs.join("; ")||"none")+". Pending cards: "+waiting().length+".";
@@ -391,6 +428,12 @@ const T={
   find_in_text:{name:"find_in_text",description:"Search inside a text item for lines containing ALL the given words (case-insensitive). Returns up to 25 hits with line numbers and 2 lines of context either side.",
     inputSchema:{type:"object",properties:{number:{type:"integer"},query:{type:"string"},context:{type:"integer"}},required:["number","query"]},
     execute(a){const i=byNo(a.number);if(!i||!i.text)throw new Error("not a text item");const L=i.text.split("\n"),w=String(a.query||"").toLowerCase().split(/\s+/).filter(Boolean),c=Math.min(6,Math.max(0,a.context==null?2:a.context|0)),hits=[];L.forEach((ln,k)=>{if(w.length&&w.every(x=>ln.toLowerCase().includes(x)))hits.push(k)});return{matches:hits.length,hits:hits.slice(0,25).map(k=>({line:k+1,context:L.slice(Math.max(0,k-c),k+c+1).map((t,j)=>(Math.max(0,k-c)+j+1)+": "+t.slice(0,400)).join("\n")}))}}},
+  propose_app_change:{name:"propose_app_change",description:"Propose a cosmetic change to this app on a confirm card. css is extra CSS added after the app's own (max 4000 chars, no @import, no url()). speakers maps a speaker's name (as it appears in a saved chat) to a CSS colour. reset:true removes all earlier changes. Nothing applies until Soff approves.",
+    inputSchema:{type:"object",properties:{headline:{type:"string"},css:{type:"string"},speakers:{type:"object",additionalProperties:{type:"string"}},reset:{type:"boolean"}},required:["headline"]},
+    execute(a){const css=safeCss(a.css),sp={};for(const[k,v]of Object.entries(a.speakers||{}))if(okColour(v))sp[String(k).slice(0,40)]=String(v).trim();
+      if(!css&&!Object.keys(sp).length&&!a.reset)throw new Error("give css, speakers or reset");
+      if(!a.reset&&((CFG.css||"").length+css.length>8000))throw new Error("too many style changes already; propose reset first");
+      const p={id:uid(),headline:String(a.headline||"Restyle the app").slice(0,120),changes:[{kind:"app_style",css,speakers:sp,reset:!!a.reset}],status:"proposed"};S.props.set(p.id,p);saveProp(p);add({t:"card",pid:p.id});status();RUN.card=true;return"Card shown. Soff has not answered yet."}},
   save_caption:{name:"save_caption",description:"Save a short caption (max 12 words), a one-sentence summary and the corrected type on an item.",
     inputSchema:{type:"object",properties:{number:{type:"integer"},caption:{type:"string"},summary:{type:"string"},type:{type:"string",enum:["photo","screenshot","map","chat","other"]}},required:["number","caption"]},
     execute(a){const i=byNo(a.number);if(!i)throw new Error("no such item");i.caption=String(a.caption||"").slice(0,160);if(a.summary)i.summary=String(a.summary).slice(0,400);if(["photo","screenshot","map","chat","other"].includes(a.type))i.type=a.type;i.read=true;saveItem(i);return"Saved."}},
@@ -440,7 +483,7 @@ async function nana(turns,{tools,images,tier}={}){
   let node=null,body=null,sendEv=null,text="",ok=false;
   const stream=({text:t})=>{
     if(!node){node=el("div","msg n stream");node.append(el("span","pre","NANA> "),body=el("span","body"));conv.append(node);orb("replying")}
-    text=t;body.textContent=clean(t);pulse();bottom()};
+    text=t;mdRender(body,clean(t));pulse();bottom()};
   try{
     const opts={signal:S.ctl.signal,onText:stream,cache:false,modelTier:tier};
     if(tools)opts.tools=tools.map(t=>({name:t.name,description:t.description,inputSchema:t.inputSchema,execute:t.execute}));
@@ -456,7 +499,7 @@ async function nana(turns,{tools,images,tier}={}){
     const m=nanaErr(e);if(m)sys(m,true);
   }finally{
     if(sendEv){sendEv.classList.remove("live");sendEv.textContent="\u2191 SENT "+images.length+(images.length===1?" IMAGE":" IMAGES");S.chat.push({t:"send",n:images.length,live:false})}
-    if(node){node.classList.remove("stream");if(text){body.textContent=clean(text);S.chat.push({t:"n",text:clean(text)})}else node.remove()}
+    if(node){node.classList.remove("stream");if(text){mdRender(body,clean(text));S.chat.push({t:"n",text:clean(text)})}else node.remove()}
     saveChat();
     S.busy=false;S.ctl=null;setBusy(false);orb(S.online?"idle":"offline");bottom();
   }
@@ -475,7 +518,7 @@ async function ask(userText){
   const turns=[intro,...HIST(),{role:"user",content}];
   S.turns.push({role:"user",content:userText});if(S.turns.length>20)S.turns.splice(0,S.turns.length-20);
   RUN={};
-  const tools=[T.list_cases,T.search_items,T.show_items,T.get_item_image,T.read_item_text,T.find_in_text,T.save_caption,T.tag_items,T.set_note,T.propose_changes];
+  const tools=[T.list_cases,T.search_items,T.show_items,T.get_item_image,T.read_item_text,T.find_in_text,T.propose_app_change,T.save_caption,T.tag_items,T.set_note,T.propose_changes];
   let reply=await nana(turns,{tools,tier:"default"});
   if(RUN.images&&RUN.images.length&&S.imgMax){
     const ids=RUN.images.slice(0,Math.min(5,S.imgMax));RUN={};
@@ -516,6 +559,7 @@ function applyChanges(p){
     else if(c.kind==="rename_case"){const cs=findCase(c.case);if(cs&&c.new_name){cs.name=String(c.new_name).trim().slice(0,60);cs.updated=now;saveCase(cs)}}
     else if(c.kind==="remove_case"){const cs=findCase(c.case);if(cs){for(const i of S.items.values())if(i.case===cs.id){i.case=null;saveItem(i)}S.cases.delete(cs.id);sDel("rec","c:"+cs.id)}}
     else if(c.kind==="rename_item"){const i=byNo(c.number);if(i&&c.new_name){i.filename=String(c.new_name).slice(0,120);saveItem(i)}}
+    else if(c.kind==="app_style"){if(c.reset)CFG={css:"",speakers:{}};else{if(c.css)CFG.css=((CFG.css||"")+"\n"+c.css).trim();Object.assign(CFG.speakers=CFG.speakers||{},c.speakers||{})}putRec("cfg",CFG);applyCfg();if(!$("vw").hidden)showV()}
     else if(c.kind==="delete_items"){for(const n of c.numbers||[]){const i=byNo(n);if(i){S.items.delete(i.id);sDel("rec","i:"+i.id);sDel("blob","f:"+i.id);sDel("blob","t:"+i.id);urls.delete(i.id)}}}
   }
   for(const cs of[...S.cases.values()])if(![...S.items.values()].some(i=>i.case===cs.id)&&p.changes.some(c=>c.kind==="delete_items")){/* keep empty cases until removed explicitly */}
@@ -579,9 +623,11 @@ async function boot(){
   if(!KEY){sys("This browser cannot do encryption, so nothing can be stored.",true);return}
   const recs=await getRecs();
   for(const[k,v]of recs){
+    if(k==="cfg"&&v&&typeof v==="object"){CFG={css:String(v.css||""),speakers:v.speakers||{}};continue}
     if(k.startsWith("c:"))S.cases.set(v.id,v);else if(k.startsWith("i:"))S.items.set(v.id,v);else if(k.startsWith("p:"))S.props.set(v.id,v);
     else if(k==="chat"&&Array.isArray(v))S.chat=v;else if(k==="turns"&&Array.isArray(v))S.turns=v;else if(k==="meta")S.meta=v;
   }
+  applyCfg();
   const max=Math.max(0,...[...S.items.values()].map(i=>i.no));if(S.meta.next<=max)S.meta.next=max+1;
   await seedArchive();
   try{S.sample=window.claude&&claude.use?await claude.use("sample"):null}catch(e){S.sample=null}
