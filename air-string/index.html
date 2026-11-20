@@ -2,7 +2,11 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#07040f">
 <title>Air String</title>
 <style>
   :root { --ink:#fff; --panel:rgba(18,12,40,.62); }
@@ -11,30 +15,37 @@
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden; touch-action:none; }
   canvas { position:fixed; inset:0; width:100%; height:100%; display:block; }
   #start { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:18px; text-align:center; padding:24px;
+    gap:16px; text-align:center; padding:24px;
     background:radial-gradient(ellipse at 50% 40%, #2a1160 0%, #0b0618 70%); z-index:10; }
-  #start h1 { font-size:clamp(48px,11vw,110px); margin:0; letter-spacing:.02em;
+  #start h1 { font-size:clamp(44px,10vw,100px); margin:0; letter-spacing:.02em;
     background:linear-gradient(90deg,#ff9a4d,#ff4fd8,#59c8ff); -webkit-background-clip:text; background-clip:text; color:transparent;
     filter:drop-shadow(0 0 24px rgba(255,90,220,.45)); }
-  #start p { margin:0; font-size:clamp(18px,3vw,28px); opacity:.92; max-width:34ch; }
-  #start small { opacity:.65; font-size:clamp(13px,1.8vw,16px); max-width:44ch; }
-  #startBtn { font-size:clamp(26px,5vw,44px); padding:.5em 1.6em; border:0; border-radius:999px; cursor:pointer;
+  #start p { margin:0; font-size:clamp(17px,2.8vw,26px); opacity:.92; max-width:36ch; }
+  #start p.sub { font-size:clamp(14px,2.2vw,19px); opacity:.75; }
+  #start small { opacity:.65; font-size:clamp(12px,1.8vw,15px); max-width:44ch; }
+  .row { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+  .big { font-size:clamp(22px,4.4vw,38px); padding:.5em 1.5em; border:0; border-radius:999px; cursor:pointer;
     color:#1a0838; font-weight:800; background:linear-gradient(90deg,#ffd36b,#ff8ad8);
     box-shadow:0 0 40px rgba(255,120,220,.55); }
-  #startBtn:active { transform:scale(.96); }
-  #startBtn[disabled] { opacity:.6; cursor:wait; }
-  #err { color:#ffb4b4; font-size:clamp(15px,2.2vw,20px); max-width:46ch; min-height:1.2em; }
-  #chip { position:fixed; left:50%; top:max(16px,env(safe-area-inset-top)); transform:translateX(-50%);
-    padding:.5em 1.2em; border-radius:999px; background:var(--panel); backdrop-filter:blur(6px);
-    font-size:clamp(20px,3.4vw,32px); font-weight:700; z-index:5; pointer-events:none; white-space:nowrap; }
-  #controls { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:max(12px,env(safe-area-inset-bottom));
-    display:flex; gap:10px; z-index:5; }
-  #controls button { min-width:64px; height:64px; padding:0 14px; border:0; border-radius:20px; cursor:pointer;
-    background:var(--panel); backdrop-filter:blur(6px); color:#fff; font-size:15px; font-weight:700;
+  .big.alt { background:rgba(255,255,255,.14); color:#fff; box-shadow:none; border:2px solid rgba(255,255,255,.35); }
+  .big:active { transform:scale(.96); }
+  .big[disabled] { opacity:.6; cursor:wait; }
+  #err { color:#ffb4b4; font-size:clamp(14px,2.2vw,19px); max-width:46ch; min-height:1.2em; }
+  #chip { position:fixed; left:50%; top:max(14px,env(safe-area-inset-top)); transform:translateX(-50%);
+    padding:.45em 1.1em; border-radius:999px; background:var(--panel); backdrop-filter:blur(6px);
+    font-size:clamp(18px,3.2vw,30px); font-weight:700; z-index:5; pointer-events:none; white-space:nowrap; max-width:96vw; overflow:hidden; text-overflow:ellipsis; }
+  #controls { position:fixed; right:max(10px,env(safe-area-inset-right)); bottom:max(10px,env(safe-area-inset-bottom));
+    display:flex; gap:8px; z-index:5; }
+  #controls button, #instPanel button { min-width:58px; height:62px; padding:0 10px; border:0; border-radius:18px; cursor:pointer;
+    background:var(--panel); backdrop-filter:blur(6px); color:#fff; font-size:13px; font-weight:700;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
-  #controls button span.i { font-size:26px; line-height:1; }
+  #controls button .i, #instPanel button .i { font-size:24px; line-height:1; }
   #controls button.off { opacity:.5; }
-  #controls button:active { transform:scale(.94); }
+  #controls button:active, #instPanel button:active { transform:scale(.94); }
+  #instPanel { position:fixed; right:max(10px,env(safe-area-inset-right)); bottom:calc(max(10px,env(safe-area-inset-bottom)) + 72px);
+    display:flex; gap:8px; z-index:6; padding:8px; border-radius:22px; background:rgba(10,6,26,.8); backdrop-filter:blur(8px); }
+  #instPanel button { min-width:64px; height:70px; }
+  #instPanel button.sel { outline:3px solid #ffd36b; background:rgba(255,211,107,.18); }
   #debug { position:fixed; left:8px; bottom:8px; font:12px/1.4 ui-monospace,monospace; background:rgba(0,0,0,.6);
     padding:6px 8px; border-radius:6px; z-index:5; white-space:pre; display:none; pointer-events:none; }
   .hidden { display:none !important; }
@@ -47,17 +58,24 @@
 <div id="start">
   <h1>Air String</h1>
   <p>Pinch both hands to make a string.</p>
-  <button id="startBtn">Start</button>
+  <p class="sub">Or press your hands together like a prayer, then pull them apart for five strings.</p>
+  <div class="row">
+    <button id="startBtn" class="big">Start</button>
+    <button id="startFsBtn" class="big alt">Start full screen</button>
+  </div>
   <div id="err"></div>
   <small>Everything stays on this device. The camera feed is never recorded, uploaded or saved.</small>
 </div>
 
 <div id="chip" class="hidden">Loading…</div>
+<div id="instPanel" class="hidden"></div>
 <div id="controls" class="hidden">
-  <button id="bMute"  title="Mute"><span class="i">🔊</span>Sound</button>
-  <button id="bSnap"  title="Snap to scale"><span class="i">🎵</span>Snap</button>
-  <button id="bSkel"  title="Hand skeleton"><span class="i">🖐️</span>Hands</button>
-  <button id="bTheme" title="Colour theme"><span class="i">🎨</span>Colour</button>
+  <button id="bVoice" title="Instrument"><span class="i">🎹</span><span class="t">Synth</span></button>
+  <button id="bMute"  title="Mute"><span class="i">🔊</span><span class="t">Sound</span></button>
+  <button id="bSnap"  title="Snap to scale"><span class="i">🎵</span><span class="t">Snap</span></button>
+  <button id="bSkel"  title="Hand skeleton"><span class="i">🖐️</span><span class="t">Hands</span></button>
+  <button id="bTheme" title="Colour theme"><span class="i">🎨</span><span class="t">Neon</span></button>
+  <button id="bFull"  title="Full screen"><span class="i">⛶</span><span class="t">Full</span></button>
 </div>
 <div id="debug"></div>
 
@@ -70,16 +88,28 @@ const MP_MODEL   = "https://storage.googleapis.com/mediapipe-models/hand_landmar
 
 const PINCH_ON = 0.25, PINCH_OFF = 0.35;      // thumb-index distance / hand size
 const HAND_GRACE_MS = 200;                     // keep a pinch alive through tiny tracking drops
-const N_PTS = 20;                              // string chain length
+const N_PTS = 20;                              // single string chain length
+const M_PTS = 14;                              // chain length for each of the five strings
 const LEN_MIN = 0.08, LEN_MAX = 0.9;           // string length as fraction of screen diagonal
 const SCALE_STEPS = [0, 2, 4, 7, 9, 12];       // C major pentatonic (+ octave)
+const PENT = [0, 2, 4, 7, 9];                  // thumb..pinky notes in five-string mode: C D E G A
 const BASE_MIDI = 60, SPAN = 24;               // C4 up two octaves
 const MASTER_CAP = 0.55;                       // volume cap
 const NOTE_NAMES = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+const FINGERS = [4, 8, 12, 16, 20];            // thumb, index, middle, ring, pinky tips
+const MULTI_ARM = 0.6, MULTI_OPEN = 1.0, MULTI_CLOSE = 0.5, ARM_WINDOW_MS = 1800;  // five-string gesture, in hand sizes
 const THEMES = [
   { name:"Neon",  warm:18,  cool:200, sat:100, lit:60 },
   { name:"Candy", warm:330, cool:285, sat:95,  lit:70 },
   { name:"Ocean", warm:160, cool:235, sat:90,  lit:62 },
+];
+// Five sounds. "sustain" ones hum while you hold the string; "pluck" ones ring on each new note.
+const INSTRUMENTS = [
+  { id:"synth",  name:"Synth",  icon:"🎹", mode:"sustain", w1:"sine", w2:"triangle", det:7,  q:1.2, lo:500, hi:4000, atk:0.027, rel:0.13, vib:45, baseVib:0,  mix:[0.65,0.35], note:{ atk:0.01, dec:1.4, cut:2400 } },
+  { id:"violin", name:"Violin", icon:"🎻", mode:"sustain", w1:"sawtooth", w2:"sawtooth", det:11, q:0.7, lo:700, hi:3200, atk:0.075, rel:0.16, vib:55, baseVib:14, mix:[0.3,0.3],   note:{ atk:0.09, dec:1.6, cut:2600 } },
+  { id:"harp",   name:"Harp",   icon:"🎶", mode:"pluck", kind:"harp" },
+  { id:"guitar", name:"Guitar", icon:"🎸", mode:"pluck", kind:"guitar" },
+  { id:"bells",  name:"Bells",  icon:"🔔", mode:"pluck", kind:"bell" },
 ];
 const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
   [9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
@@ -87,14 +117,20 @@ const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],
 /* ============================ dom ============================ */
 const $ = id => document.getElementById(id);
 const canvas = $("c"), ctx = canvas.getContext("2d");
-const video = $("v"), chip = $("chip"), startEl = $("start"), startBtn = $("startBtn"), errEl = $("err");
-const debugEl = $("debug");
+const video = $("v"), chip = $("chip"), startEl = $("start"), startBtn = $("startBtn"), startFsBtn = $("startFsBtn"), errEl = $("err");
+const debugEl = $("debug"), instPanel = $("instPanel");
 const DEBUG = new URLSearchParams(location.search).has("debug");
-if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { hands = h; }; }
+if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { hands = h; }; window.__dbg = () => ({ M, S, voice }); }
 
-const state = { muted:false, snap:true, skeleton:true, theme:0 };
+const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0 };
 try { Object.assign(state, JSON.parse(localStorage.getItem("airstring") || "{}")); } catch {}
+if (!INSTRUMENTS[state.inst]) state.inst = 0;
+if (!THEMES[state.theme]) state.theme = 0;
 const save = () => { try { localStorage.setItem("airstring", JSON.stringify(state)); } catch {} };
+const inst = () => INSTRUMENTS[state.inst];
+
+let toast = "", toastUntil = 0;
+const showToast = (msg, ms = 4500) => { toast = msg; toastUntil = performance.now() + ms; };
 
 let W = 0, H = 0, DPR = 1, DIAG = 1;
 function resize() {
@@ -110,6 +146,8 @@ const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const lerp  = (a, b, t) => a + (b - a) * t;
 const rand  = (a, b) => a + Math.random() * (b - a);
 const easeOut = t => 1 - Math.pow(1 - t, 3);
+const midiToFreq = m => 440 * Math.pow(2, (m - 69) / 12);
+const noteName = m => NOTE_NAMES[((Math.round(m) % 12) + 12) % 12];
 
 // One Euro filter: smooth when slow, responsive when fast
 class OneEuro {
@@ -132,17 +170,20 @@ class Voice {
   constructor() {
     const AC = window.AudioContext || window.webkitAudioContext;
     const a = this.ctx = new AC();
+    // continuous voice (synth / violin while a single string is held)
     this.o1 = a.createOscillator(); this.o1.type = "sine";
     this.o2 = a.createOscillator(); this.o2.type = "triangle"; this.o2.detune.value = 7;
     this.mix1 = a.createGain(); this.mix1.gain.value = 0.65;
     this.mix2 = a.createGain(); this.mix2.gain.value = 0.35;
     this.filter = a.createBiquadFilter(); this.filter.type = "lowpass"; this.filter.Q.value = 1.2; this.filter.frequency.value = 900;
     this.amp = a.createGain(); this.amp.gain.value = 0;
-    // vibrato LFO -> detune of both oscillators
     this.lfo = a.createOscillator(); this.lfo.frequency.value = 5.6;
     this.lfoDepth = a.createGain(); this.lfoDepth.gain.value = 0;
     this.lfo.connect(this.lfoDepth); this.lfoDepth.connect(this.o1.detune); this.lfoDepth.connect(this.o2.detune);
-    // soft space: short feedback delay + synthetic reverb
+    // one-shot notes (plucks, strums, bells) go through their own filter
+    this.noteFilter = a.createBiquadFilter(); this.noteFilter.type = "lowpass"; this.noteFilter.Q.value = 0.7; this.noteFilter.frequency.value = 6000;
+    // shared space: short feedback delay + synthetic reverb
+    this.sendIn = a.createGain();
     this.dry = a.createGain(); this.dry.gain.value = 0.8;
     this.delay = a.createDelay(1); this.delay.delayTime.value = 0.23;
     this.fb = a.createGain(); this.fb.gain.value = 0.32;
@@ -157,13 +198,14 @@ class Voice {
 
     this.o1.connect(this.mix1); this.o2.connect(this.mix2);
     this.mix1.connect(this.filter); this.mix2.connect(this.filter);
-    this.filter.connect(this.amp);
-    this.amp.connect(this.dry); this.amp.connect(this.delay); this.amp.connect(this.verb);
+    this.filter.connect(this.amp); this.amp.connect(this.sendIn);
+    this.noteFilter.connect(this.sendIn);
+    this.sendIn.connect(this.dry); this.sendIn.connect(this.delay); this.sendIn.connect(this.verb);
     this.verb.connect(this.verbOut);
     this.dry.connect(this.comp); this.delayOut.connect(this.comp); this.verbOut.connect(this.comp);
     this.comp.connect(this.master); this.master.connect(a.destination);
     this.o1.start(); this.o2.start(); this.lfo.start();
-    this.freq = 440; this.on = false;
+    this.freq = 440; this.on = false; this.ksCache = new Map(); this.inst = INSTRUMENTS[0];
   }
   makeImpulse(seconds, decay) {
     const a = this.ctx, len = Math.floor(a.sampleRate * seconds), buf = a.createBuffer(2, len, a.sampleRate);
@@ -173,10 +215,19 @@ class Voice {
   }
   resume() { if (this.ctx.state !== "running") return this.ctx.resume(); }
   setMuted(m) { this.master.gain.setTargetAtTime(m ? 0 : MASTER_CAP, this.ctx.currentTime, 0.05); }
-  // called every frame while the string is held
+  setInstrument(ins) {
+    this.release(); this.inst = ins;
+    if (ins.mode === "sustain") {
+      this.o1.type = ins.w1; this.o2.type = ins.w2; this.o2.detune.value = ins.det; this.filter.Q.value = ins.q;
+      this.mix1.gain.value = ins.mix[0]; this.mix2.gain.value = ins.mix[1];
+    }
+  }
+  setNoteCutoff(c) { this.noteFilter.frequency.setTargetAtTime(c, this.ctx.currentTime, 0.05); }
+
+  // ---- continuous voice, called every frame while a single string is held ----
   update(freq, vol, cutoff, vibCents) {
-    const t = this.ctx.currentTime;
-    if (!this.on) {                                   // note start: jump pitch, then fade in (no click, amp is at 0)
+    const t = this.ctx.currentTime, ins = this.inst;
+    if (!this.on) {                                   // note start: jump pitch, then fade in (amp is at 0, so no click)
       this.on = true;
       this.o1.frequency.cancelScheduledValues(t); this.o2.frequency.cancelScheduledValues(t);
       this.o1.frequency.setValueAtTime(freq, t);  this.o2.frequency.setValueAtTime(freq, t);
@@ -185,21 +236,73 @@ class Voice {
     this.o1.frequency.setTargetAtTime(freq, t, 0.03);
     this.o2.frequency.setTargetAtTime(freq, t, 0.03);
     this.filter.frequency.setTargetAtTime(cutoff, t, 0.05);
-    this.amp.gain.setTargetAtTime(vol, t, 0.027);     // ~80 ms attack
+    this.amp.gain.setTargetAtTime(vol, t, ins.atk);
     this.lfoDepth.gain.setTargetAtTime(vibCents, t, 0.08);
     this.freq = freq;
   }
-  // string let go: pitch drops a touch (twang) and fades over ~400 ms
-  release() {
+  release() {                                         // fade out, with a small pitch drop (twang)
     if (!this.on) return;
     this.on = false;
-    const t = this.ctx.currentTime;
+    const t = this.ctx.currentTime, ins = this.inst;
     this.o1.frequency.cancelScheduledValues(t); this.o2.frequency.cancelScheduledValues(t);
     this.o1.frequency.setTargetAtTime(this.freq * 0.72, t, 0.09);
     this.o2.frequency.setTargetAtTime(this.freq * 0.72, t, 0.09);
     this.amp.gain.cancelScheduledValues(t);
-    this.amp.gain.setTargetAtTime(0, t, 0.13);        // ~400 ms release
+    this.amp.gain.setTargetAtTime(0, t, ins.rel || 0.13);
     this.lfoDepth.gain.setTargetAtTime(0, t, 0.1);
+  }
+
+  // ---- one-shot notes: plucked strings, strums, bells ----
+  ksBuffer(kind, freq) {                              // Karplus-Strong plucked string, rendered once per pitch
+    const sr = this.ctx.sampleRate, N = Math.max(2, Math.round(sr / freq)), key = kind + N;
+    let hit = this.ksCache.get(key); if (hit) return hit;
+    const T60 = kind === "harp" ? 3.0 : 2.0, dur = kind === "harp" ? 3.0 : 2.2;
+    const len = Math.floor(sr * dur), buf = this.ctx.createBuffer(1, len, sr), y = buf.getChannelData(0);
+    const d = Math.min(0.9996, Math.pow(0.001, N / (sr * T60)));
+    for (let i = 0; i < N; i++) y[i] = Math.random() * 2 - 1;
+    if (kind === "harp") { for (let p = 0; p < 2; p++) for (let i = N - 1; i > 0; i--) y[i] = (y[i] + y[i-1]) / 2; }   // softer pluck
+    else { const k = Math.max(1, Math.floor(N * 0.17)); for (let i = N - 1; i >= k; i--) y[i] -= 0.7 * y[i-k]; }       // pick position comb
+    for (let i = N; i < len; i++) { const a = y[i-N], b = i - N - 1 >= 0 ? y[i-N-1] : a; y[i] = d * 0.5 * (a + b); }
+    let pk = 1e-6; for (let i = 0; i < len; i++) pk = Math.max(pk, Math.abs(y[i]));
+    const fade = Math.floor(sr * 0.06);
+    for (let i = 0; i < len; i++) { y[i] = y[i] / pk * 0.9; if (i > len - fade) y[i] *= (len - i) / fade; }
+    hit = { buf, rate: (sr / (N + 0.5)) };            // play back at freq / rate to correct integer-length pitch error
+    if (this.ksCache.size > 160) this.ksCache.clear();
+    this.ksCache.set(key, hit); return hit;
+  }
+  playNote(ins, midi, vel, delay = 0) {
+    const a = this.ctx, t = a.currentTime + 0.012 + delay, f = midiToFreq(midi);
+    const g = a.createGain(); g.connect(this.noteFilter);
+    let src = null;
+    const cleanup = n => { n.onended = () => { try { g.disconnect(); } catch {} }; };
+    if (ins.mode === "sustain") {                     // swell and decay, like a bowed or synth note
+      const n = ins.note;
+      const o1 = a.createOscillator(), o2 = a.createOscillator(), lp = a.createBiquadFilter();
+      o1.type = ins.w1; o2.type = ins.w2; o1.frequency.value = f; o2.frequency.value = f; o2.detune.value = ins.det;
+      lp.type = "lowpass"; lp.frequency.value = n.cut; lp.Q.value = ins.q;
+      const m1 = a.createGain(), m2 = a.createGain(); m1.gain.value = ins.mix[0]; m2.gain.value = ins.mix[1];
+      o1.connect(m1); o2.connect(m2); m1.connect(lp); m2.connect(lp); lp.connect(g);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vel * 0.7, t + n.atk);
+      g.gain.exponentialRampToValueAtTime(0.0008, t + n.atk + n.dec);
+      const end = t + n.atk + n.dec + 0.05;
+      o1.start(t); o2.start(t); o1.stop(end); o2.stop(end); src = o1;
+    } else if (ins.kind === "bell") {                 // FM bell
+      const car = a.createOscillator(), mod = a.createOscillator(), mg = a.createGain(), p2 = a.createOscillator(), p2g = a.createGain();
+      car.frequency.value = f; mod.frequency.value = f * 3.5; p2.frequency.value = f * 2.76;
+      mg.gain.setValueAtTime(f * 2.4, t); mg.gain.exponentialRampToValueAtTime(f * 0.05, t + 1.6);
+      mod.connect(mg); mg.connect(car.frequency);
+      p2g.gain.setValueAtTime(0.18, t); p2g.gain.exponentialRampToValueAtTime(0.0008, t + 1.1);
+      p2.connect(p2g); p2g.connect(g); car.connect(g);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vel * 0.6, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0008, t + 2.4);
+      car.start(t); mod.start(t); p2.start(t); car.stop(t + 2.5); mod.stop(t + 2.5); p2.stop(t + 2.5); src = car;
+    } else {                                          // harp or guitar
+      const { buf, rate } = this.ksBuffer(ins.kind, f);
+      const s = a.createBufferSource(); s.buffer = buf; s.playbackRate.value = f / rate;
+      g.gain.setValueAtTime(vel * 0.8, t);
+      s.connect(g); s.start(t); src = s;
+    }
+    if (src) cleanup(src);
   }
 }
 let voice = null;
@@ -207,7 +310,7 @@ let voice = null;
 /* ============================ hand tracking ============================ */
 let trackerMsg = "Loading hand tracker…";
 let landmarker = null, camStream = null, lastVideoTime = -1;
-let hands = [];                                       // [{lm:[{x,y}], ratio, pinch:{x,y}, wrist}] in canvas px, sorted left to right
+let hands = [];                                       // [{lm, ratio, pinch, wrist, size}] in canvas px, sorted left to right
 let videoMap = { ox:0, oy:0, s:1, vw:1, vh:1 };
 
 function updateVideoMap() {
@@ -226,58 +329,55 @@ function detect(nowMs) {
   const out = [];
   for (const raw of (res.landmarks || [])) {
     const lm = raw.map(p => toScreen(p.x, p.y));
-    // pinch ratio measured in video pixels so the aspect ratio doesn't skew it
-    const px = i => ({ x: raw[i].x * videoMap.vw, y: raw[i].y * videoMap.vh });
+    const px = i => ({ x: raw[i].x * videoMap.vw, y: raw[i].y * videoMap.vh });   // video pixels: aspect ratio doesn't skew the ratio
     const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-    const size = Math.max(1e-3, d(px(0), px(9)));
-    const ratio = d(px(4), px(8)) / size;
-    out.push({ lm, ratio, pinch:{ x:(lm[4].x + lm[8].x) / 2, y:(lm[4].y + lm[8].y) / 2 }, wrist:lm[0] });
+    const ratio = d(px(4), px(8)) / Math.max(1e-3, d(px(0), px(9)));
+    const size = Math.max(1, Math.hypot(lm[0].x - lm[9].x, lm[0].y - lm[9].y));
+    out.push({ lm, ratio, size, pinch:{ x:(lm[4].x + lm[8].x) / 2, y:(lm[4].y + lm[8].y) / 2 }, wrist:lm[0] });
   }
   out.sort((a, b) => a.wrist.x - b.wrist.x);
   hands = out.slice(0, 2);
 }
 
-/* ============================ the string ============================ */
-const slots = [0, 1].map(() => ({
-  pinched:false, seen:false, lastSeen:0,
-  fx:new OneEuro(), fy:new OneEuro(), x:0, y:0, ratio:1,
-}));
-const S = {                                           // string state
-  active:false, fade:0,                               // fade: 0..1 visual alpha
-  pts:Array.from({ length:N_PTS }, () => ({ x:0, y:0, vx:0, vy:0 })),
-  a:{ x:0, y:0 }, b:{ x:0, y:0 },                     // anchors (follow hands, animate on recoil)
-  recoil:null, wobble:0, hue:20, len:0, t:0, noteMidi:BASE_MIDI, note:"", freq:440,
-};
+/* ============================ strings ============================ */
+const makeChain = n => ({ pts:Array.from({ length:n }, () => ({ x:0, y:0, vx:0, vy:0 })), a:{ x:0, y:0 }, b:{ x:0, y:0 }, wobble:0 });
+const slots = [0, 1].map(() => ({ pinched:false, seen:false, lastSeen:0, fx:new OneEuro(), fy:new OneEuro(), x:0, y:0, ratio:1 }));
+const S = Object.assign(makeChain(N_PTS), {           // the single (pinch) string
+  active:false, fade:0, recoil:null, hue:20, len:0, t:0, midi:BASE_MIDI, note:"", freq:440, noteSemis:-99, lastPluckMidi:null, lastPluckT:0,
+});
+// five-string mode: 5 chains, one per finger pair
+const tips = [0, 1].map(() => FINGERS.map(() => ({ fx:new OneEuro(2, 0.03), fy:new OneEuro(2, 0.03), x:0, y:0 })));
+const M = { state:"idle", armedAt:-1e9, lostAt:0, fade:0, D:0, strings:FINGERS.map((_, i) => Object.assign(makeChain(M_PTS), { canTrig:true, flash:0, lastPluck:0, midi:BASE_MIDI + PENT[i] })) };
 const sparks = [];
 
-function initString(a, b) {
-  S.a = { ...a }; S.b = { ...b };
-  S.pts.forEach((p, i) => { const u = i / (N_PTS - 1); p.x = lerp(a.x, b.x, u); p.y = lerp(a.y, b.y, u); p.vx = p.vy = 0; });
+function initChain(o, a, b) {
+  o.a = { ...a }; o.b = { ...b };
+  o.pts.forEach((p, i) => { const u = i / (o.pts.length - 1); p.x = lerp(a.x, b.x, u); p.y = lerp(a.y, b.y, u); p.vx = p.vy = 0; });
+  o.wobble = 0;
 }
 
-function stepString(dt) {
+function stepString(o, dt) {
   const steps = 2, h = dt / steps, k = 140, c = 320, damp = 7;
-  const n = N_PTS, pts = S.pts;
+  const pts = o.pts, n = pts.length;
   for (let s = 0; s < steps; s++) {
-    pts[0].x = S.a.x; pts[0].y = S.a.y; pts[0].vx = pts[0].vy = 0;
-    pts[n-1].x = S.b.x; pts[n-1].y = S.b.y; pts[n-1].vx = pts[n-1].vy = 0;
+    pts[0].x = o.a.x; pts[0].y = o.a.y; pts[0].vx = pts[0].vy = 0;
+    pts[n-1].x = o.b.x; pts[n-1].y = o.b.y; pts[n-1].vx = pts[n-1].vy = 0;
     for (let i = 1; i < n - 1; i++) {
       const u = i / (n - 1), p = pts[i];
-      const qx = lerp(S.a.x, S.b.x, u), qy = lerp(S.a.y, S.b.y, u);
-      const ax = k * (qx - p.x) + c * (pts[i-1].x + pts[i+1].x - 2 * p.x) - damp * p.vx;
-      const ay = k * (qy - p.y) + c * (pts[i-1].y + pts[i+1].y - 2 * p.y) - damp * p.vy;
-      p.vx += ax * h; p.vy += ay * h;
+      const qx = lerp(o.a.x, o.b.x, u), qy = lerp(o.a.y, o.b.y, u);
+      p.vx += (k * (qx - p.x) + c * (pts[i-1].x + pts[i+1].x - 2 * p.x) - damp * p.vx) * h;
+      p.vy += (k * (qy - p.y) + c * (pts[i-1].y + pts[i+1].y - 2 * p.y) - damp * p.vy) * h;
     }
     for (let i = 1; i < n - 1; i++) { pts[i].x += pts[i].vx * h; pts[i].y += pts[i].vy * h; }
   }
-  // how far the chain is from a straight line = how wobbly it is
+  // sideways wobble only (stretching the string along its length doesn't count)
+  const dx = o.b.x - o.a.x, dy = o.b.y - o.a.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
   let dev = 0;
   for (let i = 1; i < n - 1; i++) {
     const u = i / (n - 1);
-    dev += Math.hypot(pts[i].x - lerp(S.a.x, S.b.x, u), pts[i].y - lerp(S.a.y, S.b.y, u));
+    dev += Math.abs((pts[i].x - lerp(o.a.x, o.b.x, u)) * nx + (pts[i].y - lerp(o.a.y, o.b.y, u)) * ny);
   }
-  const w = clamp(dev / (n - 2) / (0.03 * DIAG), 0, 1);
-  S.wobble = lerp(S.wobble, w, 0.25);
+  o.wobble = lerp(o.wobble, clamp(dev / (n - 2) / (0.03 * DIAG), 0, 1), 0.25);
 }
 
 function hueFor(t) {                                  // t: 0 short/high .. 1 long/low
@@ -286,10 +386,76 @@ function hueFor(t) {                                  // t: 0 short/high .. 1 lo
 }
 const hsl = (h, s, l, a = 1) => `hsla(${((h % 360) + 360) % 360},${s}%,${l}%,${a})`;
 
-function burst(x, y, n, speed) {
+function burst(x, y, n, speed, hue) {
   for (let i = 0; i < n; i++) {
     const ang = rand(0, Math.PI * 2), sp = rand(0.2, 1) * speed;
-    sparks.push({ x, y, vx:Math.cos(ang) * sp, vy:Math.sin(ang) * sp, life:rand(0.5, 1.1), max:1, hue:S.hue + rand(-25, 25), size:rand(2, 5) });
+    sparks.push({ x, y, vx:Math.cos(ang) * sp, vy:Math.sin(ang) * sp, life:rand(0.5, 1.1), hue:(hue ?? S.hue) + rand(-25, 25), size:rand(2, 5) });
+  }
+}
+
+/* ============================ five-string mode ============================ */
+function meanTipDistance() {
+  let sum = 0;
+  for (let f = 0; f < 5; f++) sum += Math.hypot(tips[0][f].x - tips[1][f].x, tips[0][f].y - tips[1][f].y);
+  return (sum / 5) / ((hands[0].size + hands[1].size) / 2);
+}
+function multiMidi(i) {                               // closer hands = an octave higher
+  let len = 0; for (const o of M.strings) len += Math.hypot(o.b.x - o.a.x, o.b.y - o.a.y);
+  return BASE_MIDI + PENT[i] + (len / 5 / DIAG < 0.25 ? 12 : 0);
+}
+function pluckString(i, vel, delay = 0) {
+  const o = M.strings[i], now = performance.now();
+  o.midi = multiMidi(i); o.flash = 1; o.lastPluck = now;
+  if (voice && !state.muted) voice.playNote(inst(), o.midi, vel, delay);
+  const u = rand(0.2, 0.8); burst(lerp(o.a.x, o.b.x, u), lerp(o.a.y, o.b.y, u), 5, 0.12 * DIAG, hueFor(1 - i / 4));
+}
+function startMulti() {
+  M.state = "active"; M.fade = 1; M.lostAt = 0;
+  for (let f = 0; f < 5; f++) { const o = M.strings[f]; initChain(o, tips[0][f], tips[1][f]); o.canTrig = true; }
+  voice && voice.setNoteCutoff(6500);
+  for (let f = 0; f < 5; f++) {                       // harp-style strum, thumb to pinky
+    const o = M.strings[f], midY = (o.a.y + o.b.y) / 2;
+    pluckString(f, 0.5 + 0.5 * (1 - clamp(midY / H, 0, 1)), f * 0.07);
+  }
+}
+function endMulti(reason, now) {
+  for (const o of M.strings) { burst(o.a.x, o.a.y, 6, 0.2 * DIAG, hueFor(0.5)); burst(o.b.x, o.b.y, 6, 0.2 * DIAG, hueFor(0.5)); }
+  if (reason === "closed") { M.state = "armed"; M.armedAt = now; } else M.state = "idle";
+}
+function updateMulti(now, dt) {
+  const two = hands.length === 2, anyPinch = slots[0].pinched || slots[1].pinched;
+  if (two) {
+    const t = now / 1000;
+    for (let s = 0; s < 2; s++) for (let f = 0; f < 5; f++) {
+      const p = hands[s].lm[FINGERS[f]], tp = tips[s][f];
+      tp.x = tp.fx.filter(p.x, t); tp.y = tp.fy.filter(p.y, t);
+    }
+    M.D = meanTipDistance();
+  } else { for (const row of tips) for (const tp of row) { tp.fx.reset(); tp.fy.reset(); } M.D = 0; }
+
+  if (M.state === "active") {
+    if (!two) { if (!M.lostAt) M.lostAt = now; if (now - M.lostAt > 250) endMulti("lost", now); }
+    else { M.lostAt = 0; if (M.D < MULTI_CLOSE) endMulti("closed", now); }
+  } else if (anyPinch) { M.state = "idle"; M.armedAt = -1e9; }
+  else if (two) {
+    if (M.D < MULTI_ARM) { M.armedAt = now; M.state = "armed"; }
+    else if (M.D > MULTI_OPEN && now - M.armedAt < ARM_WINDOW_MS) startMulti();
+    else if (now - M.armedAt >= ARM_WINDOW_MS) M.state = "idle";
+  } else if (now - M.armedAt >= ARM_WINDOW_MS) M.state = "idle";   // one hand lost (overlapping hands often drop to one): stay armed briefly
+
+  const live = M.state === "active";
+  if (live) M.fade = 1; else M.fade = Math.max(0, M.fade - dt / 0.5);
+  if (M.fade > 0) for (let f = 0; f < 5; f++) {
+    const o = M.strings[f];
+    if (live) { o.a.x = tips[0][f].x; o.a.y = tips[0][f].y; o.b.x = tips[1][f].x; o.b.y = tips[1][f].y; }
+    else { const mx = (o.a.x + o.b.x) / 2, my = (o.a.y + o.b.y) / 2, k = Math.min(1, dt * 9);   // recoil to the middle
+      o.a.x = lerp(o.a.x, mx, k); o.a.y = lerp(o.a.y, my, k); o.b.x = lerp(o.b.x, mx, k); o.b.y = lerp(o.b.y, my, k); }
+    stepString(o, dt);
+    o.flash = Math.max(0, o.flash - dt * 2.2);
+    if (live) {                                       // wiggle a finger to pluck its string
+      if (o.canTrig && o.wobble > 0.3 && now - o.lastPluck > 130) { o.canTrig = false; pluckString(f, clamp(0.45 + o.wobble, 0.45, 1)); }
+      else if (!o.canTrig && o.wobble < 0.12) o.canTrig = true;
+    }
   }
 }
 
@@ -317,20 +483,22 @@ function frame(now) {
   const dt = Math.min(0.05, (now - lastFrame) / 1000); lastFrame = now;
   detect(now);
   updateSlots(now);
+  updateMulti(now, dt);
+  const ins = inst();
 
   if (hands.length) noHandsSince = now;
-  const active = slots[0].pinched && slots[1].pinched;
+  const active = slots[0].pinched && slots[1].pinched && M.state !== "active";
 
-  if (active && !prevActive) { initString(slots[0], slots[1]); S.recoil = null; S.fade = 1; burst((slots[0].x + slots[1].x) / 2, (slots[0].y + slots[1].y) / 2, 14, 0.25 * DIAG); }
+  if (active && !prevActive) {
+    initChain(S, slots[0], slots[1]); S.recoil = null; S.fade = 1; S.lastPluckMidi = null; S.noteSemis = -99;
+    burst((slots[0].x + slots[1].x) / 2, (slots[0].y + slots[1].y) / 2, 14, 0.25 * DIAG);
+  }
   if (!active && prevActive) {
-    // let go: recoil toward whichever hand is still holding, else collapse to the middle
     const keepA = slots[0].pinched, keepB = slots[1].pinched;
     const mid = { x:(S.a.x + S.b.x) / 2, y:(S.a.y + S.b.y) / 2 };
-    S.recoil = { t:0,
-      fromA:{ ...S.a }, fromB:{ ...S.b },
+    S.recoil = { t:0, fromA:{ ...S.a }, fromB:{ ...S.b },
       toA: keepA ? { x:slots[0].x, y:slots[0].y } : (keepB ? { x:slots[1].x, y:slots[1].y } : mid),
-      toB: keepB ? { x:slots[1].x, y:slots[1].y } : (keepA ? { x:slots[0].x, y:slots[0].y } : mid),
-      keepA, keepB };
+      toB: keepB ? { x:slots[1].x, y:slots[1].y } : (keepA ? { x:slots[0].x, y:slots[0].y } : mid), keepA, keepB };
     burst(S.a.x, S.a.y, 22, 0.35 * DIAG); burst(S.b.x, S.b.y, 22, 0.35 * DIAG);
     voice && voice.release();
   }
@@ -340,16 +508,15 @@ function frame(now) {
     S.a.x = slots[0].x; S.a.y = slots[0].y; S.b.x = slots[1].x; S.b.y = slots[1].y;
   } else if (S.recoil) {
     const r = S.recoil; r.t += dt; const e = easeOut(clamp(r.t / 0.3, 0, 1));
-    // a hand that is still pinching keeps its end pinned to the fingers
     const ta = r.keepA ? { x:slots[0].x, y:slots[0].y } : r.toA, tb = r.keepB ? { x:slots[1].x, y:slots[1].y } : r.toB;
     S.a = r.keepA ? ta : { x:lerp(r.fromA.x, ta.x, e), y:lerp(r.fromA.y, ta.y, e) };
     S.b = r.keepB ? tb : { x:lerp(r.fromB.x, tb.x, e), y:lerp(r.fromB.y, tb.y, e) };
     S.fade = clamp(1 - (r.t - 0.15) / 0.5, 0, 1);
     if (S.fade <= 0) S.recoil = null;
   }
-  if (S.active || S.recoil) stepString(dt);
+  if (S.active || S.recoil) stepString(S, dt);
 
-  // ----- sound + colour mapping (only while held) -----
+  // ----- sound + colour mapping (single string, only while held) -----
   if (S.active) {
     const len = Math.hypot(S.b.x - S.a.x, S.b.y - S.a.y);
     S.len = len;
@@ -358,7 +525,7 @@ function frame(now) {
     const raw = (1 - S.t) * SPAN;                                                // semitones above C4
     let semis = raw;
     if (state.snap) {
-      if (Math.abs(raw - (S.noteSemis ?? -99)) > 0.75) {                          // hysteresis around note boundaries
+      if (Math.abs(raw - S.noteSemis) > 0.75) {                                   // hysteresis around note boundaries
         const oct = Math.floor(raw / 12), r = raw - oct * 12;
         let best = SCALE_STEPS[0], bd = 99;
         for (const st of SCALE_STEPS) { const dd = Math.abs(r - st); if (dd < bd) { bd = dd; best = st; } }
@@ -367,32 +534,44 @@ function frame(now) {
       semis = S.noteSemis;
     } else S.noteSemis = raw;
     S.midi = BASE_MIDI + semis;
-    S.freq = 440 * Math.pow(2, (S.midi - 69) / 12);
-    S.note = NOTE_NAMES[((Math.round(S.midi) % 12) + 12) % 12];
+    S.freq = midiToFreq(S.midi);
+    S.note = noteName(S.midi);
     S.hue = hueFor(S.t);
 
     const midY = (S.a.y + S.b.y) / 2;
     const vol = 0.18 + 0.82 * (1 - clamp(midY / H, 0, 1));                       // higher = louder, never silent
     const dx = S.b.x - S.a.x, dy = S.b.y - S.a.y;
     const tilt = Math.abs(Math.atan2(dy, dx === 0 ? 1e-6 : Math.abs(dx))) / (Math.PI / 2);   // 0 flat .. 1 vertical
-    const cutoff = 500 * Math.pow(8, clamp(tilt * 1.2, 0, 1));                   // 500 Hz .. 4 kHz
-    if (voice && !state.muted) voice.update(S.freq, vol * 0.8, cutoff, S.wobble * 45);
-    else if (voice && voice.on) voice.release();
+    if (voice && !state.muted) {
+      if (ins.mode === "sustain") {
+        const cutoff = ins.lo * Math.pow(ins.hi / ins.lo, clamp(tilt * 1.2, 0, 1));
+        voice.update(S.freq, vol * (ins.id === "violin" ? 0.85 : 0.8), cutoff, ins.baseVib + S.wobble * ins.vib);
+      } else {                                                                    // plucked: ring a new note whenever the pitch moves or the string is shaken
+        voice.setNoteCutoff(900 * Math.pow(7, clamp(tilt * 1.2, 0, 1)));
+        const first = S.lastPluckMidi === null, nowMs = now;
+        const moved = !first && Math.abs(S.midi - S.lastPluckMidi) >= (state.snap ? 0.5 : 1.0) && nowMs - S.lastPluckT > (state.snap ? 90 : 150);
+        const shake = !first && S.wobble > 0.5 && nowMs - S.lastPluckT > 450;
+        if (first || moved || shake) { voice.playNote(ins, S.midi, 0.35 + 0.65 * vol); S.lastPluckMidi = S.midi; S.lastPluckT = nowMs; }
+      }
+    } else if (voice && voice.on) voice.release();
   }
 
   // ----- status chip -----
   let msg;
-  if (trackerMsg) msg = trackerMsg;
+  if (now < toastUntil) msg = toast;
+  else if (trackerMsg) msg = trackerMsg;
+  else if (M.state === "active") msg = "🎶 " + M.strings.map(o => noteName(o.midi)).join(" ");
   else if (S.active) msg = state.muted ? "Muted 🔇" : `♪ ${S.note}`;
+  else if (M.state === "armed") msg = "Now pull them apart! 👐";
   else if (hands.length === 0) msg = (now - noHandsSince > 5000) ? "Need more light 💡" : "Show me two hands 🙌";
   else if (hands.length === 1) msg = "Show me both hands 🙌";
-  else msg = (slots[0].pinched || slots[1].pinched) ? "Now the other hand!" : "Now pinch! 🤏";
+  else msg = (slots[0].pinched || slots[1].pinched) ? "Now the other hand!" : "Pinch 🤏 or press hands together 🙏";
   if (chip.textContent !== msg) chip.textContent = msg;
 
   render(dt, now);
   if (DEBUG) debugEl.textContent =
     `hands ${hands.length}\npinch L ${slots[0].ratio.toFixed(2)} ${slots[0].pinched ? "ON" : "off"}\npinch R ${slots[1].ratio.toFixed(2)} ${slots[1].pinched ? "ON" : "off"}\n` +
-    `note ${S.active ? S.note + " " + S.freq.toFixed(0) + "Hz" : "-"}  wobble ${S.wobble.toFixed(2)}\nfps ${(1 / Math.max(dt, 1e-3)).toFixed(0)}`;
+    `single ${S.active ? S.note + " " + S.freq.toFixed(0) + "Hz" : "-"}  wobble ${S.wobble.toFixed(2)}\nmulti ${M.state} D ${M.D.toFixed(2)}\ninst ${ins.id}  fps ${(1 / Math.max(dt, 1e-3)).toFixed(0)}`;
 }
 
 /* ============================ rendering ============================ */
@@ -403,12 +582,26 @@ function render(dt, now) {
     ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1);
     ctx.drawImage(video, videoMap.ox, videoMap.oy, videoMap.vw * videoMap.s, videoMap.vh * videoMap.s);
     ctx.restore();
-    ctx.fillStyle = "rgba(8,4,20,.45)"; ctx.fillRect(0, 0, W, H);                // dim the feed
+    ctx.fillStyle = "rgba(8,4,20,.45)"; ctx.fillRect(0, 0, W, H);
   }
   if (state.skeleton) drawHands();
 
   ctx.globalCompositeOperation = "lighter";
-  if (S.active || S.recoil) drawString(now);
+  if (S.active || S.recoil) {
+    drawChain(S, S.hue, S.fade, 1, true);
+    if (S.active && Math.random() < 0.7) {            // drifting sparks off the string
+      const pts = S.pts, f = Math.random() * (N_PTS - 1), i0 = Math.floor(f), i1 = Math.min(N_PTS - 1, i0 + 1);
+      sparks.push({ x:lerp(pts[i0].x, pts[i1].x, f - i0), y:lerp(pts[i0].y, pts[i1].y, f - i0), vx:rand(-30, 30) * DPR, vy:rand(-60, -10) * DPR, life:rand(0.4, 0.9), hue:S.hue + rand(-20, 20), size:rand(1.5, 3.5) });
+    }
+  }
+  if (M.fade > 0) {
+    M.strings.forEach((o, i) => drawChain(o, hueFor(1 - i / 4), M.fade * (0.65 + 0.35 * o.flash), 0.55 + 0.25 * o.flash, false));
+    ctx.font = `800 ${Math.round(22 * DPR)}px system-ui,sans-serif`; ctx.textAlign = "center";
+    M.strings.forEach(o => {
+      ctx.fillStyle = `rgba(255,255,255,${0.9 * M.fade})`;
+      ctx.fillText(noteName(o.midi), (o.a.x + o.b.x) / 2, (o.a.y + o.b.y) / 2 - 20 * DPR);
+    });
+  }
   drawSparks(dt);
   ctx.globalCompositeOperation = "source-over";
 }
@@ -429,7 +622,7 @@ function drawHands() {
 function strokePath(pts, width, style) {
   ctx.lineWidth = width; ctx.strokeStyle = style; ctx.lineJoin = ctx.lineCap = "round";
   ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length - 1; i++) {                                     // smooth through midpoints
+  for (let i = 1; i < pts.length - 1; i++) {
     const mx = (pts[i].x + pts[i+1].x) / 2, my = (pts[i].y + pts[i+1].y) / 2;
     ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
   }
@@ -437,40 +630,32 @@ function strokePath(pts, width, style) {
   ctx.stroke();
 }
 
-function drawString(now) {
-  const th = THEMES[state.theme], a = S.fade, pts = S.pts, u = DPR;
-  const glow = hsl(S.hue, th.sat, th.lit, 0.18 * a), mid = hsl(S.hue, th.sat, th.lit, 0.5 * a);
-  strokePath(pts, 34 * u, glow);
-  strokePath(pts, 16 * u, mid);
-  strokePath(pts, 5 * u, `rgba(255,255,255,${0.95 * a})`);
-
-  // electric crackle: jagged thin lines hugging the string
-  ctx.lineWidth = 1.6 * u;
-  for (let pass = 0; pass < 2; pass++) {
-    ctx.strokeStyle = pass ? hsl(S.hue, 100, 85, 0.7 * a) : `rgba(255,255,255,${0.75 * a})`;
-    ctx.beginPath();
-    const seg = 14;
-    for (let i = 0; i <= seg; i++) {
-      const f = (i / seg) * (N_PTS - 1), i0 = Math.floor(f), i1 = Math.min(N_PTS - 1, i0 + 1), fr = f - i0;
-      const x = lerp(pts[i0].x, pts[i1].x, fr), y = lerp(pts[i0].y, pts[i1].y, fr);
-      const j = (i === 0 || i === seg) ? 0 : rand(-1, 1) * (9 + 14 * S.wobble) * u;
-      const dx = pts[i1].x - pts[i0].x, dy = pts[i1].y - pts[i0].y, l = Math.hypot(dx, dy) || 1;
-      const px = x + (-dy / l) * j, py = y + (dx / l) * j;
-      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+function drawChain(o, hue, a, ws, crackle) {
+  const th = THEMES[state.theme], pts = o.pts, n = pts.length, u = DPR * ws;
+  strokePath(pts, 34 * u, hsl(hue, th.sat, th.lit, 0.18 * a));
+  strokePath(pts, 16 * u, hsl(hue, th.sat, th.lit, 0.5 * a));
+  strokePath(pts, 5 * u, `rgba(255,255,255,${Math.min(1, 0.95 * a)})`);
+  if (crackle) {                                      // electric crackle: jagged thin lines hugging the string
+    ctx.lineWidth = 1.6 * u;
+    for (let pass = 0; pass < 2; pass++) {
+      ctx.strokeStyle = pass ? hsl(hue, 100, 85, 0.7 * a) : `rgba(255,255,255,${0.75 * a})`;
+      ctx.beginPath();
+      const seg = 14;
+      for (let i = 0; i <= seg; i++) {
+        const f = (i / seg) * (n - 1), i0 = Math.floor(f), i1 = Math.min(n - 1, i0 + 1), fr = f - i0;
+        const x = lerp(pts[i0].x, pts[i1].x, fr), y = lerp(pts[i0].y, pts[i1].y, fr);
+        const j = (i === 0 || i === seg) ? 0 : rand(-1, 1) * (9 + 14 * o.wobble) * u;
+        const dx = pts[i1].x - pts[i0].x, dy = pts[i1].y - pts[i0].y, l = Math.hypot(dx, dy) || 1;
+        const px = x + (-dy / l) * j, py = y + (dx / l) * j;
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
   }
-  // glowing pinch points
-  for (const p of [S.a, S.b]) {
-    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 36 * u);
-    g.addColorStop(0, `rgba(255,255,255,${0.95 * a})`); g.addColorStop(0.3, hsl(S.hue, th.sat, th.lit, 0.55 * a)); g.addColorStop(1, hsl(S.hue, th.sat, th.lit, 0));
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, 36 * u, 0, Math.PI * 2); ctx.fill();
-  }
-  // drifting sparks off the string
-  if (S.active && Math.random() < 0.7) {
-    const f = Math.random() * (N_PTS - 1), i0 = Math.floor(f), i1 = Math.min(N_PTS - 1, i0 + 1);
-    const x = lerp(pts[i0].x, pts[i1].x, f - i0), y = lerp(pts[i0].y, pts[i1].y, f - i0);
-    sparks.push({ x, y, vx:rand(-30, 30) * u, vy:rand(-60, -10) * u, life:rand(0.4, 0.9), max:1, hue:S.hue + rand(-20, 20), size:rand(1.5, 3.5) });
+  for (const p of [o.a, o.b]) {                       // glowing end points
+    const r = 36 * u, g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+    g.addColorStop(0, `rgba(255,255,255,${Math.min(1, 0.95 * a)})`); g.addColorStop(0.3, hsl(hue, th.sat, th.lit, 0.55 * a)); g.addColorStop(1, hsl(hue, th.sat, th.lit, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
   }
 }
 
@@ -488,6 +673,30 @@ function drawSparks(dt) {
   if (sparks.length > 400) sparks.splice(0, sparks.length - 400);
 }
 
+/* ============================ full screen ============================ */
+const fsRoot = document.documentElement;
+const fsRequest = fsRoot.requestFullscreen || fsRoot.webkitRequestFullscreen;
+const fsExit = document.exitFullscreen || document.webkitExitFullscreen;
+const isFS = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+const standalone = () => window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+async function enterFS() {
+  if (!fsRequest || isFS()) return;
+  try { await fsRequest.call(fsRoot); } catch (e) { console.warn("fullscreen refused", e); return; }
+  try { await screen.orientation.lock("landscape"); } catch {}                    // Android: also turn to landscape
+}
+async function toggleFS() {
+  if (!fsRequest) {                                                              // iPhone Safari has no fullscreen API
+    showToast(standalone() ? "Already full screen" : "iPhone: tap Share, then Add to Home Screen, then open it from there for full screen");
+    return;
+  }
+  if (isFS()) { try { await fsExit.call(document); } catch {} try { screen.orientation.unlock(); } catch {} }
+  else await enterFS();
+}
+function onFSChange() { syncButtons(); resize(); updateVideoMap(); }
+document.addEventListener("fullscreenchange", onFSChange);
+document.addEventListener("webkitfullscreenchange", onFSChange);
+addEventListener("keydown", e => { if ((e.key === "f" || e.key === "F") && !e.metaKey && !e.ctrlKey) toggleFS(); });
+
 /* ============================ start-up ============================ */
 function friendlyCamError(e) {
   const n = e && e.name;
@@ -498,12 +707,13 @@ function friendlyCamError(e) {
   return "Could not start the camera: " + (e && e.message || e);
 }
 
-async function start() {
-  startBtn.disabled = true; errEl.textContent = "";
+async function start(fullscreen) {
+  startBtn.disabled = startFsBtn.disabled = true; errEl.textContent = "";
   startBtn.textContent = "Starting…";
+  if (fullscreen) enterFS();                                                     // must be called inside the click
   try {
-    voice = new Voice(); await voice.resume();                                   // must happen inside the click
-    voice.setMuted(state.muted);
+    voice = new Voice(); await voice.resume();
+    voice.setMuted(state.muted); voice.setInstrument(inst());
   } catch (e) { voice = null; console.warn("audio failed", e); }
 
   try {
@@ -514,9 +724,8 @@ async function start() {
   updateVideoMap();
 
   startEl.classList.add("hidden");
-  $("chip").classList.remove("hidden"); chip.textContent = "Loading hand tracker…";
-  $("controls").classList.remove("hidden");
-  syncButtons();
+  chip.classList.remove("hidden"); $("controls").classList.remove("hidden");
+  buildInstPanel(); syncButtons();
   requestAnimationFrame(frame);                                                  // camera feed shows while the model loads
 
   try {
@@ -532,29 +741,54 @@ async function start() {
     trackerMsg = "Couldn't load the hand tracker. Check your internet and reload.";
   }
 }
-function fail(msg) { errEl.textContent = msg; startBtn.disabled = false; startBtn.textContent = "Try again"; }
-startBtn.addEventListener("click", start);
+function fail(msg) { errEl.textContent = msg; startBtn.disabled = startFsBtn.disabled = false; startBtn.textContent = "Try again"; }
+startBtn.addEventListener("click", () => start(false));
+if (!fsRequest) startFsBtn.classList.add("hidden");
+startFsBtn.addEventListener("click", () => start(true));
 
 addEventListener("resize", updateVideoMap);
 video.addEventListener("loadedmetadata", updateVideoMap);
-
 document.addEventListener("visibilitychange", () => {
   if (!voice) return;
   if (document.hidden) voice.ctx.suspend(); else voice.ctx.resume();
 });
 
 /* ============================ controls ============================ */
+function buildInstPanel() {
+  instPanel.innerHTML = "";
+  INSTRUMENTS.forEach((ins, i) => {
+    const b = document.createElement("button");
+    b.innerHTML = `<span class="i">${ins.icon}</span><span class="t">${ins.name}</span>`;
+    b.dataset.i = i;
+    b.onclick = e => { e.stopPropagation(); pickInstrument(i); };
+    instPanel.appendChild(b);
+  });
+}
+function pickInstrument(i) {
+  state.inst = i; save();
+  if (voice) { voice.setInstrument(inst()); if (!state.muted) voice.playNote(inst(), 72, 0.7); }   // preview
+  S.lastPluckMidi = null;
+  instPanel.classList.add("hidden"); syncButtons();
+}
 function syncButtons() {
+  const ins = inst();
+  $("bVoice").querySelector(".i").textContent = ins.icon; $("bVoice").querySelector(".t").textContent = ins.name;
+  [...instPanel.children].forEach((b, i) => b.classList.toggle("sel", i === state.inst));
   $("bMute").classList.toggle("off", state.muted);
   $("bMute").querySelector(".i").textContent = state.muted ? "🔇" : "🔊";
   $("bSnap").classList.toggle("off", !state.snap);
   $("bSkel").classList.toggle("off", !state.skeleton);
-  $("bTheme").lastChild.textContent = THEMES[state.theme].name;
+  $("bTheme").querySelector(".t").textContent = THEMES[state.theme].name;
+  $("bFull").querySelector(".i").textContent = isFS() ? "🗗" : "⛶";
+  $("bFull").querySelector(".t").textContent = isFS() ? "Exit" : "Full";
 }
+$("bVoice").onclick = e => { e.stopPropagation(); instPanel.classList.toggle("hidden"); };
+document.addEventListener("click", e => { if (!instPanel.contains(e.target)) instPanel.classList.add("hidden"); });
 $("bMute").onclick = () => { state.muted = !state.muted; voice && voice.setMuted(state.muted); save(); syncButtons(); };
 $("bSnap").onclick = () => { state.snap = !state.snap; save(); syncButtons(); };
 $("bSkel").onclick = () => { state.skeleton = !state.skeleton; save(); syncButtons(); };
 $("bTheme").onclick = () => { state.theme = (state.theme + 1) % THEMES.length; save(); syncButtons(); };
+$("bFull").onclick = toggleFS;
 </script>
 </body>
 </html>
