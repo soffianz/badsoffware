@@ -36,16 +36,16 @@
     font-size:clamp(18px,3.2vw,30px); font-weight:700; z-index:5; pointer-events:none; white-space:nowrap; max-width:96vw; overflow:hidden; text-overflow:ellipsis; }
   #controls { position:fixed; right:max(10px,env(safe-area-inset-right)); bottom:max(10px,env(safe-area-inset-bottom));
     display:flex; gap:8px; z-index:5; }
-  #controls button, #instPanel button { min-width:58px; height:62px; padding:0 10px; border:0; border-radius:18px; cursor:pointer;
+  #controls button, #instPanel button, #musicPanel button { min-width:58px; height:62px; padding:0 10px; border:0; border-radius:18px; cursor:pointer;
     background:var(--panel); backdrop-filter:blur(6px); color:#fff; font-size:13px; font-weight:700;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
-  #controls button .i, #instPanel button .i { font-size:24px; line-height:1; }
+  #controls button .i, #instPanel button .i, #musicPanel button .i { font-size:24px; line-height:1; }
   #controls button.off { opacity:.5; }
-  #controls button:active, #instPanel button:active { transform:scale(.94); }
-  #instPanel { position:fixed; right:max(10px,env(safe-area-inset-right)); bottom:calc(max(10px,env(safe-area-inset-bottom)) + 72px);
+  #controls button:active, #instPanel button:active, #musicPanel button:active { transform:scale(.94); }
+  #instPanel, #musicPanel { position:fixed; right:max(10px,env(safe-area-inset-right)); bottom:calc(max(10px,env(safe-area-inset-bottom)) + 72px);
     display:flex; gap:8px; z-index:6; padding:8px; border-radius:22px; background:rgba(10,6,26,.8); backdrop-filter:blur(8px); }
-  #instPanel button { min-width:64px; height:70px; }
-  #instPanel button.sel { outline:3px solid #ffd36b; background:rgba(255,211,107,.18); }
+  #instPanel button, #musicPanel button { min-width:64px; height:70px; }
+  #instPanel button.sel, #musicPanel button.sel { outline:3px solid #ffd36b; background:rgba(255,211,107,.18); }
   #help { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:8; width:min(560px,92vw); max-height:84vh; overflow:auto;
     padding:20px 22px 18px; border-radius:24px; background:rgba(14,9,34,.92); backdrop-filter:blur(10px);
     box-shadow:0 10px 60px rgba(0,0,0,.6); font-size:16px; line-height:1.45; touch-action:pan-y; }
@@ -55,7 +55,7 @@
   #helpClose { position:absolute; right:12px; top:10px; width:40px; height:40px; border:0; border-radius:50%; background:rgba(255,255,255,.14); color:#fff; font-size:20px; cursor:pointer; }
   @media (max-width:700px) { #controls { flex-wrap:wrap; justify-content:flex-end; max-width:calc(100vw - 20px); }
     #controls button { min-width:50px; height:54px; padding:0 6px; font-size:11px; } #controls button .i { font-size:20px; }
-    #instPanel { bottom:calc(max(10px,env(safe-area-inset-bottom)) + 124px); } #instPanel button { min-width:52px; height:60px; } }
+    #instPanel, #musicPanel { bottom:calc(max(10px,env(safe-area-inset-bottom)) + 124px); } #instPanel button, #musicPanel button { min-width:52px; height:60px; } }
   #debug { position:fixed; left:8px; bottom:8px; font:12px/1.4 ui-monospace,monospace; background:rgba(0,0,0,.6);
     padding:6px 8px; border-radius:6px; z-index:5; white-space:pre; display:none; pointer-events:none; }
   .hidden { display:none !important; }
@@ -79,6 +79,7 @@
 
 <div id="chip" class="hidden">Loading…</div>
 <div id="instPanel" class="hidden"></div>
+<div id="musicPanel" class="hidden"></div>
 <div id="help" class="hidden" role="dialog" aria-label="How to play">
   <button id="helpClose" aria-label="Close">✕</button>
   <h2>How to play</h2>
@@ -96,17 +97,17 @@
     <li>Wiggle a finger to pluck its string. Bring your hands back together to reset.</li>
     <li><b>Duet:</b> while someone holds the five strings, a friend can pluck them by sweeping their fingers across the strings. Up to four hands are tracked.</li>
   </ul>
-  <h3>Orchestra</h3>
+  <h3>Backing music</h3>
   <ul>
-    <li>Turn on <b>Orchestra</b> and a full orchestra plays: strings, cellos, violins, flute, brass and timpani.</li>
-    <li>Raise your hands for louder, lower them for softer. Spread your hands wide to bring in brass and drums.</li>
-    <li>Move your hands faster to speed the music up, hold still to let it slow down.</li>
-    <li>You can still pinch or pull out the five strings to play solo over the top.</li>
+    <li>Open <b>Music</b> and pick <b>Orchestra</b> (strings, cellos, violins, flute, brass, timpani) or <b>EDM</b> (kick, hats, bass, synth stabs and a lead). Pick Off to stop.</li>
+    <li>Raise your hands for louder, lower them for softer. Spread your hands wide for more energy: brass and drums, or claps, stabs and lead.</li>
+    <li>Move your hands faster to speed it up, hold still to let it slow down.</li>
+    <li>You can still pinch, pull out the five strings, or pluck as a duet over the top.</li>
   </ul>
   <h3>Buttons</h3>
   <ul>
     <li><b>Instrument:</b> Synth, Violin, Harp, Guitar or Bells.</li>
-    <li><b>Orchestra:</b> backing orchestra on or off. <b>Sound:</b> mute. <b>Snap:</b> lock notes to a pleasant scale, or glide freely.</li>
+    <li><b>Music:</b> pick the backing music. <b>Sound:</b> mute. <b>Snap:</b> lock notes to a pleasant scale, or glide freely.</li>
     <li><b>Hands:</b> show or hide the skeleton. <b>Colour:</b> change theme. <b>Full:</b> full screen.</li>
   </ul>
   <h3>Tips</h3>
@@ -118,7 +119,7 @@
 <div id="controls" class="hidden">
   <button id="bHelp"  title="How to play"><span class="i">❓</span><span class="t">Help</span></button>
   <button id="bVoice" title="Instrument"><span class="i">🎹</span><span class="t">Synth</span></button>
-  <button id="bOrch"  title="Orchestra"><span class="i">🎼</span><span class="t">Orchestra</span></button>
+  <button id="bMusic" title="Backing music"><span class="i">🎧</span><span class="t">Music</span></button>
   <button id="bMute"  title="Mute"><span class="i">🔊</span><span class="t">Sound</span></button>
   <button id="bSnap"  title="Snap to scale"><span class="i">🎵</span><span class="t">Snap</span></button>
   <button id="bSkel"  title="Hand skeleton"><span class="i">🖐️</span><span class="t">Hands</span></button>
@@ -170,9 +171,10 @@ const debugEl = $("debug"), instPanel = $("instPanel");
 const DEBUG = new URLSearchParams(location.search).has("debug");
 if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { allHands = h; newDet = true; }; window.__dbg = () => ({ M, S, voice }); }
 
-const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0, orch:false };
+const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0, music:"off" };
 try { Object.assign(state, JSON.parse(localStorage.getItem("airstring") || "{}")); } catch {}
 if (!INSTRUMENTS[state.inst]) state.inst = 0;
+if (!["off", "orch", "edm"].includes(state.music)) state.music = state.orch ? "orch" : "off";
 if (!THEMES[state.theme]) state.theme = 0;
 const save = () => { try { localStorage.setItem("airstring", JSON.stringify(state)); } catch {} };
 const inst = () => INSTRUMENTS[state.inst];
@@ -378,18 +380,18 @@ let voice = null;
 const PROG = [{ pc:9, minor:true }, { pc:5, minor:false }, { pc:0, minor:false }, { pc:7, minor:false }];   // Am F C G
 const SECTIONS = ["Strings", "Bass", "Violins", "Flute", "Brass", "Timpani"];
 class Orchestra {
-  constructor(v) {
-    const a = this.ctx = v.ctx;
+  constructor(v, o = {}) {
+    const a = this.ctx = v.ctx; this.sections = o.sections || SECTIONS;
     this.out = a.createGain(); this.out.gain.value = 0.0001;
-    const dry = a.createGain(); dry.gain.value = 0.75;
-    this.verb = a.createConvolver(); this.verb.buffer = v.makeImpulse(3.4, 2.2);
-    const wet = a.createGain(); wet.gain.value = 0.5;
+    const dry = a.createGain(); dry.gain.value = o.dry ?? 0.75;
+    this.verb = a.createConvolver(); this.verb.buffer = v.makeImpulse(o.verbSec ?? 3.4, 2.2);
+    const wet = a.createGain(); wet.gain.value = o.wet ?? 0.5;
     this.out.connect(dry); dry.connect(v.comp); this.out.connect(this.verb); this.verb.connect(wet); wet.connect(v.comp);
-    this.bus = {}; SECTIONS.forEach(n => { const g = a.createGain(); g.gain.value = 0; g.connect(this.out); this.bus[n] = g; });
+    this.bus = {}; this.sections.forEach(n => { const g = a.createGain(); g.gain.value = 0; g.connect(this.out); this.bus[n] = g; });
     this.noise = a.createBuffer(1, a.sampleRate, a.sampleRate);
     { const d = this.noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
     this.on = false; this.live = []; this.step = 0; this.bpm = 66; this.level = 0.3; this.power = 0.25; this.fl = 1;
-    this.meter = Object.fromEntries(SECTIONS.map(n => [n, 0])); this.pulse = 0; this.pulseAt = [];
+    this.meter = Object.fromEntries(this.sections.map(n => [n, 0])); this.pulse = 0; this.pulseAt = [];
   }
   start() {
     if (this.on) return; this.on = true;
@@ -411,9 +413,10 @@ class Orchestra {
     set("Strings", 0.55 * (0.15 + 0.85 * L)); set("Bass", 0.6 * (0.2 + 0.8 * L)); set("Violins", 0.42 * (0.2 + 0.8 * L));
     set("Flute", 0.5 * (0.3 + 0.7 * L)); set("Brass", 0.55 * (0.3 + 0.7 * L) * (0.5 + 0.5 * P)); set("Timpani", 0.9 * (0.3 + 0.7 * L));
   }
+  stepDur() { return 30 / this.bpm; }                    // orchestra steps are eighth notes
   setTempo(mov) { this.bpm = lerp(this.bpm, 62 + 58 * clamp(mov, 0, 1), 0.02); }
   update(dt) {
-    for (const n of SECTIONS) this.meter[n] = Math.max(0, this.meter[n] - dt * 2.2);
+    for (const n of this.sections) this.meter[n] = Math.max(0, this.meter[n] - dt * 2.2);
     const now = this.ctx.currentTime;
     while (this.pulseAt.length && this.pulseAt[0] <= now) { this.pulseAt.shift(); this.pulse = 1; }
     this.pulse = Math.max(0, this.pulse - dt * 2.5);
@@ -422,7 +425,7 @@ class Orchestra {
   tick() {
     const a = this.ctx;
     while (this.next < a.currentTime + 0.15) {
-      const dur = 30 / this.bpm;                         // one eighth note
+      const dur = this.stepDur();
       this.schedule(this.step, this.next, dur);
       this.next += dur; this.step++;
     }
@@ -489,7 +492,92 @@ class Orchestra {
     }
   }
 }
-let orch = null;
+
+const EDM_SECTIONS = ["Kick", "Clap", "Hats", "Bass", "Chords", "Lead"];
+class Edm extends Orchestra {                         // four-on-the-floor house/trance with sidechain pump
+  constructor(v) {
+    super(v, { sections:EDM_SECTIONS, verbSec:1.3, wet:0.2, dry:0.9 });
+    const a = this.ctx; this.bpm = 124; this.riser = false;
+    this.pump = a.createGain(); this.pump.connect(this.out);                       // sidechain: bass, chords and lead duck on every kick
+    for (const n of ["Bass", "Chords", "Lead"]) { this.bus[n].disconnect(); this.bus[n].connect(this.pump); }
+    this.dl = a.createDelay(1.5); this.dl.delayTime.value = 60 / this.bpm * 0.75;
+    this.dfb = a.createGain(); this.dfb.gain.value = 0.38; this.dwet = a.createGain(); this.dwet.gain.value = 0.35;
+    this.bus.Lead.connect(this.dl); this.dl.connect(this.dfb); this.dfb.connect(this.dl); this.dl.connect(this.dwet); this.dwet.connect(this.out);
+  }
+  stepDur() { return 15 / this.bpm; }                // sixteenth notes
+  setTempo(mov) {
+    this.bpm = lerp(this.bpm, 120 + 24 * clamp(mov, 0, 1), 0.02);
+    this.dl.delayTime.setTargetAtTime(60 / this.bpm * 0.75, this.ctx.currentTime, 0.2);
+  }
+  setLevels(level, power) {
+    this.level = lerp(this.level, level, 0.08); this.power = lerp(this.power, power, 0.08);
+    const t = this.ctx.currentTime, L = this.level, k = 0.3 + 0.7 * L, set = (n, v) => this.bus[n].gain.setTargetAtTime(v, t, 0.12);
+    const g = 0.75;                                                                // match the orchestra's loudness
+    set("Kick", g * 0.95 * (0.35 + 0.65 * L)); set("Clap", g * 0.55 * k); set("Hats", g * 0.34 * k); set("Bass", g * 0.6 * k); set("Chords", g * 0.5 * k); set("Lead", g * 0.4 * k);
+  }
+  kick(t) {
+    const a = this.ctx, o = a.createOscillator(), g = a.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(170, t); o.frequency.exponentialRampToValueAtTime(46, t + 0.13);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(1, t + 0.004); g.gain.setTargetAtTime(0.0001, t + 0.05, 0.1);
+    o.connect(g); g.connect(this.bus.Kick); o.start(t); o.stop(t + 0.6); o.onended = () => { try { g.disconnect(); } catch {} };
+    this.live.push({ g, end:t + 0.6 }); this.meterHit("Kick", t);
+    const beat = this.stepDur() * 4;                                               // duck everything else
+    this.pump.gain.setValueAtTime(0.28, t); this.pump.gain.linearRampToValueAtTime(1, t + beat * 0.85);
+  }
+  noiseHit(sec, t, o) {
+    const a = this.ctx, n = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    n.buffer = this.noise; n.loop = true; f.type = o.type; f.frequency.value = o.freq; f.Q.value = o.q ?? 0.7;
+    g.gain.setValueAtTime(o.peak, t); g.gain.setTargetAtTime(0.0001, t + 0.002, o.dur / 3);
+    n.connect(f); f.connect(g); g.connect(this.bus[sec]); n.start(t, Math.random() * 0.5); n.stop(t + o.dur * 2 + 0.1);
+    n.onended = () => { try { g.disconnect(); } catch {} }; this.live.push({ g, end:t + o.dur * 2 + 0.1 }); this.meterHit(sec, t);
+  }
+  schedule(step, t, d) {
+    const s = step % 16, bar = Math.floor(step / 16) % 4, ch = PROG[bar], L = this.level, P = this.power;
+    const tones = [0, ch.minor ? 3 : 4, 7], m = (oct, semis) => 12 * (oct + 1) + ch.pc + semis;
+    if (s % 4 === 0) this.pulseAt.push(t);
+    if (s % 4 === 0 && L > 0.2) this.kick(t);                                      // four on the floor
+    if (P > 0.3 && (s === 4 || s === 12)) this.noiseHit("Clap", t, { type:"bandpass", freq:1700, q:0.9, dur:0.16, peak:0.9 });
+    if (L > 0.3 && s % 4 === 2) this.noiseHit("Hats", t, { type:"highpass", freq:7500, dur:0.12, peak:0.7 });         // open hat on the off-beat
+    if (P > 0.65 && s % 2 === 0 && s % 4 !== 2) this.noiseHit("Hats", t, { type:"highpass", freq:9000, dur:0.04, peak:0.35 });
+    if (L > 0.25 && s % 4 === 2)                                                   // rolling off-beat bass
+      for (const [type, pk, lp] of [["sawtooth", 0.3, 320 + 500 * P], ["sine", 0.28, 400]])
+        this.tone("Bass", { type, freq:midiToFreq(m(2, s === 14 ? 7 : 0)), t, dur:d * 3, atk:0.005, rel:0.08, peak:pk, lp, q:2.5 });
+    if (P < 0.35) {                                                                // calm: a soft synth pad
+      if (s === 0) for (const iv of tones)
+        this.tone("Chords", { type:"sawtooth", freq:midiToFreq(m(4, iv)), t, dur:d * 16, atk:0.35, rel:0.5, peak:0.06, det:8, lp:1300 });
+    } else if ([0, 3, 6, 10, 12].includes(s)) {                                    // energetic: supersaw stabs
+      for (const iv of tones)
+        this.tone("Chords", { type:"sawtooth", freq:midiToFreq(m(4, iv)), t, dur:d * 1.6, atk:0.004, rel:0.1, peak:0.09, det:12, lp:700 + 3300 * P, q:2.5 });
+    }
+    if (L > 0.45 && P > 0.35) {                                                    // arpeggiated lead
+      const pool = [0, tones[1], 7, 12, 12 + tones[1], 19], pat = [0, 2, 1, 3, 2, 4, 3, 5, 4, 2, 3, 1, 2, 0, 1, 2];
+      this.tone("Lead", { type:"square", freq:midiToFreq(m(4, pool[pat[s]])), t, dur:d * 0.85, atk:0.004, rel:0.09, peak:0.05, lp:1800 + 2600 * P, q:1.4 });
+    }
+    if (bar === 3 && P > 0.5) {                                                    // build: riser + snare roll, then a crash on the drop
+      if (s === 0) {
+        const a = this.ctx, n = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), len = d * 16;
+        n.buffer = this.noise; n.loop = true; f.type = "bandpass"; f.Q.value = 1.5;
+        f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(9000, t + len);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + len); g.gain.linearRampToValueAtTime(0.0001, t + len + 0.05);
+        n.connect(f); f.connect(g); g.connect(this.bus.Hats); n.start(t); n.stop(t + len + 0.1);
+        this.live.push({ g, end:t + len + 0.1 }); this.riser = true;
+      }
+      if (s >= 8 && (s < 12 ? s % 2 === 0 : true)) this.noiseHit("Clap", t, { type:"bandpass", freq:1500 + s * 80, q:0.9, dur:0.08, peak:0.35 + (s - 8) * 0.08 });
+    }
+    if (bar === 0 && s === 0 && this.riser) { this.riser = false; this.noiseHit("Hats", t, { type:"highpass", freq:4500, dur:1.1, peak:0.9 }); }
+  }
+}
+let orch = null, engines = { orch:null, edm:null };
+const MUSIC = [
+  { id:"off",  name:"Off",       icon:"⏹️" },
+  { id:"orch", name:"Orchestra", icon:"🎼" },
+  { id:"edm",  name:"EDM",       icon:"🎛️" },
+];
+function setMusic(id) {
+  state.music = id; save();
+  if (orch) { orch.stop(); orch = null; }
+  if (id !== "off" && engines[id]) { orch = engines[id]; if (voice) voice.resume(); orch.start(); }
+}
 
 /* ============================ hand tracking ============================ */
 let trackerMsg = "Loading hand tracker…";
@@ -870,7 +958,7 @@ function drawOrchestraViz() {                         // beat pulse + a little l
   ctx.globalCompositeOperation = "source-over";
   const bw = 22 * DPR, gap = 10 * DPR, x0 = 18 * DPR, base = H - 34 * DPR;
   ctx.font = `700 ${Math.round(11 * DPR)}px system-ui,sans-serif`; ctx.textAlign = "center";
-  SECTIONS.forEach((n, i) => {
+  orch.sections.forEach((n, i) => {
     const x = x0 + i * (bw + gap + 18 * DPR), h = (10 + 56 * orch.meter[n]) * DPR;
     ctx.fillStyle = "rgba(10,6,26,.55)"; ctx.fillRect(x - 3 * DPR, base - 70 * DPR, bw + 6 * DPR, 90 * DPR);
     ctx.fillStyle = hsl(lerp(th.warm, th.cool, i / 5), th.sat, th.lit, 0.95); ctx.fillRect(x, base - h, bw, h);
@@ -1012,7 +1100,7 @@ async function start(fullscreen) {
   try {
     voice = new Voice(); await voice.resume();
     voice.setMuted(state.muted); voice.setInstrument(inst());
-    orch = new Orchestra(voice); if (state.orch) orch.start();
+    engines.orch = new Orchestra(voice); engines.edm = new Edm(voice); setMusic(state.music);
   } catch (e) { voice = null; console.warn("audio failed", e); }
 
   try {
@@ -1024,7 +1112,7 @@ async function start(fullscreen) {
 
   startEl.classList.add("hidden");
   $("controls").classList.remove("hidden");
-  buildInstPanel(); syncButtons();
+  buildInstPanel(); buildMusicPanel(); syncButtons();
   requestAnimationFrame(frame);                                                  // camera feed shows while the model loads
 
   try {
@@ -1053,6 +1141,16 @@ document.addEventListener("visibilitychange", () => {
 });
 
 /* ============================ controls ============================ */
+const musicPanel = $("musicPanel");
+function buildMusicPanel() {
+  musicPanel.innerHTML = "";
+  MUSIC.forEach(mu => {
+    const b = document.createElement("button");
+    b.innerHTML = `<span class="i">${mu.icon}</span><span class="t">${mu.name}</span>`;
+    b.onclick = e => { e.stopPropagation(); setMusic(mu.id); musicPanel.classList.add("hidden"); syncButtons(); };
+    musicPanel.appendChild(b);
+  });
+}
 function buildInstPanel() {
   instPanel.innerHTML = "";
   INSTRUMENTS.forEach((ins, i) => {
@@ -1073,7 +1171,10 @@ function syncButtons() {
   const ins = inst();
   $("bVoice").querySelector(".i").textContent = ins.icon; $("bVoice").querySelector(".t").textContent = ins.name;
   [...instPanel.children].forEach((b, i) => b.classList.toggle("sel", i === state.inst));
-  $("bOrch").classList.toggle("off", !state.orch);
+  const mu = MUSIC.find(x => x.id === state.music);
+  $("bMusic").classList.toggle("off", state.music === "off");
+  $("bMusic").querySelector(".i").textContent = mu.icon; $("bMusic").querySelector(".t").textContent = state.music === "off" ? "Music" : mu.name;
+  [...musicPanel.children].forEach((b, k) => b.classList.toggle("sel", MUSIC[k].id === state.music));
   $("bMute").classList.toggle("off", state.muted);
   $("bMute").querySelector(".i").textContent = state.muted ? "🔇" : "🔊";
   $("bSnap").classList.toggle("off", !state.snap);
@@ -1082,13 +1183,9 @@ function syncButtons() {
   $("bFull").querySelector(".i").textContent = isFS() ? "🗗" : "⛶";
   $("bFull").querySelector(".t").textContent = isFS() ? "Exit" : "Full";
 }
-$("bVoice").onclick = e => { e.stopPropagation(); instPanel.classList.toggle("hidden"); };
-document.addEventListener("click", e => { if (!instPanel.contains(e.target)) instPanel.classList.add("hidden"); });
-$("bOrch").onclick = () => {
-  state.orch = !state.orch; save();
-  if (orch) { if (state.orch) { voice && voice.resume(); orch.start(); } else orch.stop(); }
-  syncButtons();
-};
+$("bVoice").onclick = e => { e.stopPropagation(); musicPanel.classList.add("hidden"); instPanel.classList.toggle("hidden"); };
+$("bMusic").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); musicPanel.classList.toggle("hidden"); };
+document.addEventListener("click", e => { if (!instPanel.contains(e.target)) instPanel.classList.add("hidden"); if (!musicPanel.contains(e.target)) musicPanel.classList.add("hidden"); });
 $("bMute").onclick = () => { state.muted = !state.muted; voice && voice.setMuted(state.muted); save(); syncButtons(); };
 $("bSnap").onclick = () => { state.snap = !state.snap; save(); syncButtons(); };
 $("bSkel").onclick = () => { state.skeleton = !state.skeleton; save(); syncButtons(); };
@@ -1096,7 +1193,7 @@ $("bTheme").onclick = () => { state.theme = (state.theme + 1) % THEMES.length; s
 $("bFull").onclick = toggleFS;
 const helpEl = $("help");
 const setHelp = open => helpEl.classList.toggle("hidden", !open);
-$("bHelp").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); setHelp(helpEl.classList.contains("hidden")); };
+$("bHelp").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); musicPanel.classList.add("hidden"); setHelp(helpEl.classList.contains("hidden")); };
 $("helpClose").onclick = () => setHelp(false);
 document.addEventListener("click", e => { if (!helpEl.contains(e.target)) setHelp(false); });
 addEventListener("keydown", e => { if (e.key === "Escape") setHelp(false); if (e.key === "?" || e.key === "h" || e.key === "H") setHelp(helpEl.classList.contains("hidden")); });
