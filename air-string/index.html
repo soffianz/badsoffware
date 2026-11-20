@@ -46,6 +46,13 @@
     display:flex; gap:8px; z-index:6; padding:8px; border-radius:22px; background:rgba(10,6,26,.8); backdrop-filter:blur(8px); }
   #instPanel button { min-width:64px; height:70px; }
   #instPanel button.sel { outline:3px solid #ffd36b; background:rgba(255,211,107,.18); }
+  #help { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:8; width:min(560px,92vw); max-height:84vh; overflow:auto;
+    padding:20px 22px 18px; border-radius:24px; background:rgba(14,9,34,.92); backdrop-filter:blur(10px);
+    box-shadow:0 10px 60px rgba(0,0,0,.6); font-size:16px; line-height:1.45; touch-action:pan-y; }
+  #help h2 { margin:0 0 10px; font-size:22px; }
+  #help h3 { margin:14px 0 4px; font-size:16px; color:#ffd36b; }
+  #help ul { margin:0; padding-left:20px; } #help li { margin:3px 0; }
+  #helpClose { position:absolute; right:12px; top:10px; width:40px; height:40px; border:0; border-radius:50%; background:rgba(255,255,255,.14); color:#fff; font-size:20px; cursor:pointer; }
   #debug { position:fixed; left:8px; bottom:8px; font:12px/1.4 ui-monospace,monospace; background:rgba(0,0,0,.6);
     padding:6px 8px; border-radius:6px; z-index:5; white-space:pre; display:none; pointer-events:none; }
   .hidden { display:none !important; }
@@ -69,7 +76,36 @@
 
 <div id="chip" class="hidden">Loading…</div>
 <div id="instPanel" class="hidden"></div>
+<div id="help" class="hidden" role="dialog" aria-label="How to play">
+  <button id="helpClose" aria-label="Close">✕</button>
+  <h2>How to play</h2>
+  <h3>One string</h3>
+  <ul>
+    <li>Show both hands and pinch thumb and index finger on each. A string appears between them.</li>
+    <li>Move your hands apart for a lower note, together for a higher one.</li>
+    <li>Raise the string for louder, lower it for quieter. Tilt it to make the tone brighter or mellower.</li>
+    <li>Wiggle a hand for vibrato (or a re-pluck on Harp, Guitar and Bells). Let go to twang it away.</li>
+  </ul>
+  <h3>Five strings</h3>
+  <ul>
+    <li>Press your hands together like a prayer, then pull them apart.</li>
+    <li>Thumb to pinky play C, D, E, G, A. Hands closer together plays an octave higher.</li>
+    <li>Wiggle a finger to pluck its string. Bring your hands back together to reset.</li>
+  </ul>
+  <h3>Buttons</h3>
+  <ul>
+    <li><b>Instrument:</b> Synth, Violin, Harp, Guitar or Bells.</li>
+    <li><b>Sound:</b> mute. <b>Snap:</b> lock notes to a pleasant scale, or glide freely.</li>
+    <li><b>Hands:</b> show or hide the skeleton. <b>Colour:</b> change theme. <b>Full:</b> full screen.</li>
+  </ul>
+  <h3>Tips</h3>
+  <ul>
+    <li>Use good light and keep both hands in view of the front camera.</li>
+    <li>Everything stays on your device. Nothing is recorded.</li>
+  </ul>
+</div>
 <div id="controls" class="hidden">
+  <button id="bHelp"  title="How to play"><span class="i">❓</span><span class="t">Help</span></button>
   <button id="bVoice" title="Instrument"><span class="i">🎹</span><span class="t">Synth</span></button>
   <button id="bMute"  title="Mute"><span class="i">🔊</span><span class="t">Sound</span></button>
   <button id="bSnap"  title="Snap to scale"><span class="i">🎵</span><span class="t">Snap</span></button>
@@ -556,17 +592,10 @@ function frame(now) {
     } else if (voice && voice.on) voice.release();
   }
 
-  // ----- status chip -----
-  let msg;
-  if (now < toastUntil) msg = toast;
-  else if (trackerMsg) msg = trackerMsg;
-  else if (M.state === "active") msg = "🎶 " + M.strings.map(o => noteName(o.midi)).join(" ");
-  else if (S.active) msg = state.muted ? "Muted 🔇" : `♪ ${S.note}`;
-  else if (M.state === "armed") msg = "Now pull them apart! 👐";
-  else if (hands.length === 0) msg = (now - noHandsSince > 5000) ? "Need more light 💡" : "Show me two hands 🙌";
-  else if (hands.length === 1) msg = "Show me both hands 🙌";
-  else msg = (slots[0].pinched || slots[1].pinched) ? "Now the other hand!" : "Pinch 🤏 or press hands together 🙏";
+  // ----- status chip: only loading, errors and one-off notices (instructions live in the Help box) -----
+  const msg = now < toastUntil ? toast : trackerMsg;
   if (chip.textContent !== msg) chip.textContent = msg;
+  chip.classList.toggle("hidden", !msg);
 
   render(dt, now);
   if (DEBUG) debugEl.textContent =
@@ -724,7 +753,7 @@ async function start(fullscreen) {
   updateVideoMap();
 
   startEl.classList.add("hidden");
-  chip.classList.remove("hidden"); $("controls").classList.remove("hidden");
+  $("controls").classList.remove("hidden");
   buildInstPanel(); syncButtons();
   requestAnimationFrame(frame);                                                  // camera feed shows while the model loads
 
@@ -789,6 +818,12 @@ $("bSnap").onclick = () => { state.snap = !state.snap; save(); syncButtons(); };
 $("bSkel").onclick = () => { state.skeleton = !state.skeleton; save(); syncButtons(); };
 $("bTheme").onclick = () => { state.theme = (state.theme + 1) % THEMES.length; save(); syncButtons(); };
 $("bFull").onclick = toggleFS;
+const helpEl = $("help");
+const setHelp = open => helpEl.classList.toggle("hidden", !open);
+$("bHelp").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); setHelp(helpEl.classList.contains("hidden")); };
+$("helpClose").onclick = () => setHelp(false);
+document.addEventListener("click", e => { if (!helpEl.contains(e.target)) setHelp(false); });
+addEventListener("keydown", e => { if (e.key === "Escape") setHelp(false); if (e.key === "?" || e.key === "h" || e.key === "H") setHelp(helpEl.classList.contains("hidden")); });
 </script>
 </body>
 </html>
