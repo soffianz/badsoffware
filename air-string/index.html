@@ -53,6 +53,9 @@
   #help h3 { margin:14px 0 4px; font-size:16px; color:#ffd36b; }
   #help ul { margin:0; padding-left:20px; } #help li { margin:3px 0; }
   #helpClose { position:absolute; right:12px; top:10px; width:40px; height:40px; border:0; border-radius:50%; background:rgba(255,255,255,.14); color:#fff; font-size:20px; cursor:pointer; }
+  @media (max-width:700px) { #controls { flex-wrap:wrap; justify-content:flex-end; max-width:calc(100vw - 20px); }
+    #controls button { min-width:50px; height:54px; padding:0 6px; font-size:11px; } #controls button .i { font-size:20px; }
+    #instPanel { bottom:calc(max(10px,env(safe-area-inset-bottom)) + 124px); } #instPanel button { min-width:52px; height:60px; } }
   #debug { position:fixed; left:8px; bottom:8px; font:12px/1.4 ui-monospace,monospace; background:rgba(0,0,0,.6);
     padding:6px 8px; border-radius:6px; z-index:5; white-space:pre; display:none; pointer-events:none; }
   .hidden { display:none !important; }
@@ -93,10 +96,17 @@
     <li>Wiggle a finger to pluck its string. Bring your hands back together to reset.</li>
     <li><b>Duet:</b> while someone holds the five strings, a friend can pluck them by sweeping their fingers across the strings. Up to four hands are tracked.</li>
   </ul>
+  <h3>Orchestra</h3>
+  <ul>
+    <li>Turn on <b>Orchestra</b> and a full orchestra plays: strings, cellos, violins, flute, brass and timpani.</li>
+    <li>Raise your hands for louder, lower them for softer. Spread your hands wide to bring in brass and drums.</li>
+    <li>Move your hands faster to speed the music up, hold still to let it slow down.</li>
+    <li>You can still pinch or pull out the five strings to play solo over the top.</li>
+  </ul>
   <h3>Buttons</h3>
   <ul>
     <li><b>Instrument:</b> Synth, Violin, Harp, Guitar or Bells.</li>
-    <li><b>Sound:</b> mute. <b>Snap:</b> lock notes to a pleasant scale, or glide freely.</li>
+    <li><b>Orchestra:</b> backing orchestra on or off. <b>Sound:</b> mute. <b>Snap:</b> lock notes to a pleasant scale, or glide freely.</li>
     <li><b>Hands:</b> show or hide the skeleton. <b>Colour:</b> change theme. <b>Full:</b> full screen.</li>
   </ul>
   <h3>Tips</h3>
@@ -108,6 +118,7 @@
 <div id="controls" class="hidden">
   <button id="bHelp"  title="How to play"><span class="i">❓</span><span class="t">Help</span></button>
   <button id="bVoice" title="Instrument"><span class="i">🎹</span><span class="t">Synth</span></button>
+  <button id="bOrch"  title="Orchestra"><span class="i">🎼</span><span class="t">Orchestra</span></button>
   <button id="bMute"  title="Mute"><span class="i">🔊</span><span class="t">Sound</span></button>
   <button id="bSnap"  title="Snap to scale"><span class="i">🎵</span><span class="t">Snap</span></button>
   <button id="bSkel"  title="Hand skeleton"><span class="i">🖐️</span><span class="t">Hands</span></button>
@@ -159,7 +170,7 @@ const debugEl = $("debug"), instPanel = $("instPanel");
 const DEBUG = new URLSearchParams(location.search).has("debug");
 if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { allHands = h; newDet = true; }; window.__dbg = () => ({ M, S, voice }); }
 
-const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0 };
+const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0, orch:false };
 try { Object.assign(state, JSON.parse(localStorage.getItem("airstring") || "{}")); } catch {}
 if (!INSTRUMENTS[state.inst]) state.inst = 0;
 if (!THEMES[state.theme]) state.theme = 0;
@@ -362,6 +373,123 @@ class Voice {
   }
 }
 let voice = null;
+
+/* ============================ orchestra ============================ */
+const PROG = [{ pc:9, minor:true }, { pc:5, minor:false }, { pc:0, minor:false }, { pc:7, minor:false }];   // Am F C G
+const SECTIONS = ["Strings", "Bass", "Violins", "Flute", "Brass", "Timpani"];
+class Orchestra {
+  constructor(v) {
+    const a = this.ctx = v.ctx;
+    this.out = a.createGain(); this.out.gain.value = 0.0001;
+    const dry = a.createGain(); dry.gain.value = 0.75;
+    this.verb = a.createConvolver(); this.verb.buffer = v.makeImpulse(3.4, 2.2);
+    const wet = a.createGain(); wet.gain.value = 0.5;
+    this.out.connect(dry); dry.connect(v.comp); this.out.connect(this.verb); this.verb.connect(wet); wet.connect(v.comp);
+    this.bus = {}; SECTIONS.forEach(n => { const g = a.createGain(); g.gain.value = 0; g.connect(this.out); this.bus[n] = g; });
+    this.noise = a.createBuffer(1, a.sampleRate, a.sampleRate);
+    { const d = this.noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    this.on = false; this.live = []; this.step = 0; this.bpm = 66; this.level = 0.3; this.power = 0.25; this.fl = 1;
+    this.meter = Object.fromEntries(SECTIONS.map(n => [n, 0])); this.pulse = 0; this.pulseAt = [];
+  }
+  start() {
+    if (this.on) return; this.on = true;
+    this.step = 0; this.next = this.ctx.currentTime + 0.15;
+    this.out.gain.cancelScheduledValues(this.ctx.currentTime); this.out.gain.setTargetAtTime(1, this.ctx.currentTime, 0.3);
+    this.timer = setInterval(() => this.tick(), 30);
+  }
+  stop() {
+    if (!this.on) return; this.on = false; clearInterval(this.timer);
+    const t = this.ctx.currentTime;
+    this.out.gain.cancelScheduledValues(t); this.out.gain.setTargetAtTime(0.0001, t, 0.15);
+    for (const n of this.live) { try { n.g.gain.cancelScheduledValues(t); n.g.gain.setTargetAtTime(0, t, 0.1); } catch {} }
+    this.live = [];
+  }
+  setLevels(level, power) {
+    this.level = lerp(this.level, level, 0.08); this.power = lerp(this.power, power, 0.08);
+    const t = this.ctx.currentTime, L = this.level, P = this.power, b = this.bus;
+    const set = (n, v) => b[n].gain.setTargetAtTime(v, t, 0.15);
+    set("Strings", 0.55 * (0.15 + 0.85 * L)); set("Bass", 0.6 * (0.2 + 0.8 * L)); set("Violins", 0.42 * (0.2 + 0.8 * L));
+    set("Flute", 0.5 * (0.3 + 0.7 * L)); set("Brass", 0.55 * (0.3 + 0.7 * L) * (0.5 + 0.5 * P)); set("Timpani", 0.9 * (0.3 + 0.7 * L));
+  }
+  setTempo(mov) { this.bpm = lerp(this.bpm, 62 + 58 * clamp(mov, 0, 1), 0.02); }
+  update(dt) {
+    for (const n of SECTIONS) this.meter[n] = Math.max(0, this.meter[n] - dt * 2.2);
+    const now = this.ctx.currentTime;
+    while (this.pulseAt.length && this.pulseAt[0] <= now) { this.pulseAt.shift(); this.pulse = 1; }
+    this.pulse = Math.max(0, this.pulse - dt * 2.5);
+    this.live = this.live.filter(n => n.end > now);
+  }
+  tick() {
+    const a = this.ctx;
+    while (this.next < a.currentTime + 0.15) {
+      const dur = 30 / this.bpm;                         // one eighth note
+      this.schedule(this.step, this.next, dur);
+      this.next += dur; this.step++;
+    }
+  }
+  tone(sec, o) {
+    const a = this.ctx, t = o.t, atk = o.atk ?? 0.02, rel = o.rel ?? 0.2, dur = Math.max(o.dur, atk + 0.02), peak = o.peak ?? 0.15;
+    const f = a.createBiquadFilter(); f.type = "lowpass"; f.Q.value = o.q ?? 0.7;
+    f.frequency.setValueAtTime(o.lp ?? 3000, t);
+    if (o.lpEnd) f.frequency.linearRampToValueAtTime(o.lpEnd, t + (o.lpT ?? dur));
+    const g = a.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + atk);
+    g.gain.setValueAtTime(peak, t + dur); g.gain.setTargetAtTime(0.0001, t + dur, rel / 3);
+    const end = t + dur + rel + 0.1;
+    const dets = o.det ? [-o.det, o.det] : [0];
+    dets.forEach((dc, k) => {
+      const os = a.createOscillator(); os.type = o.type || "sawtooth"; os.frequency.value = o.freq; os.detune.value = dc;
+      os.connect(f); os.start(t); os.stop(end);
+      if (k === 0) os.onended = () => { try { g.disconnect(); } catch {} };
+    });
+    f.connect(g); g.connect(this.bus[sec]);
+    this.live.push({ g, end });
+    this.meterHit(sec, t);
+  }
+  meterHit(sec, t) { setTimeout(() => { this.meter[sec] = 1; }, Math.max(0, (t - this.ctx.currentTime) * 1000)); }
+  timp(t, hard) {
+    const a = this.ctx, g = a.createGain(), os = a.createOscillator();
+    os.type = "sine"; os.frequency.setValueAtTime(hard ? 130 : 110, t); os.frequency.exponentialRampToValueAtTime(52, t + 0.28);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(hard ? 1 : 0.75, t + 0.006); g.gain.setTargetAtTime(0.0001, t + 0.02, 0.22);
+    os.connect(g); os.start(t); os.stop(t + 1.4);
+    const n = a.createBufferSource(), nf = a.createBiquadFilter(), ng = a.createGain(); n.buffer = this.noise; nf.type = "lowpass"; nf.frequency.value = 500;
+    ng.gain.setValueAtTime(0.35, t); ng.gain.setTargetAtTime(0.0001, t, 0.03);
+    n.connect(nf); nf.connect(ng); ng.connect(g); n.start(t); n.stop(t + 0.3);
+    g.connect(this.bus.Timpani); os.onended = () => { try { g.disconnect(); } catch {} };
+    this.live.push({ g, end:t + 1.4 }); this.meterHit("Timpani", t);
+  }
+  schedule(step, t, d) {
+    const s = step % 8, bar = Math.floor(step / 8) % 4, ch = PROG[bar], L = this.level, P = this.power;
+    const tones = [0, ch.minor ? 3 : 4, 7];
+    const m = (oct, semis) => 12 * (oct + 1) + ch.pc + semis;                      // midi of the chord note
+    if (s === 0) this.pulseAt.push(t);
+    if (s === 0) {                                                                // string section: warm swell on every chord
+      const len = d * 8;
+      for (const oct of [3, 4]) for (const iv of tones)
+        this.tone("Strings", { type:"sawtooth", freq:midiToFreq(m(oct, iv)), t, dur:len + 0.25, atk:0.55, rel:0.9, peak:0.07, det:9, lp:800, lpEnd:2300, lpT:len * 0.7 });
+      this.tone("Bass", { type:"sawtooth", freq:midiToFreq(m(2, 0)), t, dur:len, atk:0.12, rel:0.5, peak:0.28, lp:420, q:0.9 });
+      this.tone("Bass", { type:"sine", freq:midiToFreq(m(1, 0)), t, dur:len, atk:0.1, rel:0.5, peak:0.25 });
+      if (L > 0.3 || P > 0.4) this.timp(t, P > 0.7);
+      if (P > 0.45 && (bar === 0 || bar === 3 || (P > 0.75 && bar === 2))) {         // brass swell
+        for (const [oct, iv] of [[3, 0], [3, 7], [4, 0]])
+          this.tone("Brass", { type:"sawtooth", freq:midiToFreq(m(oct, iv)), t, dur:d * 5, atk:0.28, rel:0.7, peak:0.16, det:5, lp:450, lpEnd:2600, lpT:0.7, q:1.1 });
+      }
+    }
+    if (s === 4 && P > 0.7) this.timp(t, false);
+    if (P > 0.55 && s % 2 === 1)                                                   // driving cello pulse
+      this.tone("Bass", { type:"sawtooth", freq:midiToFreq(m(2, s === 5 ? 7 : 0)), t, dur:d * 0.8, atk:0.01, rel:0.12, peak:0.18, lp:700 });
+    if (L > 0.3) {                                                                 // violin arpeggio
+      const iv = [0, tones[1], tones[2], 12, tones[2], tones[1], tones[2], tones[1]][s];
+      this.tone("Violins", { type:"sawtooth", freq:midiToFreq(m(4, iv)), t, dur:d * 0.85, atk:0.02, rel:0.18, peak:0.11, lp:2600, q:0.6, det:7 });
+    }
+    if (L > 0.35 && (s === 0 || s === 4)) {                                        // flute wanders over the chord
+      const pool = [tones[0], tones[1], tones[2], 12, 12 + tones[1]];
+      this.fl = clamp(this.fl + (Math.random() < 0.5 ? -1 : 1), 0, pool.length - 1);
+      this.tone("Flute", { type:"sine", freq:midiToFreq(m(5, pool[this.fl])), t, dur:d * 3.4, atk:0.12, rel:0.35, peak:0.2, lp:3200 });
+    }
+  }
+}
+let orch = null;
 
 /* ============================ hand tracking ============================ */
 let trackerMsg = "Loading hand tracker…";
@@ -599,6 +727,21 @@ function updateSlots(now) {
   }
 }
 
+// Orchestra "conducting": hand height = volume, hand spread = fullness (brass, drums), hand speed = tempo
+let prevCentroid = null;
+function conduct(now, dt) {
+  let level = 0.3, power = 0.25, mov = 0;
+  const hs = allHands;
+  if (hs.length) {
+    const ay = hs.reduce((a, h) => a + h.wrist.y, 0) / hs.length;
+    level = 0.15 + 0.85 * (1 - clamp(ay / H, 0, 1));
+    power = hs.length >= 2 ? clamp(Math.abs(hs[hs.length - 1].wrist.x - hs[0].wrist.x) / (0.6 * W), 0, 1) : 0.3;
+    const c = { x:hs.reduce((a, h) => a + h.wrist.x, 0) / hs.length, y:ay, n:hs.length };
+    if (prevCentroid && prevCentroid.n === c.n) mov = clamp(Math.hypot(c.x - prevCentroid.x, c.y - prevCentroid.y) / Math.max(dt, 1e-3) / DIAG / 0.6, 0, 1);
+    prevCentroid = c;
+  } else prevCentroid = null;
+  orch.setLevels(level, power); orch.setTempo(mov);
+}
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - lastFrame) / 1000); lastFrame = now;
@@ -607,6 +750,7 @@ function frame(now) {
   updateSlots(now);
   updateMulti(now, dt);
   if (newDet) { updatePlucking(now, M.state === "active"); newDet = false; }
+  if (orch && orch.on) conduct(now, dt);
   const ins = inst();
 
   const active = slots[0].pinched && slots[1].pinched && M.state !== "active";
@@ -683,10 +827,11 @@ function frame(now) {
   if (chip.textContent !== msg) chip.textContent = msg;
   chip.classList.toggle("hidden", !msg);
 
+  if (orch) orch.update(dt);
   render(dt, now);
   if (DEBUG) debugEl.textContent =
     `hands ${allHands.length} (holding ${hands.length})\npinch L ${slots[0].ratio.toFixed(2)} ${slots[0].pinched ? "ON" : "off"}\npinch R ${slots[1].ratio.toFixed(2)} ${slots[1].pinched ? "ON" : "off"}\n` +
-    `single ${S.active ? S.note + " " + S.freq.toFixed(0) + "Hz" : "-"}  wobble ${S.wobble.toFixed(2)}\nmulti ${M.state} D ${M.D.toFixed(2)}\ninst ${ins.id}  fps ${(1 / Math.max(dt, 1e-3)).toFixed(0)}`;
+    `single ${S.active ? S.note + " " + S.freq.toFixed(0) + "Hz" : "-"}  wobble ${S.wobble.toFixed(2)}\nmulti ${M.state} D ${M.D.toFixed(2)}\ninst ${ins.id}  orch ${orch && orch.on ? orch.bpm.toFixed(0) + "bpm L" + orch.level.toFixed(2) + " P" + orch.power.toFixed(2) : "off"}  fps ${(1 / Math.max(dt, 1e-3)).toFixed(0)}`;
 }
 
 /* ============================ rendering ============================ */
@@ -715,6 +860,22 @@ function render(dt, now) {
   drawSparks(dt);
   ctx.globalCompositeOperation = "source-over";
   drawNoteLabels();
+  if (orch && orch.on) drawOrchestraViz();
+}
+function drawOrchestraViz() {                         // beat pulse + a little level meter per section
+  ctx.globalCompositeOperation = "lighter";
+  const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, DIAG * 0.6), th = THEMES[state.theme], hue = lerp(th.warm, th.cool, 0.5);
+  g.addColorStop(0, hsl(hue, th.sat, th.lit, 0)); g.addColorStop(1, hsl(hue, th.sat, th.lit, 0.22 * orch.pulse));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = "source-over";
+  const bw = 22 * DPR, gap = 10 * DPR, x0 = 18 * DPR, base = H - 34 * DPR;
+  ctx.font = `700 ${Math.round(11 * DPR)}px system-ui,sans-serif`; ctx.textAlign = "center";
+  SECTIONS.forEach((n, i) => {
+    const x = x0 + i * (bw + gap + 18 * DPR), h = (10 + 56 * orch.meter[n]) * DPR;
+    ctx.fillStyle = "rgba(10,6,26,.55)"; ctx.fillRect(x - 3 * DPR, base - 70 * DPR, bw + 6 * DPR, 90 * DPR);
+    ctx.fillStyle = hsl(lerp(th.warm, th.cool, i / 5), th.sat, th.lit, 0.95); ctx.fillRect(x, base - h, bw, h);
+    ctx.fillStyle = "#fff"; ctx.fillText(n, x + bw / 2, base + 14 * DPR);
+  });
 }
 
 // Note names, always readable: a column beside the left end of the five strings, or above the single string.
@@ -851,6 +1012,7 @@ async function start(fullscreen) {
   try {
     voice = new Voice(); await voice.resume();
     voice.setMuted(state.muted); voice.setInstrument(inst());
+    orch = new Orchestra(voice); if (state.orch) orch.start();
   } catch (e) { voice = null; console.warn("audio failed", e); }
 
   try {
@@ -911,6 +1073,7 @@ function syncButtons() {
   const ins = inst();
   $("bVoice").querySelector(".i").textContent = ins.icon; $("bVoice").querySelector(".t").textContent = ins.name;
   [...instPanel.children].forEach((b, i) => b.classList.toggle("sel", i === state.inst));
+  $("bOrch").classList.toggle("off", !state.orch);
   $("bMute").classList.toggle("off", state.muted);
   $("bMute").querySelector(".i").textContent = state.muted ? "🔇" : "🔊";
   $("bSnap").classList.toggle("off", !state.snap);
@@ -921,6 +1084,11 @@ function syncButtons() {
 }
 $("bVoice").onclick = e => { e.stopPropagation(); instPanel.classList.toggle("hidden"); };
 document.addEventListener("click", e => { if (!instPanel.contains(e.target)) instPanel.classList.add("hidden"); });
+$("bOrch").onclick = () => {
+  state.orch = !state.orch; save();
+  if (orch) { if (state.orch) { voice && voice.resume(); orch.start(); } else orch.stop(); }
+  syncButtons();
+};
 $("bMute").onclick = () => { state.muted = !state.muted; voice && voice.setMuted(state.muted); save(); syncButtons(); };
 $("bSnap").onclick = () => { state.snap = !state.snap; save(); syncButtons(); };
 $("bSkel").onclick = () => { state.skeleton = !state.skeleton; save(); syncButtons(); };
