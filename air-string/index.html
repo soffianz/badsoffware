@@ -236,12 +236,21 @@ class Voice {
     this.o1.connect(this.mix1); this.o2.connect(this.mix2);
     this.mix1.connect(this.filter); this.mix2.connect(this.filter);
     this.filter.connect(this.amp); this.amp.connect(this.sendIn);
-    this.noteFilter.connect(this.sendIn);
+    this.noteGain = a.createGain(); this.noteGain.gain.value = 1.7;
+    this.noteFilter.connect(this.noteGain); this.noteGain.connect(this.sendIn);
     this.sendIn.connect(this.dry); this.sendIn.connect(this.delay); this.sendIn.connect(this.verb);
     this.verb.connect(this.verbOut);
     this.dry.connect(this.comp); this.delayOut.connect(this.comp); this.verbOut.connect(this.comp);
     this.comp.connect(this.master); this.master.connect(a.destination);
     this.o1.start(); this.o2.start(); this.lfo.start();
+    // five-string pad: one quiet sustained tone per string, swells when that string moves
+    this.padFilter = a.createBiquadFilter(); this.padFilter.type = "lowpass"; this.padFilter.frequency.value = 2200; this.padFilter.Q.value = 0.5;
+    this.padFilter.connect(this.sendIn);
+    this.pad = [0, 1, 2, 3, 4].map(() => {
+      const o = a.createOscillator(), o2 = a.createOscillator(), g = a.createGain(); o.type = "triangle"; o2.type = "sine"; o2.detune.value = 6; g.gain.value = 0;
+      o.connect(g); o2.connect(g); g.connect(this.padFilter); o.start(); o2.start(); return { o, o2, g };
+    });
+    this.padOn = false;
     this.freq = 440; this.on = false; this.ksCache = new Map(); this.inst = INSTRUMENTS[0];
   }
   makeImpulse(seconds, decay) {
@@ -258,6 +267,16 @@ class Voice {
       this.o1.type = ins.w1; this.o2.type = ins.w2; this.o2.detune.value = ins.det; this.filter.Q.value = ins.q;
       this.mix1.gain.value = ins.mix[0]; this.mix2.gain.value = ins.mix[1];
     }
+    this.pad.forEach(p => { p.o.type = ins.mode === "sustain" ? ins.w1 : "triangle"; });
+  }
+  padSet(i, freq, gain) {
+    const t = this.ctx.currentTime, p = this.pad[i]; this.padOn = true;
+    p.o.frequency.setTargetAtTime(freq, t, 0.03); p.o2.frequency.setTargetAtTime(freq, t, 0.03);
+    p.g.gain.setTargetAtTime(gain, t, 0.06);
+  }
+  padOff() {
+    if (!this.padOn) return; this.padOn = false;
+    const t = this.ctx.currentTime; this.pad.forEach(p => p.g.gain.setTargetAtTime(0, t, 0.12));
   }
   setNoteCutoff(c) { this.noteFilter.frequency.setTargetAtTime(c, this.ctx.currentTime, 0.05); }
 
@@ -438,10 +457,11 @@ function meanTipDistance() {
   for (let f = 0; f < 5; f++) sum += Math.hypot(tips[0][f].x - tips[1][f].x, tips[0][f].y - tips[1][f].y);
   return (sum / 5) / ((hands[0].size + hands[1].size) / 2);
 }
-function multiMidi(i) {                               // closer hands = an octave higher
+function multiOctave() {                              // closer hands = an octave higher
   let len = 0; for (const o of M.strings) len += Math.hypot(o.b.x - o.a.x, o.b.y - o.a.y);
-  return BASE_MIDI + PENT[i] + (len / 5 / DIAG < 0.25 ? 12 : 0);
+  return len / 5 / DIAG < 0.25 ? 12 : 0;
 }
+const multiMidi = i => BASE_MIDI + PENT[i] + multiOctave();
 function pluckString(i, vel, delay = 0) {
   const o = M.strings[i], now = performance.now();
   o.midi = multiMidi(i); o.flash = 1; o.lastPluck = now;
@@ -454,7 +474,7 @@ function startMulti() {
   voice && voice.setNoteCutoff(6500);
   for (let f = 0; f < 5; f++) {                       // harp-style strum, thumb to pinky
     const o = M.strings[f], midY = (o.a.y + o.b.y) / 2;
-    pluckString(f, 0.5 + 0.5 * (1 - clamp(midY / H, 0, 1)), f * 0.07);
+    pluckString(f, 0.75 + 0.25 * (1 - clamp(midY / H, 0, 1)), f * 0.07);
   }
 }
 function endMulti(reason, now) {
@@ -502,7 +522,7 @@ function updatePlucking(now, live) {
           const vmag = Math.min(speed, 0.6 * DIAG), kx = sx / dtp * 0.35, ky = sy / dtp * 0.35, km = Math.hypot(kx, ky) || 1, kc = Math.min(1, 0.45 * DIAG / km);
           const mid = Math.round(clamp(t, 0, 1) * (o.pts.length - 1));
           [0.3, 0.7, 1, 0.7, 0.3].forEach((w, j) => { const q = o.pts[mid + j - 2]; if (q && q !== o.pts[0] && q !== o.pts[o.pts.length - 1]) { q.vx += kx * kc * w; q.vy += ky * kc * w; } });
-          pluckString(i, clamp(0.4 + vmag / (0.6 * DIAG) * 0.6, 0.4, 1));
+          pluckString(i, clamp(0.65 + vmag / (0.6 * DIAG) * 0.35, 0.65, 1));
           burst(o.a.x + rx * t, o.a.y + ry * t, 8, 0.15 * DIAG, hueFor(1 - i / 4));
         }
       }
@@ -534,16 +554,28 @@ function updateMulti(now, dt) {
 
   const live = M.state === "active";
   if (live) M.fade = 1; else M.fade = Math.max(0, M.fade - dt / 0.5);
+  const oct = live ? multiOctave() : 0;
+  if (!live && voice) voice.padOff();
+  if (voice && state.muted) voice.padOff();
   if (M.fade > 0) for (let f = 0; f < 5; f++) {
     const o = M.strings[f];
+    if (live) {
+      const ex = (Math.hypot(tips[0][f].x - o.a.x, tips[0][f].y - o.a.y) + Math.hypot(tips[1][f].x - o.b.x, tips[1][f].y - o.b.y)) / 2 / Math.max(dt, 1e-3);
+      o.speed = lerp(o.speed || 0, ex, 0.5);
+    }
     if (live) { o.a.x = tips[0][f].x; o.a.y = tips[0][f].y; o.b.x = tips[1][f].x; o.b.y = tips[1][f].y; }
     else { const mx = (o.a.x + o.b.x) / 2, my = (o.a.y + o.b.y) / 2, k = Math.min(1, dt * 9);   // recoil to the middle
       o.a.x = lerp(o.a.x, mx, k); o.a.y = lerp(o.a.y, my, k); o.b.x = lerp(o.b.x, mx, k); o.b.y = lerp(o.b.y, my, k); }
     stepString(o, dt);
     o.flash = Math.max(0, o.flash - dt * 2.2);
     if (live) {                                       // wiggle a finger to pluck its string
-      if (o.canTrig && o.wobble > 0.3 && now - o.lastPluck > 130) { o.canTrig = false; pluckString(f, clamp(0.45 + o.wobble, 0.45, 1)); }
-      else if (!o.canTrig && o.wobble < 0.12) o.canTrig = true;
+      if (o.canTrig && o.wobble > 0.16 && now - o.lastPluck > 130) { o.canTrig = false; pluckString(f, clamp(0.65 + o.wobble, 0.65, 1)); }
+      else if (!o.canTrig && o.wobble < 0.07) o.canTrig = true;
+      else if (o.speed > 0.2 * DIAG && now - o.lastPluck > 170) pluckString(f, clamp(0.6 + o.speed / DIAG * 0.5, 0.6, 1));   // moving a finger plays its note too
+      if (voice && !state.muted) {                    // quiet sustained chord that swells as each string moves
+        const midY = (o.a.y + o.b.y) / 2, lift = 0.6 + 0.4 * (1 - clamp(midY / H, 0, 1));
+        voice.padSet(f, midiToFreq(BASE_MIDI + PENT[f] + oct), (0.05 + 0.3 * Math.min(1, o.wobble * 2)) * lift);
+      }
     }
   }
 }
@@ -679,14 +711,36 @@ function render(dt, now) {
   }
   if (M.fade > 0) {
     M.strings.forEach((o, i) => drawChain(o, hueFor(1 - i / 4), M.fade * (0.65 + 0.35 * o.flash), 0.55 + 0.25 * o.flash, false));
-    ctx.font = `800 ${Math.round(22 * DPR)}px system-ui,sans-serif`; ctx.textAlign = "center";
-    M.strings.forEach(o => {
-      ctx.fillStyle = `rgba(255,255,255,${0.9 * M.fade})`;
-      ctx.fillText(noteName(o.midi), (o.a.x + o.b.x) / 2, (o.a.y + o.b.y) / 2 - 20 * DPR);
-    });
   }
   drawSparks(dt);
   ctx.globalCompositeOperation = "source-over";
+  drawNoteLabels();
+}
+
+// Note names, always readable: a column beside the left end of the five strings, or above the single string.
+function drawLabel(text, x, y, hue, a, big) {
+  const fs = Math.round((big ? 30 : 24) * DPR), h = fs * 1.5;
+  ctx.font = `800 ${fs}px system-ui,sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const w = Math.max(h, ctx.measureText(text).width + 22 * DPR);
+  ctx.globalAlpha = a; ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x - w / 2, y - h / 2, w, h, h / 2); else ctx.rect(x - w / 2, y - h / 2, w, h);
+  ctx.fillStyle = "rgba(10,6,26,.78)"; ctx.fill();
+  ctx.lineWidth = 2.5 * DPR; ctx.strokeStyle = hsl(hue, 100, 68, 1); ctx.stroke();
+  ctx.fillStyle = "#fff"; ctx.fillText(text, x, y + 1 * DPR);
+  ctx.globalAlpha = 1; ctx.textBaseline = "alphabetic";
+}
+function drawNoteLabels() {
+  if (M.fade > 0) {
+    const gap = 42 * DPR, items = M.strings.map((o, i) => {
+      const left = o.a.x <= o.b.x ? o.a : o.b;
+      return { i, o, x:clamp(Math.min(o.a.x, o.b.x) - 46 * DPR, 34 * DPR, W - 34 * DPR), y:left.y };
+    }).sort((p, q) => p.y - q.y);
+    for (let k = 1; k < items.length; k++) if (items[k].y - items[k-1].y < gap) items[k].y = items[k-1].y + gap;   // keep them from overlapping
+    const shift = Math.max(0, items[items.length - 1].y - (H - 30 * DPR)); items.forEach(it => { it.y -= shift; });
+    items.forEach(it => drawLabel(noteName(it.o.midi), it.x, it.y, hueFor(1 - it.i / 4), M.fade, it.o.flash > 0.3));
+  }
+  if ((S.active || S.recoil) && S.fade > 0 && M.state !== "active")
+    drawLabel(S.note, (S.a.x + S.b.x) / 2, (S.a.y + S.b.y) / 2 - 44 * DPR, S.hue, S.fade, true);
 }
 
 function drawHands() {
