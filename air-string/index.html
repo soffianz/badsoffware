@@ -91,6 +91,7 @@
     <li>Press your hands together like a prayer, then pull them apart.</li>
     <li>Thumb to pinky play C, D, E, G, A. Hands closer together plays an octave higher.</li>
     <li>Wiggle a finger to pluck its string. Bring your hands back together to reset.</li>
+    <li><b>Duet:</b> while someone holds the five strings, a friend can pluck them by sweeping their fingers across the strings. Up to four hands are tracked.</li>
   </ul>
   <h3>Buttons</h3>
   <ul>
@@ -156,7 +157,7 @@ const canvas = $("c"), ctx = canvas.getContext("2d");
 const video = $("v"), chip = $("chip"), startEl = $("start"), startBtn = $("startBtn"), startFsBtn = $("startFsBtn"), errEl = $("err");
 const debugEl = $("debug"), instPanel = $("instPanel");
 const DEBUG = new URLSearchParams(location.search).has("debug");
-if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { hands = h; }; window.__dbg = () => ({ M, S, voice }); }
+if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { allHands = h; newDet = true; }; window.__dbg = () => ({ M, S, voice }); }
 
 const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0 };
 try { Object.assign(state, JSON.parse(localStorage.getItem("airstring") || "{}")); } catch {}
@@ -346,7 +347,9 @@ let voice = null;
 /* ============================ hand tracking ============================ */
 let trackerMsg = "Loading hand tracker…";
 let landmarker = null, camStream = null, lastVideoTime = -1;
-let hands = [];                                       // [{lm, ratio, pinch, wrist, size}] in canvas px, sorted left to right
+let allHands = [], newDet = false;                    // every tracked hand (up to 4), left to right
+let hands = [], extra = [];                           // hands = the two that hold the strings; extra = anyone else (a friend plucking)
+const pluckPrev = [];                                 // last fingertip positions of the plucking hands
 let videoMap = { ox:0, oy:0, s:1, vw:1, vh:1 };
 
 function updateVideoMap() {
@@ -372,7 +375,7 @@ function detect(nowMs) {
     out.push({ lm, ratio, size, pinch:{ x:(lm[4].x + lm[8].x) / 2, y:(lm[4].y + lm[8].y) / 2 }, wrist:lm[0] });
   }
   out.sort((a, b) => a.wrist.x - b.wrist.x);
-  hands = out.slice(0, 2);
+  allHands = out.slice(0, 4); newDet = true;
 }
 
 /* ============================ strings ============================ */
@@ -383,7 +386,7 @@ const S = Object.assign(makeChain(N_PTS), {           // the single (pinch) stri
 });
 // five-string mode: 5 chains, one per finger pair
 const tips = [0, 1].map(() => FINGERS.map(() => ({ fx:new OneEuro(2, 0.03), fy:new OneEuro(2, 0.03), x:0, y:0 })));
-const M = { state:"idle", armedAt:-1e9, lostAt:0, fade:0, D:0, strings:FINGERS.map((_, i) => Object.assign(makeChain(M_PTS), { canTrig:true, flash:0, lastPluck:0, midi:BASE_MIDI + PENT[i] })) };
+const M = { holderWrist:[{ x:0, y:0 }, { x:0, y:0 }], state:"idle", armedAt:-1e9, lostAt:0, fade:0, D:0, strings:FINGERS.map((_, i) => Object.assign(makeChain(M_PTS), { canTrig:true, flash:0, lastPluck:0, midi:BASE_MIDI + PENT[i] })) };
 const sparks = [];
 
 function initChain(o, a, b) {
@@ -458,6 +461,56 @@ function endMulti(reason, now) {
   for (const o of M.strings) { burst(o.a.x, o.a.y, 6, 0.2 * DIAG, hueFor(0.5)); burst(o.b.x, o.b.y, 6, 0.2 * DIAG, hueFor(0.5)); }
   if (reason === "closed") { M.state = "armed"; M.armedAt = now; } else M.state = "idle";
 }
+// Pick the two hands that hold the strings; everyone else is a plucker.
+function selectHands() {
+  const all = allHands, byX = (a, b) => a.wrist.x - b.wrist.x;
+  if (M.state === "active") {                         // stick with the hands already holding the strings
+    const used = new Set(), picked = [];
+    for (const w of M.holderWrist) {
+      let best = -1, bd = 1e9;
+      all.forEach((h, i) => { if (used.has(i)) return; const d = Math.hypot(h.wrist.x - w.x, h.wrist.y - w.y); if (d < bd) { bd = d; best = i; } });
+      if (best >= 0 && bd < 0.4 * DIAG) { used.add(best); picked.push(all[best]); }
+    }
+    hands = picked.sort(byX); extra = all.filter((_, i) => !used.has(i));
+  } else if (all.length <= 2) { hands = all; extra = []; }
+  else {                                              // not playing yet: the two biggest hands (closest to the camera) are the holders
+    hands = [...all].sort((a, b) => b.size - a.size).slice(0, 2).sort(byX); extra = all.filter(h => !hands.includes(h));
+  }
+  if (hands.length === 2) M.holderWrist = hands.map(h => ({ x:h.wrist.x, y:h.wrist.y }));
+}
+const cross = (ax, ay, bx, by) => ax * by - ay * bx;
+// A fingertip of a second person sweeping across a string plucks it.
+function updatePlucking(now, live) {
+  const prevList = pluckPrev.splice(0), cur = [];
+  for (const h of extra) {
+    let prev = null, bd = 0.3 * DIAG;
+    for (const pp of prevList) { const d = Math.hypot(pp.wrist.x - h.wrist.x, pp.wrist.y - h.wrist.y); if (d < bd) { bd = d; prev = pp; } }
+    const tipsNow = FINGERS.map(k => ({ x:h.lm[k].x, y:h.lm[k].y }));
+    if (live && prev) {
+      const dtp = Math.max(0.008, (now - prev.t) / 1000);
+      for (let f = 0; f < 5; f++) {
+        const p0 = prev.tips[f], p1 = tipsNow[f], sx = p1.x - p0.x, sy = p1.y - p0.y;
+        const speed = Math.hypot(sx, sy) / dtp;
+        if (speed < 0.05 * DIAG) continue;            // ignore resting or tiny drifts
+        for (let i = 0; i < 5; i++) {
+          const o = M.strings[i], rx = o.b.x - o.a.x, ry = o.b.y - o.a.y, den = cross(rx, ry, sx, sy);
+          if (Math.abs(den) < 1e-6 || now - (o.lastTouch || 0) < 120) continue;
+          const qx = p0.x - o.a.x, qy = p0.y - o.a.y;
+          const t = cross(qx, qy, sx, sy) / den, u = cross(qx, qy, rx, ry) / den;   // t: along the string, u: along the finger's path
+          if (t < -0.02 || t > 1.02 || u < 0 || u > 1) continue;
+          o.lastTouch = now; o.canTrig = false;
+          const vmag = Math.min(speed, 0.6 * DIAG), kx = sx / dtp * 0.35, ky = sy / dtp * 0.35, km = Math.hypot(kx, ky) || 1, kc = Math.min(1, 0.45 * DIAG / km);
+          const mid = Math.round(clamp(t, 0, 1) * (o.pts.length - 1));
+          [0.3, 0.7, 1, 0.7, 0.3].forEach((w, j) => { const q = o.pts[mid + j - 2]; if (q && q !== o.pts[0] && q !== o.pts[o.pts.length - 1]) { q.vx += kx * kc * w; q.vy += ky * kc * w; } });
+          pluckString(i, clamp(0.4 + vmag / (0.6 * DIAG) * 0.6, 0.4, 1));
+          burst(o.a.x + rx * t, o.a.y + ry * t, 8, 0.15 * DIAG, hueFor(1 - i / 4));
+        }
+      }
+    }
+    cur.push({ wrist:h.wrist, tips:tipsNow, t:now });
+  }
+  pluckPrev.push(...cur);
+}
 function updateMulti(now, dt) {
   const two = hands.length === 2, anyPinch = slots[0].pinched || slots[1].pinched;
   if (two) {
@@ -496,7 +549,7 @@ function updateMulti(now, dt) {
 }
 
 /* ============================ per-frame logic ============================ */
-let lastFrame = performance.now(), noHandsSince = performance.now(), prevActive = false;
+let lastFrame = performance.now(), prevActive = false;
 
 function updateSlots(now) {
   for (let i = 0; i < 2; i++) {
@@ -518,11 +571,12 @@ function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - lastFrame) / 1000); lastFrame = now;
   detect(now);
+  selectHands();
   updateSlots(now);
   updateMulti(now, dt);
+  if (newDet) { updatePlucking(now, M.state === "active"); newDet = false; }
   const ins = inst();
 
-  if (hands.length) noHandsSince = now;
   const active = slots[0].pinched && slots[1].pinched && M.state !== "active";
 
   if (active && !prevActive) {
@@ -599,7 +653,7 @@ function frame(now) {
 
   render(dt, now);
   if (DEBUG) debugEl.textContent =
-    `hands ${hands.length}\npinch L ${slots[0].ratio.toFixed(2)} ${slots[0].pinched ? "ON" : "off"}\npinch R ${slots[1].ratio.toFixed(2)} ${slots[1].pinched ? "ON" : "off"}\n` +
+    `hands ${allHands.length} (holding ${hands.length})\npinch L ${slots[0].ratio.toFixed(2)} ${slots[0].pinched ? "ON" : "off"}\npinch R ${slots[1].ratio.toFixed(2)} ${slots[1].pinched ? "ON" : "off"}\n` +
     `single ${S.active ? S.note + " " + S.freq.toFixed(0) + "Hz" : "-"}  wobble ${S.wobble.toFixed(2)}\nmulti ${M.state} D ${M.D.toFixed(2)}\ninst ${ins.id}  fps ${(1 / Math.max(dt, 1e-3)).toFixed(0)}`;
 }
 
@@ -638,7 +692,7 @@ function render(dt, now) {
 function drawHands() {
   const lw = Math.max(2, 3 * DPR);
   ctx.lineCap = "round";
-  for (const h of hands) {
+  for (const h of allHands) {
     ctx.strokeStyle = "rgba(80,255,120,.9)"; ctx.lineWidth = lw;
     ctx.beginPath();
     for (const [i, j] of HAND_CONNECTIONS) { ctx.moveTo(h.lm[i].x, h.lm[i].y); ctx.lineTo(h.lm[j].x, h.lm[j].y); }
@@ -761,7 +815,7 @@ async function start(fullscreen) {
     const { HandLandmarker, FilesetResolver } = await import(MP_BUNDLE);
     const fileset = await FilesetResolver.forVisionTasks(MP_WASM);
     const make = delegate => HandLandmarker.createFromOptions(fileset, {
-      baseOptions:{ modelAssetPath:MP_MODEL, delegate }, runningMode:"VIDEO", numHands:2,
+      baseOptions:{ modelAssetPath:MP_MODEL, delegate }, runningMode:"VIDEO", numHands:4,
       minHandDetectionConfidence:0.5, minHandPresenceConfidence:0.5, minTrackingConfidence:0.5 });
     try { landmarker = await make("GPU"); } catch (e) { console.warn("GPU delegate failed, using CPU", e); landmarker = await make("CPU"); }
     trackerMsg = "";
