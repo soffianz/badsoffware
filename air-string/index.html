@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Air String</title>
+<style>
+  :root { --ink:#fff; --panel:rgba(18,12,40,.62); }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:#07040f; color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden; touch-action:none; }
+  canvas { position:fixed; inset:0; width:100%; height:100%; display:block; }
+  #start { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; text-align:center; padding:24px;
+    background:radial-gradient(ellipse at 50% 40%, #2a1160 0%, #0b0618 70%); z-index:10; }
+  #start h1 { font-size:clamp(48px,11vw,110px); margin:0; letter-spacing:.02em;
+    background:linear-gradient(90deg,#ff9a4d,#ff4fd8,#59c8ff); -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 0 24px rgba(255,90,220,.45)); }
+  #start p { margin:0; font-size:clamp(18px,3vw,28px); opacity:.92; max-width:34ch; }
+  #start small { opacity:.65; font-size:clamp(13px,1.8vw,16px); max-width:44ch; }
+  #startBtn { font-size:clamp(26px,5vw,44px); padding:.5em 1.6em; border:0; border-radius:999px; cursor:pointer;
+    color:#1a0838; font-weight:800; background:linear-gradient(90deg,#ffd36b,#ff8ad8);
+    box-shadow:0 0 40px rgba(255,120,220,.55); }
+  #startBtn:active { transform:scale(.96); }
+  #startBtn[disabled] { opacity:.6; cursor:wait; }
+  #err { color:#ffb4b4; font-size:clamp(15px,2.2vw,20px); max-width:46ch; min-height:1.2em; }
+  #chip { position:fixed; left:50%; top:max(16px,env(safe-area-inset-top)); transform:translateX(-50%);
+    padding:.5em 1.2em; border-radius:999px; background:var(--panel); backdrop-filter:blur(6px);
+    font-size:clamp(20px,3.4vw,32px); font-weight:700; z-index:5; pointer-events:none; white-space:nowrap; }
+  #controls { position:fixed; right:max(12px,env(safe-area-inset-right)); bottom:max(12px,env(safe-area-inset-bottom));
+    display:flex; gap:10px; z-index:5; }
+  #controls button { min-width:64px; height:64px; padding:0 14px; border:0; border-radius:20px; cursor:pointer;
+    background:var(--panel); backdrop-filter:blur(6px); color:#fff; font-size:15px; font-weight:700;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+  #controls button span.i { font-size:26px; line-height:1; }
+  #controls button.off { opacity:.5; }
+  #controls button:active { transform:scale(.94); }
+  #debug { position:fixed; left:8px; bottom:8px; font:12px/1.4 ui-monospace,monospace; background:rgba(0,0,0,.6);
+    padding:6px 8px; border-radius:6px; z-index:5; white-space:pre; display:none; pointer-events:none; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<video id="v" playsinline muted style="display:none"></video>
+
+<div id="start">
+  <h1>Air String</h1>
+  <p>Pinch both hands to make a string.</p>
+  <button id="startBtn">Start</button>
+  <div id="err"></div>
+  <small>Everything stays on this device. The camera feed is never recorded, uploaded or saved.</small>
+</div>
+
+<div id="chip" class="hidden">Loading…</div>
+<div id="controls" class="hidden">
+  <button id="bMute"  title="Mute"><span class="i">🔊</span>Sound</button>
+  <button id="bSnap"  title="Snap to scale"><span class="i">🎵</span>Snap</button>
+  <button id="bSkel"  title="Hand skeleton"><span class="i">🖐️</span>Hands</button>
+  <button id="bTheme" title="Colour theme"><span class="i">🎨</span>Colour</button>
+</div>
+<div id="debug"></div>
+
+<script type="module">
+/* ============================ config ============================ */
+const MP_VERSION = "0.10.14";
+const MP_BUNDLE  = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/vision_bundle.mjs`;
+const MP_WASM    = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/wasm`;
+const MP_MODEL   = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+const PINCH_ON = 0.25, PINCH_OFF = 0.35;      // thumb-index distance / hand size
+const HAND_GRACE_MS = 200;                     // keep a pinch alive through tiny tracking drops
+const N_PTS = 20;                              // string chain length
+const LEN_MIN = 0.08, LEN_MAX = 0.9;           // string length as fraction of screen diagonal
+const SCALE_STEPS = [0, 2, 4, 7, 9, 12];       // C major pentatonic (+ octave)
+const BASE_MIDI = 60, SPAN = 24;               // C4 up two octaves
+const MASTER_CAP = 0.55;                       // volume cap
+const NOTE_NAMES = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+const THEMES = [
+  { name:"Neon",  warm:18,  cool:200, sat:100, lit:60 },
+  { name:"Candy", warm:330, cool:285, sat:95,  lit:70 },
+  { name:"Ocean", warm:160, cool:235, sat:90,  lit:62 },
+];
+const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
+  [9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+
+/* ============================ dom ============================ */
+const $ = id => document.getElementById(id);
+const canvas = $("c"), ctx = canvas.getContext("2d");
+const video = $("v"), chip = $("chip"), startEl = $("start"), startBtn = $("startBtn"), errEl = $("err");
+const debugEl = $("debug");
+const DEBUG = new URLSearchParams(location.search).has("debug");
+if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { hands = h; }; }
+
+const state = { muted:false, snap:true, skeleton:true, theme:0 };
+try { Object.assign(state, JSON.parse(localStorage.getItem("airstring") || "{}")); } catch {}
+const save = () => { try { localStorage.setItem("airstring", JSON.stringify(state)); } catch {} };
+
+let W = 0, H = 0, DPR = 1, DIAG = 1;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = canvas.width  = Math.round(innerWidth  * DPR);
+  H = canvas.height = Math.round(innerHeight * DPR);
+  DIAG = Math.hypot(W, H);
+}
+addEventListener("resize", resize); resize();
+
+/* ============================ helpers ============================ */
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp  = (a, b, t) => a + (b - a) * t;
+const rand  = (a, b) => a + Math.random() * (b - a);
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+
+// One Euro filter: smooth when slow, responsive when fast
+class OneEuro {
+  constructor(minCut = 1.5, beta = 0.02, dCut = 1) { this.minCut = minCut; this.beta = beta; this.dCut = dCut; this.x = null; this.dx = 0; this.t = 0; }
+  static alpha(cut, dt) { const tau = 1 / (2 * Math.PI * cut); return 1 / (1 + tau / dt); }
+  reset() { this.x = null; }
+  filter(v, t) {
+    if (this.x === null) { this.x = v; this.dx = 0; this.t = t; return v; }
+    const dt = Math.max(1e-3, t - this.t); this.t = t;
+    const rawD = (v - this.x) / dt;
+    this.dx += OneEuro.alpha(this.dCut, dt) * (rawD - this.dx);
+    const cut = this.minCut + this.beta * Math.abs(this.dx);
+    this.x += OneEuro.alpha(cut, dt) * (v - this.x);
+    return this.x;
+  }
+}
+
+/* ============================ audio ============================ */
+class Voice {
+  constructor() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const a = this.ctx = new AC();
+    this.o1 = a.createOscillator(); this.o1.type = "sine";
+    this.o2 = a.createOscillator(); this.o2.type = "triangle"; this.o2.detune.value = 7;
+    this.mix1 = a.createGain(); this.mix1.gain.value = 0.65;
+    this.mix2 = a.createGain(); this.mix2.gain.value = 0.35;
+    this.filter = a.createBiquadFilter(); this.filter.type = "lowpass"; this.filter.Q.value = 1.2; this.filter.frequency.value = 900;
+    this.amp = a.createGain(); this.amp.gain.value = 0;
+    // vibrato LFO -> detune of both oscillators
+    this.lfo = a.createOscillator(); this.lfo.frequency.value = 5.6;
+    this.lfoDepth = a.createGain(); this.lfoDepth.gain.value = 0;
+    this.lfo.connect(this.lfoDepth); this.lfoDepth.connect(this.o1.detune); this.lfoDepth.connect(this.o2.detune);
+    // soft space: short feedback delay + synthetic reverb
+    this.dry = a.createGain(); this.dry.gain.value = 0.8;
+    this.delay = a.createDelay(1); this.delay.delayTime.value = 0.23;
+    this.fb = a.createGain(); this.fb.gain.value = 0.32;
+    this.delayOut = a.createGain(); this.delayOut.gain.value = 0.28;
+    this.delay.connect(this.fb); this.fb.connect(this.delay); this.delay.connect(this.delayOut);
+    this.verb = a.createConvolver(); this.verb.buffer = this.makeImpulse(1.8, 2.6);
+    this.verbOut = a.createGain(); this.verbOut.gain.value = 0.3;
+    this.comp = a.createDynamicsCompressor();
+    this.comp.threshold.value = -18; this.comp.knee.value = 12; this.comp.ratio.value = 14;
+    this.comp.attack.value = 0.003; this.comp.release.value = 0.2;
+    this.master = a.createGain(); this.master.gain.value = MASTER_CAP;
+
+    this.o1.connect(this.mix1); this.o2.connect(this.mix2);
+    this.mix1.connect(this.filter); this.mix2.connect(this.filter);
+    this.filter.connect(this.amp);
+    this.amp.connect(this.dry); this.amp.connect(this.delay); this.amp.connect(this.verb);
+    this.verb.connect(this.verbOut);
+    this.dry.connect(this.comp); this.delayOut.connect(this.comp); this.verbOut.connect(this.comp);
+    this.comp.connect(this.master); this.master.connect(a.destination);
+    this.o1.start(); this.o2.start(); this.lfo.start();
+    this.freq = 440; this.on = false;
+  }
+  makeImpulse(seconds, decay) {
+    const a = this.ctx, len = Math.floor(a.sampleRate * seconds), buf = a.createBuffer(2, len, a.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); }
+    return buf;
+  }
+  resume() { if (this.ctx.state !== "running") return this.ctx.resume(); }
+  setMuted(m) { this.master.gain.setTargetAtTime(m ? 0 : MASTER_CAP, this.ctx.currentTime, 0.05); }
+  // called every frame while the string is held
+  update(freq, vol, cutoff, vibCents) {
+    const t = this.ctx.currentTime;
+    if (!this.on) {                                   // note start: jump pitch, then fade in (no click, amp is at 0)
+      this.on = true;
+      this.o1.frequency.cancelScheduledValues(t); this.o2.frequency.cancelScheduledValues(t);
+      this.o1.frequency.setValueAtTime(freq, t);  this.o2.frequency.setValueAtTime(freq, t);
+      this.filter.frequency.setValueAtTime(cutoff, t);
+    }
+    this.o1.frequency.setTargetAtTime(freq, t, 0.03);
+    this.o2.frequency.setTargetAtTime(freq, t, 0.03);
+    this.filter.frequency.setTargetAtTime(cutoff, t, 0.05);
+    this.amp.gain.setTargetAtTime(vol, t, 0.027);     // ~80 ms attack
+    this.lfoDepth.gain.setTargetAtTime(vibCents, t, 0.08);
+    this.freq = freq;
+  }
+  // string let go: pitch drops a touch (twang) and fades over ~400 ms
+  release() {
+    if (!this.on) return;
+    this.on = false;
+    const t = this.ctx.currentTime;
+    this.o1.frequency.cancelScheduledValues(t); this.o2.frequency.cancelScheduledValues(t);
+    this.o1.frequency.setTargetAtTime(this.freq * 0.72, t, 0.09);
+    this.o2.frequency.setTargetAtTime(this.freq * 0.72, t, 0.09);
+    this.amp.gain.cancelScheduledValues(t);
+    this.amp.gain.setTargetAtTime(0, t, 0.13);        // ~400 ms release
+    this.lfoDepth.gain.setTargetAtTime(0, t, 0.1);
+  }
+}
+let voice = null;
+
+/* ============================ hand tracking ============================ */
+let trackerMsg = "Loading hand tracker…";
+let landmarker = null, camStream = null, lastVideoTime = -1;
+let hands = [];                                       // [{lm:[{x,y}], ratio, pinch:{x,y}, wrist}] in canvas px, sorted left to right
+let videoMap = { ox:0, oy:0, s:1, vw:1, vh:1 };
+
+function updateVideoMap() {
+  const vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
+  const s = Math.max(W / vw, H / vh);
+  videoMap = { vw, vh, s, ox:(W - vw * s) / 2, oy:(H - vh * s) / 2 };
+}
+const toScreen = (nx, ny) => ({ x: W - (videoMap.ox + nx * videoMap.vw * videoMap.s), y: videoMap.oy + ny * videoMap.vh * videoMap.s });
+
+function detect(nowMs) {
+  if (!landmarker || video.readyState < 2) return;
+  if (video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res;
+  try { res = landmarker.detectForVideo(video, nowMs); } catch { return; }
+  const out = [];
+  for (const raw of (res.landmarks || [])) {
+    const lm = raw.map(p => toScreen(p.x, p.y));
+    // pinch ratio measured in video pixels so the aspect ratio doesn't skew it
+    const px = i => ({ x: raw[i].x * videoMap.vw, y: raw[i].y * videoMap.vh });
+    const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    const size = Math.max(1e-3, d(px(0), px(9)));
+    const ratio = d(px(4), px(8)) / size;
+    out.push({ lm, ratio, pinch:{ x:(lm[4].x + lm[8].x) / 2, y:(lm[4].y + lm[8].y) / 2 }, wrist:lm[0] });
+  }
+  out.sort((a, b) => a.wrist.x - b.wrist.x);
+  hands = out.slice(0, 2);
+}
+
+/* ============================ the string ============================ */
+const slots = [0, 1].map(() => ({
+  pinched:false, seen:false, lastSeen:0,
+  fx:new OneEuro(), fy:new OneEuro(), x:0, y:0, ratio:1,
+}));
+const S = {                                           // string state
+  active:false, fade:0,                               // fade: 0..1 visual alpha
+  pts:Array.from({ length:N_PTS }, () => ({ x:0, y:0, vx:0, vy:0 })),
+  a:{ x:0, y:0 }, b:{ x:0, y:0 },                     // anchors (follow hands, animate on recoil)
+  recoil:null, wobble:0, hue:20, len:0, t:0, noteMidi:BASE_MIDI, note:"", freq:440,
+};
+const sparks = [];
+
+function initString(a, b) {
+  S.a = { ...a }; S.b = { ...b };
+  S.pts.forEach((p, i) => { const u = i / (N_PTS - 1); p.x = lerp(a.x, b.x, u); p.y = lerp(a.y, b.y, u); p.vx = p.vy = 0; });
+}
+
+function stepString(dt) {
+  const steps = 2, h = dt / steps, k = 140, c = 320, damp = 7;
+  const n = N_PTS, pts = S.pts;
+  for (let s = 0; s < steps; s++) {
+    pts[0].x = S.a.x; pts[0].y = S.a.y; pts[0].vx = pts[0].vy = 0;
+    pts[n-1].x = S.b.x; pts[n-1].y = S.b.y; pts[n-1].vx = pts[n-1].vy = 0;
+    for (let i = 1; i < n - 1; i++) {
+      const u = i / (n - 1), p = pts[i];
+      const qx = lerp(S.a.x, S.b.x, u), qy = lerp(S.a.y, S.b.y, u);
+      const ax = k * (qx - p.x) + c * (pts[i-1].x + pts[i+1].x - 2 * p.x) - damp * p.vx;
+      const ay = k * (qy - p.y) + c * (pts[i-1].y + pts[i+1].y - 2 * p.y) - damp * p.vy;
+      p.vx += ax * h; p.vy += ay * h;
+    }
+    for (let i = 1; i < n - 1; i++) { pts[i].x += pts[i].vx * h; pts[i].y += pts[i].vy * h; }
+  }
+  // how far the chain is from a straight line = how wobbly it is
+  let dev = 0;
+  for (let i = 1; i < n - 1; i++) {
+    const u = i / (n - 1);
+    dev += Math.hypot(pts[i].x - lerp(S.a.x, S.b.x, u), pts[i].y - lerp(S.a.y, S.b.y, u));
+  }
+  const w = clamp(dev / (n - 2) / (0.03 * DIAG), 0, 1);
+  S.wobble = lerp(S.wobble, w, 0.25);
+}
+
+function hueFor(t) {                                  // t: 0 short/high .. 1 long/low
+  const th = THEMES[state.theme];
+  return lerp(th.cool, th.warm, t);
+}
+const hsl = (h, s, l, a = 1) => `hsla(${((h % 360) + 360) % 360},${s}%,${l}%,${a})`;
+
+function burst(x, y, n, speed) {
+  for (let i = 0; i < n; i++) {
+    const ang = rand(0, Math.PI * 2), sp = rand(0.2, 1) * speed;
+    sparks.push({ x, y, vx:Math.cos(ang) * sp, vy:Math.sin(ang) * sp, life:rand(0.5, 1.1), max:1, hue:S.hue + rand(-25, 25), size:rand(2, 5) });
+  }
+}
+
+/* ============================ per-frame logic ============================ */
+let lastFrame = performance.now(), noHandsSince = performance.now(), prevActive = false;
+
+function updateSlots(now) {
+  for (let i = 0; i < 2; i++) {
+    const sl = slots[i], hd = hands.length === 2 ? hands[i] : (hands.length === 1 && i === 0 ? hands[0] : null);
+    if (hd) {
+      sl.seen = true; sl.lastSeen = now; sl.ratio = hd.ratio;
+      const t = now / 1000;
+      sl.x = sl.fx.filter(hd.pinch.x, t); sl.y = sl.fy.filter(hd.pinch.y, t);
+      if (!sl.pinched && hd.ratio < PINCH_ON) sl.pinched = true;
+      else if (sl.pinched && hd.ratio > PINCH_OFF) sl.pinched = false;
+    } else {
+      sl.seen = false;
+      if (now - sl.lastSeen > HAND_GRACE_MS) { sl.pinched = false; sl.fx.reset(); sl.fy.reset(); }
+    }
+  }
+}
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - lastFrame) / 1000); lastFrame = now;
+  detect(now);
+  updateSlots(now);
+
+  if (hands.length) noHandsSince = now;
+  const active = slots[0].pinched && slots[1].pinched;
+
+  if (active && !prevActive) { initString(slots[0], slots[1]); S.recoil = null; S.fade = 1; burst((slots[0].x + slots[1].x) / 2, (slots[0].y + slots[1].y) / 2, 14, 0.25 * DIAG); }
+  if (!active && prevActive) {
+    // let go: recoil toward whichever hand is still holding, else collapse to the middle
+    const keepA = slots[0].pinched, keepB = slots[1].pinched;
+    const mid = { x:(S.a.x + S.b.x) / 2, y:(S.a.y + S.b.y) / 2 };
+    S.recoil = { t:0,
+      fromA:{ ...S.a }, fromB:{ ...S.b },
+      toA: keepA ? { x:slots[0].x, y:slots[0].y } : (keepB ? { x:slots[1].x, y:slots[1].y } : mid),
+      toB: keepB ? { x:slots[1].x, y:slots[1].y } : (keepA ? { x:slots[0].x, y:slots[0].y } : mid),
+      keepA, keepB };
+    burst(S.a.x, S.a.y, 22, 0.35 * DIAG); burst(S.b.x, S.b.y, 22, 0.35 * DIAG);
+    voice && voice.release();
+  }
+  prevActive = active; S.active = active;
+
+  if (active) {
+    S.a.x = slots[0].x; S.a.y = slots[0].y; S.b.x = slots[1].x; S.b.y = slots[1].y;
+  } else if (S.recoil) {
+    const r = S.recoil; r.t += dt; const e = easeOut(clamp(r.t / 0.3, 0, 1));
+    // a hand that is still pinching keeps its end pinned to the fingers
+    const ta = r.keepA ? { x:slots[0].x, y:slots[0].y } : r.toA, tb = r.keepB ? { x:slots[1].x, y:slots[1].y } : r.toB;
+    S.a = r.keepA ? ta : { x:lerp(r.fromA.x, ta.x, e), y:lerp(r.fromA.y, ta.y, e) };
+    S.b = r.keepB ? tb : { x:lerp(r.fromB.x, tb.x, e), y:lerp(r.fromB.y, tb.y, e) };
+    S.fade = clamp(1 - (r.t - 0.15) / 0.5, 0, 1);
+    if (S.fade <= 0) S.recoil = null;
+  }
+  if (S.active || S.recoil) stepString(dt);
+
+  // ----- sound + colour mapping (only while held) -----
+  if (S.active) {
+    const len = Math.hypot(S.b.x - S.a.x, S.b.y - S.a.y);
+    S.len = len;
+    const t = clamp((len / DIAG - LEN_MIN) / (LEN_MAX - LEN_MIN), 0, 1);        // 0 short .. 1 long
+    S.t = lerp(S.t, t, 0.5);
+    const raw = (1 - S.t) * SPAN;                                                // semitones above C4
+    let semis = raw;
+    if (state.snap) {
+      if (Math.abs(raw - (S.noteSemis ?? -99)) > 0.75) {                          // hysteresis around note boundaries
+        const oct = Math.floor(raw / 12), r = raw - oct * 12;
+        let best = SCALE_STEPS[0], bd = 99;
+        for (const st of SCALE_STEPS) { const dd = Math.abs(r - st); if (dd < bd) { bd = dd; best = st; } }
+        S.noteSemis = oct * 12 + best;
+      }
+      semis = S.noteSemis;
+    } else S.noteSemis = raw;
+    S.midi = BASE_MIDI + semis;
+    S.freq = 440 * Math.pow(2, (S.midi - 69) / 12);
+    S.note = NOTE_NAMES[((Math.round(S.midi) % 12) + 12) % 12];
+    S.hue = hueFor(S.t);
+
+    const midY = (S.a.y + S.b.y) / 2;
+    const vol = 0.18 + 0.82 * (1 - clamp(midY / H, 0, 1));                       // higher = louder, never silent
+    const dx = S.b.x - S.a.x, dy = S.b.y - S.a.y;
+    const tilt = Math.abs(Math.atan2(dy, dx === 0 ? 1e-6 : Math.abs(dx))) / (Math.PI / 2);   // 0 flat .. 1 vertical
+    const cutoff = 500 * Math.pow(8, clamp(tilt * 1.2, 0, 1));                   // 500 Hz .. 4 kHz
+    if (voice && !state.muted) voice.update(S.freq, vol * 0.8, cutoff, S.wobble * 45);
+    else if (voice && voice.on) voice.release();
+  }
+
+  // ----- status chip -----
+  let msg;
+  if (trackerMsg) msg = trackerMsg;
+  else if (S.active) msg = state.muted ? "Muted 🔇" : `♪ ${S.note}`;
+  else if (hands.length === 0) msg = (now - noHandsSince > 5000) ? "Need more light 💡" : "Show me two hands 🙌";
+  else if (hands.length === 1) msg = "Show me both hands 🙌";
+  else msg = (slots[0].pinched || slots[1].pinched) ? "Now the other hand!" : "Now pinch! 🤏";
+  if (chip.textContent !== msg) chip.textContent = msg;
+
+  render(dt, now);
+  if (DEBUG) debugEl.textContent =
+    `hands ${hands.length}\npinch L ${slots[0].ratio.toFixed(2)} ${slots[0].pinched ? "ON" : "off"}\npinch R ${slots[1].ratio.toFixed(2)} ${slots[1].pinched ? "ON" : "off"}\n` +
+    `note ${S.active ? S.note + " " + S.freq.toFixed(0) + "Hz" : "-"}  wobble ${S.wobble.toFixed(2)}\nfps ${(1 / Math.max(dt, 1e-3)).toFixed(0)}`;
+}
+
+/* ============================ rendering ============================ */
+function render(dt, now) {
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = "#07040f"; ctx.fillRect(0, 0, W, H);
+  if (video.readyState >= 2) {
+    ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1);
+    ctx.drawImage(video, videoMap.ox, videoMap.oy, videoMap.vw * videoMap.s, videoMap.vh * videoMap.s);
+    ctx.restore();
+    ctx.fillStyle = "rgba(8,4,20,.45)"; ctx.fillRect(0, 0, W, H);                // dim the feed
+  }
+  if (state.skeleton) drawHands();
+
+  ctx.globalCompositeOperation = "lighter";
+  if (S.active || S.recoil) drawString(now);
+  drawSparks(dt);
+  ctx.globalCompositeOperation = "source-over";
+}
+
+function drawHands() {
+  const lw = Math.max(2, 3 * DPR);
+  ctx.lineCap = "round";
+  for (const h of hands) {
+    ctx.strokeStyle = "rgba(80,255,120,.9)"; ctx.lineWidth = lw;
+    ctx.beginPath();
+    for (const [i, j] of HAND_CONNECTIONS) { ctx.moveTo(h.lm[i].x, h.lm[i].y); ctx.lineTo(h.lm[j].x, h.lm[j].y); }
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,60,70,.95)";
+    for (const p of h.lm) { ctx.beginPath(); ctx.arc(p.x, p.y, lw * 1.35, 0, Math.PI * 2); ctx.fill(); }
+  }
+}
+
+function strokePath(pts, width, style) {
+  ctx.lineWidth = width; ctx.strokeStyle = style; ctx.lineJoin = ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length - 1; i++) {                                     // smooth through midpoints
+    const mx = (pts[i].x + pts[i+1].x) / 2, my = (pts[i].y + pts[i+1].y) / 2;
+    ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+  }
+  ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+  ctx.stroke();
+}
+
+function drawString(now) {
+  const th = THEMES[state.theme], a = S.fade, pts = S.pts, u = DPR;
+  const glow = hsl(S.hue, th.sat, th.lit, 0.18 * a), mid = hsl(S.hue, th.sat, th.lit, 0.5 * a);
+  strokePath(pts, 34 * u, glow);
+  strokePath(pts, 16 * u, mid);
+  strokePath(pts, 5 * u, `rgba(255,255,255,${0.95 * a})`);
+
+  // electric crackle: jagged thin lines hugging the string
+  ctx.lineWidth = 1.6 * u;
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.strokeStyle = pass ? hsl(S.hue, 100, 85, 0.7 * a) : `rgba(255,255,255,${0.75 * a})`;
+    ctx.beginPath();
+    const seg = 14;
+    for (let i = 0; i <= seg; i++) {
+      const f = (i / seg) * (N_PTS - 1), i0 = Math.floor(f), i1 = Math.min(N_PTS - 1, i0 + 1), fr = f - i0;
+      const x = lerp(pts[i0].x, pts[i1].x, fr), y = lerp(pts[i0].y, pts[i1].y, fr);
+      const j = (i === 0 || i === seg) ? 0 : rand(-1, 1) * (9 + 14 * S.wobble) * u;
+      const dx = pts[i1].x - pts[i0].x, dy = pts[i1].y - pts[i0].y, l = Math.hypot(dx, dy) || 1;
+      const px = x + (-dy / l) * j, py = y + (dx / l) * j;
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    }
+    ctx.stroke();
+  }
+  // glowing pinch points
+  for (const p of [S.a, S.b]) {
+    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 36 * u);
+    g.addColorStop(0, `rgba(255,255,255,${0.95 * a})`); g.addColorStop(0.3, hsl(S.hue, th.sat, th.lit, 0.55 * a)); g.addColorStop(1, hsl(S.hue, th.sat, th.lit, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, 36 * u, 0, Math.PI * 2); ctx.fill();
+  }
+  // drifting sparks off the string
+  if (S.active && Math.random() < 0.7) {
+    const f = Math.random() * (N_PTS - 1), i0 = Math.floor(f), i1 = Math.min(N_PTS - 1, i0 + 1);
+    const x = lerp(pts[i0].x, pts[i1].x, f - i0), y = lerp(pts[i0].y, pts[i1].y, f - i0);
+    sparks.push({ x, y, vx:rand(-30, 30) * u, vy:rand(-60, -10) * u, life:rand(0.4, 0.9), max:1, hue:S.hue + rand(-20, 20), size:rand(1.5, 3.5) });
+  }
+}
+
+function drawSparks(dt) {
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const p = sparks[i];
+    p.life -= dt; if (p.life <= 0) { sparks.splice(i, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.97; p.vy = p.vy * 0.97 + 40 * DPR * dt;
+    const a = clamp(p.life / 0.6, 0, 1), r = p.size * DPR;
+    ctx.fillStyle = hsl(p.hue, 100, 72, a);
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.45, 0, Math.PI * 2); ctx.fill();
+  }
+  if (sparks.length > 400) sparks.splice(0, sparks.length - 400);
+}
+
+/* ============================ start-up ============================ */
+function friendlyCamError(e) {
+  const n = e && e.name;
+  if (n === "NotAllowedError" || n === "SecurityError")
+    return "The camera is blocked. Tap the camera or padlock icon next to the address bar, choose Allow, then reload and press Start. (If you opened this inside a chat preview, open the file in Chrome instead.)";
+  if (n === "NotFoundError" || n === "OverconstrainedError") return "No camera found. Plug one in or try a device with a webcam.";
+  if (n === "NotReadableError") return "Another app is using the camera. Close it and try again.";
+  return "Could not start the camera: " + (e && e.message || e);
+}
+
+async function start() {
+  startBtn.disabled = true; errEl.textContent = "";
+  startBtn.textContent = "Starting…";
+  try {
+    voice = new Voice(); await voice.resume();                                   // must happen inside the click
+    voice.setMuted(state.muted);
+  } catch (e) { voice = null; console.warn("audio failed", e); }
+
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user", width:{ ideal:1280 }, height:{ ideal:720 } }, audio:false });
+  } catch (e) { fail(friendlyCamError(e)); return; }
+  video.srcObject = camStream;
+  try { await video.play(); } catch (e) { fail("Could not play the camera feed: " + e.message); return; }
+  updateVideoMap();
+
+  startEl.classList.add("hidden");
+  $("chip").classList.remove("hidden"); chip.textContent = "Loading hand tracker…";
+  $("controls").classList.remove("hidden");
+  syncButtons();
+  requestAnimationFrame(frame);                                                  // camera feed shows while the model loads
+
+  try {
+    const { HandLandmarker, FilesetResolver } = await import(MP_BUNDLE);
+    const fileset = await FilesetResolver.forVisionTasks(MP_WASM);
+    const make = delegate => HandLandmarker.createFromOptions(fileset, {
+      baseOptions:{ modelAssetPath:MP_MODEL, delegate }, runningMode:"VIDEO", numHands:2,
+      minHandDetectionConfidence:0.5, minHandPresenceConfidence:0.5, minTrackingConfidence:0.5 });
+    try { landmarker = await make("GPU"); } catch (e) { console.warn("GPU delegate failed, using CPU", e); landmarker = await make("CPU"); }
+    trackerMsg = "";
+  } catch (e) {
+    console.error(e);
+    trackerMsg = "Couldn't load the hand tracker. Check your internet and reload.";
+  }
+}
+function fail(msg) { errEl.textContent = msg; startBtn.disabled = false; startBtn.textContent = "Try again"; }
+startBtn.addEventListener("click", start);
+
+addEventListener("resize", updateVideoMap);
+video.addEventListener("loadedmetadata", updateVideoMap);
+
+document.addEventListener("visibilitychange", () => {
+  if (!voice) return;
+  if (document.hidden) voice.ctx.suspend(); else voice.ctx.resume();
+});
+
+/* ============================ controls ============================ */
+function syncButtons() {
+  $("bMute").classList.toggle("off", state.muted);
+  $("bMute").querySelector(".i").textContent = state.muted ? "🔇" : "🔊";
+  $("bSnap").classList.toggle("off", !state.snap);
+  $("bSkel").classList.toggle("off", !state.skeleton);
+  $("bTheme").lastChild.textContent = THEMES[state.theme].name;
+}
+$("bMute").onclick = () => { state.muted = !state.muted; voice && voice.setMuted(state.muted); save(); syncButtons(); };
+$("bSnap").onclick = () => { state.snap = !state.snap; save(); syncButtons(); };
+$("bSkel").onclick = () => { state.skeleton = !state.skeleton; save(); syncButtons(); };
+$("bTheme").onclick = () => { state.theme = (state.theme + 1) % THEMES.length; save(); syncButtons(); };
+</script>
+</body>
+</html>
