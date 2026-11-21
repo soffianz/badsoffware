@@ -103,22 +103,23 @@
   </ul>
   <h3>Buttons</h3>
   <ul>
-    <li><b>Instrument:</b> Synth, Violin, Harp, Guitar, Bells or Voice (a soprano singing "aaah").</li>
+    <li><b>Instrument:</b> Synth, Violin, Harp, Guitar, Bells or Voice (a real recording of a choir singing "aaah").</li>
     <li><b>Music:</b> pick the backing music. <b>Sound:</b> mute.</li>
-    <li><b>Theme:</b> pick a look: Neon (electric), Candy (sweet and sparkly), Ocean (watery), Fire (flames and embers), Space (comets and stars) or Chakra (seven glowing energy centres). <b>Full:</b> full screen.</li>
+    <li><b>Visuals:</b> pick a look: Neon (electric), Candy (sweet and sparkly), Ocean (watery), Fire (flames and embers), Space (comets and stars) or Chakra (seven glowing energy centres). <b>Anim Off</b> keeps just a plain glowing string and turns off the extra effects, which helps if things feel laggy. <b>Full:</b> full screen.</li>
   </ul>
   <h3>Tips</h3>
   <ul>
     <li>Use good light and keep both hands in view of the front camera.</li>
     <li>Everything stays on your device. Nothing is recorded.</li>
+    <li>Voice samples: "Choir Aahs" from the FluidR3 GM SoundFont (Frank Wen), rendered by midi-js-soundfonts, licensed CC BY 3.0.</li>
   </ul>
 </div>
 <div id="controls" class="hidden">
   <button id="bHelp"  title="How to play"><span class="i">❓</span><span class="t">Help</span></button>
-  <button id="bVoice" title="Instrument"><span class="i">🎹</span><span class="t">Synth</span></button>
-  <button id="bMusic" title="Backing music"><span class="i">🎧</span><span class="t">Music</span></button>
+  <button id="bVoice" title="Instrument"><span class="i">🎹</span><span class="t">Instrument</span></button>
+  <button id="bMusic" title="Music"><span class="i">🎧</span><span class="t">Music</span></button>
   <button id="bMute"  title="Mute"><span class="i">🔊</span><span class="t">Sound</span></button>
-  <button id="bTheme" title="Visual theme"><span class="i">⚡</span><span class="t">Neon</span></button>
+  <button id="bTheme" title="Visuals"><span class="i">⚡</span><span class="t">Visuals</span></button>
   <button id="bFull"  title="Full screen"><span class="i">⛶</span><span class="t">Full</span></button>
 </div>
 <div id="debug"></div>
@@ -159,7 +160,7 @@ const INSTRUMENTS = [
   { id:"harp",   name:"Harp",   icon:"🎶", mode:"pluck", kind:"harp" },
   { id:"guitar", name:"Guitar", icon:"🎸", mode:"pluck", kind:"guitar" },
   { id:"bells",  name:"Bells",  icon:"🔔", mode:"pluck", kind:"bell" },
-  { id:"voice",  name:"Voice",  icon:"🎤", mode:"vocal", lo:600, hi:3200, atk:0.09, rel:0.28, vib:40, baseVib:22, note:{ atk:0.12, dec:1.9 } },   // soprano "aaah"
+  { id:"voice",  name:"Voice",  icon:"🎤", mode:"vocal", lo:600, hi:3200, atk:0.09, rel:0.28, vib:25, baseVib:10, note:{ atk:0.08, dec:2.0 } },   // soprano "aaah"
 ];
 const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
   [9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
@@ -172,7 +173,7 @@ const debugEl = $("debug"), instPanel = $("instPanel");
 const DEBUG = new URLSearchParams(location.search).has("debug");
 if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { allHands = h; newDet = true; }; window.__dbg = () => ({ M, S, voice }); }
 
-const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0, music:"off" };
+const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0, music:"off", anim:true };
 try { Object.assign(state, JSON.parse(localStorage.getItem("airstring") || "{}")); } catch {}
 if (!INSTRUMENTS[state.inst]) state.inst = 0;
 if (!["off", "orch", "edm"].includes(state.music)) state.music = state.orch ? "orch" : "off";
@@ -186,7 +187,7 @@ const showToast = (msg, ms = 4500) => { toast = msg; toastUntil = performance.no
 
 let W = 0, H = 0, DPR = 1, DIAG = 1;
 function resize() {
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  DPR = Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(1.6e6 / Math.max(1, innerWidth * innerHeight)));   // keep the canvas to about 1.6 megapixels so phones stay smooth
   W = canvas.width  = Math.round(innerWidth  * DPR);
   H = canvas.height = Math.round(innerHeight * DPR);
   DIAG = Math.hypot(W, H);
@@ -219,6 +220,8 @@ class OneEuro {
 
 /* ============================ audio ============================ */
 // A sung "aaah" (young girl): a glottal-pulse source through five vowel formants, with the small imperfections that make a voice sound alive
+const VOICE_ROOTS = [48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84];   // recorded "aaah" samples, every three semitones
+const VOICE_GAIN = 10;                                 // the recordings are quiet
 const GIRL_FORMANTS = [[930, 150, 1], [1350, 170, 0.55], [3100, 250, 0.22], [4300, 300, 0.1], [5400, 350, 0.05]];   // [Hz, bandwidth, level]
 class Singer {
   constructor(v, dest) {
@@ -303,7 +306,10 @@ class Voice {
       let y = 0, pk = 1e-6; for (let i = 0; i < len; i++) { y += al * ((Math.random() * 2 - 1) - y); d[i] = y; pk = Math.max(pk, Math.abs(y)); }
       for (let i = 0; i < len; i++) d[i] /= pk; this.smoothNoise = nb;
       const wb = a.createBuffer(1, sr, sr), w = wb.getChannelData(0); for (let i = 0; i < sr; i++) w[i] = Math.random() * 2 - 1; this.noiseBuf = wb; }
-    this.singer = new Singer(this, this.sendIn); this.singer.start(a.currentTime);
+    this.singer = new Singer(this, this.sendIn); this.singer.start(a.currentTime);      // synthesized stand-in, used only if the recordings fail to load
+    this.svFilter = a.createBiquadFilter(); this.svFilter.type = "lowpass"; this.svFilter.frequency.value = 6000; this.svFilter.Q.value = 0.5;
+    this.svAmp = a.createGain(); this.svAmp.gain.value = 0; this.svFilter.connect(this.svAmp); this.svAmp.connect(this.sendIn);
+    this.sv = null; this.vs = { bufs:new Map(), loops:new Map(), ready:false, promise:null };
     // five-string pad: one quiet sustained tone per string, swells when that string moves
     this.padFilter = a.createBiquadFilter(); this.padFilter.type = "lowpass"; this.padFilter.frequency.value = 2200; this.padFilter.Q.value = 0.5;
     this.padFilter.connect(this.sendIn);
@@ -358,7 +364,48 @@ class Voice {
     this.lfoDepth.gain.setTargetAtTime(vibCents, t, 0.08);
     this.freq = freq;
   }
+  // ---- real sung samples ----
+  loadSamples() {
+    if (this.vs.promise) return this.vs.promise;
+    this.vs.promise = Promise.all(VOICE_ROOTS.map(async m => {
+      const r = await fetch(`samples/voice_${m}.mp3`); if (!r.ok) throw new Error("sample " + m + " " + r.status);
+      const buf = await this.ctx.decodeAudioData(await r.arrayBuffer());
+      this.vs.bufs.set(m, buf); this.vs.loops.set(m, this.makeLoop(buf));
+    })).then(() => { this.vs.ready = true; }).catch(e => { console.warn("voice samples unavailable, using the synthesized voice", e); });
+    return this.vs.promise;
+  }
+  makeLoop(buf) {                                     // hold the steady part of the recording by looping it with a crossfade
+    const sr = buf.sampleRate, a0 = Math.floor(1.0 * sr), b0 = Math.floor(Math.min(2.9, buf.duration - 0.15) * sr), X = Math.floor(0.35 * sr);
+    const out = this.ctx.createBuffer(buf.numberOfChannels, buf.length, sr);
+    for (let c = 0; c < buf.numberOfChannels; c++) {
+      const src = buf.getChannelData(c), d = out.getChannelData(c); d.set(src);
+      for (let i = 0; i < X; i++) { const t = i / X; d[b0 - X + i] = src[b0 - X + i] * Math.cos(t * Math.PI / 2) + src[a0 - X + i] * Math.sin(t * Math.PI / 2); }
+    }
+    return { buf:out, a:a0 / sr, b:b0 / sr };
+  }
+  nearestRoot(midi) { let best = VOICE_ROOTS[0]; for (const r of VOICE_ROOTS) if (Math.abs(r - midi) < Math.abs(best - midi)) best = r; return best; }
+  startSample(midi, xfade) {
+    const a = this.ctx, t = a.currentTime, root = this.nearestRoot(midi), L = this.vs.loops.get(root);
+    const src = a.createBufferSource(); src.buffer = L.buf; src.loop = true; src.loopStart = L.a; src.loopEnd = L.b; src.playbackRate.value = 2 ** ((midi - root) / 12);
+    const g = a.createGain(); g.gain.setValueAtTime(xfade ? 0 : 1, t); if (xfade) g.gain.linearRampToValueAtTime(1, t + 0.06);
+    src.connect(g); g.connect(this.svFilter); this.lfoDepth.connect(src.detune);
+    src.onended = () => { try { this.lfoDepth.disconnect(src.detune); g.disconnect(); } catch {} };
+    src.start(t, xfade ? L.a : 0);
+    if (this.sv) { const old = this.sv; old.g.gain.setTargetAtTime(0, t, 0.02); old.src.stop(t + 0.2); }
+    this.sv = { src, g, root };
+  }
+  updateSample(freq, vol, cutoff, vibCents) {
+    const t = this.ctx.currentTime, ins = this.inst, midi = 69 + 12 * Math.log2(freq / 440);
+    if (!this.on) { this.on = true; this.startSample(midi, false); }
+    else if (!this.sv || Math.abs(midi - this.sv.root) > 2.2) this.startSample(midi, true);
+    this.sv.src.playbackRate.setTargetAtTime(2 ** ((midi - this.sv.root) / 12), t, 0.05);
+    this.svFilter.frequency.setTargetAtTime(clamp(cutoff * 2.5, 1500, 9000), t, 0.06);
+    this.svAmp.gain.setTargetAtTime(vol * VOICE_GAIN, t, ins.atk);
+    this.lfoDepth.gain.setTargetAtTime(vibCents, t, 0.35);
+    this.freq = freq;
+  }
   updateVocal(freq, vol, cutoff, vibCents) {
+    if (this.vs.ready) return this.updateSample(freq, vol, cutoff, vibCents);
     const t = this.ctx.currentTime, ins = this.inst, sg = this.singer;
     if (!this.on) {                                   // start of a sung note: a breath of "h", a little scoop up to the pitch
       this.on = true;
@@ -374,6 +421,10 @@ class Voice {
     if (!this.on) return;
     this.on = false;
     const t = this.ctx.currentTime, ins = this.inst;
+    if (ins.mode === "vocal" && this.sv) {
+      this.svAmp.gain.cancelScheduledValues(t); this.svAmp.gain.setTargetAtTime(0, t, ins.rel * 0.7); this.lfoDepth.gain.setTargetAtTime(0, t, 0.1);
+      this.sv.src.stop(t + 1.0); this.sv = null; return;
+    }
     if (ins.mode === "vocal") { const sg = this.singer; sg.amp.gain.cancelScheduledValues(t); sg.amp.gain.setTargetAtTime(0, t, ins.rel); sg.vib.gain.setTargetAtTime(0, t, 0.1); return; }
     this.o1.frequency.cancelScheduledValues(t); this.o2.frequency.cancelScheduledValues(t);
     this.o1.frequency.setTargetAtTime(this.freq * 0.72, t, 0.09);
@@ -418,12 +469,20 @@ class Voice {
       const end = t + n.atk + n.dec + 0.05;
       o1.start(t); o2.start(t); o1.stop(end); o2.stop(end); src = o1;
     } else if (ins.mode === "vocal") {                // a sung "aaah" that swells and fades
-      const n = ins.note, sg = new Singer(this, g), end = t + n.atk + n.dec + 0.1;
+      const n = ins.note, end = t + n.atk + n.dec + 0.1;
+      if (this.vs.ready) {                            // a real recorded "aaah", pitched to the note
+        const root = this.nearestRoot(midi), s = a.createBufferSource();
+        s.buffer = this.vs.bufs.get(root); s.playbackRate.value = 2 ** ((midi - root) / 12);
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vel * 0.9 * VOICE_GAIN, t + n.atk); g.gain.exponentialRampToValueAtTime(0.0008, t + n.atk + n.dec);
+        s.connect(g); s.start(t); s.stop(end); src2 = s;
+      } else {
+      const sg = new Singer(this, g);
       sg.o.forEach(o => { o.frequency.setValueAtTime(f * 0.95, t); o.frequency.setTargetAtTime(f, t + 0.012, 0.04); });
       sg.formants(f, t); sg.breathOnset(t, 0.3);
       sg.vib.gain.setValueAtTime(0, t); sg.vib.gain.setTargetAtTime(22, t + 0.15, 0.3);
       sg.amp.gain.setValueAtTime(0, t); sg.amp.gain.linearRampToValueAtTime(vel * 0.9, t + n.atk); sg.amp.gain.exponentialRampToValueAtTime(0.0008, t + n.atk + n.dec);
       sg.start(t); sg.stop(end); src2 = sg.o[0];
+      }
     } else if (ins.kind === "bell") {                 // FM bell
       const car = a.createOscillator(), mod = a.createOscillator(), mg = a.createGain(), p2 = a.createOscillator(), p2g = a.createGain();
       car.frequency.value = f; mod.frequency.value = f * 3.5; p2.frequency.value = f * 2.76;
@@ -736,17 +795,21 @@ const ripples = [];
 let animT = 0;
 const SPARK_LIFE = { ocean:1.8, space:1.6, chakra:1.8, fire:1.2 }, SPARK_SIZE = { ocean:1.6, space:1.2, chakra:1.5 }, SPARK_HUE = { candy:70, chakra:14, fire:14 };
 function spawnSpark(x, y, vx, vy, hue, life, size) {
+  if (!state.anim) return;
   const kind = THEMES[state.theme].style, spread = SPARK_HUE[kind] ?? 25;
   if (kind === "fire") vy -= 0.4 * Math.abs(vy) + 25 * DPR;                       // embers rise
   sparks.push({ x, y, vx, vy, life:life * (SPARK_LIFE[kind] ?? 1), hue:hue + rand(-spread, spread), size:size * (SPARK_SIZE[kind] ?? 1), kind, spin:rand(0, 6) });
+  if (sparks.length > 140) sparks.shift();
 }
 function burst(x, y, n, speed, hue) {
+  if (!state.anim) return;
+  n = Math.ceil(n * 0.5);
   for (let i = 0; i < n; i++) {
     const ang = rand(0, Math.PI * 2), sp = rand(0.2, 1) * speed;
     spawnSpark(x, y, Math.cos(ang) * sp, Math.sin(ang) * sp, hue ?? S.hue, rand(0.5, 1.1), rand(2, 5));
   }
 }
-function ripple(x, y, hue) { ripples.push({ x, y, life:0.75, max:0.75, hue }); if (ripples.length > 30) ripples.shift(); }
+function ripple(x, y, hue) { if (!state.anim) return; ripples.push({ x, y, life:0.6, max:0.6, hue }); if (ripples.length > 8) ripples.shift(); }
 
 /* ============================ five-string mode ============================ */
 function meanTipDistance() {
@@ -1027,13 +1090,13 @@ function render(dt, now) {
     ctx.fillStyle = THEMES[state.theme].tint; ctx.fillRect(0, 0, W, H);       // each theme tints the camera feed differently
   }
   animT = now / 1000;
-  drawBackdrop();
+  if (state.anim) drawBackdrop();
   if (state.skeleton) drawHands();
 
   ctx.globalCompositeOperation = "lighter";
   if (S.active || S.recoil) {
     drawChain(S, S.hue, S.fade, 1, 2);
-    if (S.active && Math.random() < 0.7) {            // drifting sparks off the string
+    if (S.active && state.anim && Math.random() < 0.3) {            // drifting sparks off the string
       const pts = S.pts, f = Math.random() * (N_PTS - 1), i0 = Math.floor(f), i1 = Math.min(N_PTS - 1, i0 + 1);
       spawnSpark(lerp(pts[i0].x, pts[i1].x, f - i0), lerp(pts[i0].y, pts[i1].y, f - i0), rand(-30, 30) * DPR, rand(-60, -10) * DPR, S.hue, rand(0.4, 0.9), rand(1.5, 3.5));
     }
@@ -1041,34 +1104,43 @@ function render(dt, now) {
   if (M.fade > 0) {
     M.strings.forEach((o, i) => { if (o.vis > 0.02) drawChain(o, hueFor(1 - i / 4), M.fade * o.vis * (0.65 + 0.35 * o.flash), 0.55 + 0.25 * o.flash, 1); });
   }
-  drawRipples(dt);
-  drawSparks(dt);
+  if (state.anim) { drawRipples(dt); drawSparks(dt); }
   ctx.globalCompositeOperation = "source-over";
   drawNoteLabels();
-  if (orch && orch.on) drawOrchestraViz();
+  if (orch && orch.on && state.anim) drawOrchestraViz();
 }
-const STARS = Array.from({ length:90 }, () => ({ x:Math.random(), y:Math.random(), r:rand(0.6, 2.2), ph:rand(0, 6.3), sp:rand(1, 4) }));
-function drawBackdrop() {                              // per-theme atmosphere behind the strings
+const STARS = Array.from({ length:14 }, () => ({ x:Math.random(), y:Math.random(), r:rand(1, 2.4), ph:rand(0, 6.3), sp:rand(1, 3) }));
+const bdCache = {};
+function backdropImage(key, w, h, paint) {            // heavy backdrops are painted once and reused every frame
+  const k = `${key}|${w}x${h}`; let c = bdCache[k];
+  if (!c) { for (const o in bdCache) if (o.startsWith(key + "|")) delete bdCache[o]; c = document.createElement("canvas"); c.width = w; c.height = h; paint(c.getContext("2d"), w, h); bdCache[k] = c; }
+  return c;
+}
+function drawBackdrop() {                              // light per-theme atmosphere behind the strings
   const style = THEMES[state.theme].style, T = animT;
-  ctx.globalCompositeOperation = "lighter";
   if (style === "fire") {                              // heat glow rising from the bottom
-    const g = ctx.createLinearGradient(0, H, 0, H * 0.45); const k = 0.26 + 0.07 * Math.sin(T * 3) + 0.04 * Math.sin(T * 7.3);
+    ctx.globalCompositeOperation = "lighter";
+    const g = ctx.createLinearGradient(0, H, 0, H * 0.5), k = 0.24 + 0.06 * Math.sin(T * 3);
     g.addColorStop(0, `rgba(255,90,0,${k})`); g.addColorStop(0.5, `rgba(200,30,0,${k * 0.4})`); g.addColorStop(1, "rgba(120,0,0,0)");
-    ctx.fillStyle = g; ctx.fillRect(0, H * 0.45, W, H * 0.55);
-  } else if (style === "space") {                      // nebula clouds and a twinkling starfield
-    for (const [cx, cy, r, h] of [[0.25, 0.3, 0.45, 270], [0.78, 0.65, 0.5, 200], [0.55, 0.2, 0.3, 320]]) {
-      const g = ctx.createRadialGradient(cx * W, cy * H, 0, cx * W, cy * H, r * DIAG * 0.5);
-      g.addColorStop(0, hsl(h, 80, 45, 0.2)); g.addColorStop(1, hsl(h, 80, 40, 0)); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    }
-    for (const st of STARS) { const tw = 0.35 + 0.65 * Math.abs(Math.sin(T * st.sp * 0.5 + st.ph)); ctx.fillStyle = `rgba(255,255,255,${0.75 * tw})`; ctx.beginPath(); ctx.arc(st.x * W, st.y * H, st.r * DPR, 0, Math.PI * 2); ctx.fill(); }
-  } else if (style === "chakra") {                     // a slowly turning mandala behind everything
-    ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(T * 0.08);
-    for (let ring = 0; ring < 3; ring++) {
-      const rad = (0.16 + ring * 0.1) * DIAG; ctx.strokeStyle = hsl(CHAKRA_HUES[(ring * 2 + 1) % 7], 90, 65, 0.1); ctx.lineWidth = 2 * DPR;
-      ctx.setLineDash([6 * DPR, 10 * DPR]); ctx.beginPath(); ctx.arc(0, 0, rad, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-      for (let k = 0; k < 12; k++) { ctx.save(); ctx.rotate(k * Math.PI / 6 + ring * 0.2); ctx.fillStyle = hsl(CHAKRA_HUES[(k + ring) % 7], 90, 62, 0.06); ctx.beginPath(); ctx.ellipse(rad, 0, 0.05 * DIAG, 0.016 * DIAG, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
-    }
-    ctx.restore();
+    ctx.fillStyle = g; ctx.fillRect(0, H * 0.5, W, H * 0.5);
+  } else if (style === "space") {                      // painted-once nebula and starfield, plus a few twinkles
+    ctx.drawImage(backdropImage("space", W, H, (g, w, h) => {
+      for (const [cx, cy, r, hu] of [[0.25, 0.3, 0.45, 270], [0.78, 0.65, 0.5, 200]]) {
+        const gr = g.createRadialGradient(cx * w, cy * h, 0, cx * w, cy * h, r * Math.hypot(w, h) * 0.5); gr.addColorStop(0, hsl(hu, 80, 45, 0.2)); gr.addColorStop(1, hsl(hu, 80, 40, 0)); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      }
+      g.fillStyle = "rgba(255,255,255,.7)"; for (let i = 0; i < 70; i++) { g.beginPath(); g.arc(Math.random() * w, Math.random() * h, rand(0.6, 1.8) * DPR, 0, Math.PI * 2); g.fill(); }
+    }), 0, 0);
+    ctx.globalCompositeOperation = "lighter";
+    for (const st of STARS) { const tw = 0.3 + 0.7 * Math.abs(Math.sin(T * st.sp * 0.5 + st.ph)); ctx.fillStyle = `rgba(255,255,255,${tw})`; ctx.beginPath(); ctx.arc(st.x * W, st.y * H, st.r * DPR, 0, Math.PI * 2); ctx.fill(); }
+  } else if (style === "chakra") {                     // a slowly turning mandala, painted once at half size
+    const half = Math.ceil(0.9 * DIAG / 2), img = backdropImage("chakra", half, half, (g, w) => {
+      g.translate(w / 2, w / 2); g.scale(0.5, 0.5);
+      for (let ring = 0; ring < 3; ring++) {
+        const rad = (0.16 + ring * 0.1) * DIAG; g.strokeStyle = hsl(CHAKRA_HUES[(ring * 2 + 1) % 7], 90, 65, 0.2); g.lineWidth = 3 * DPR; g.setLineDash([6 * DPR, 10 * DPR]); g.beginPath(); g.arc(0, 0, rad, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+        for (let k = 0; k < 12; k++) { g.save(); g.rotate(k * Math.PI / 6 + ring * 0.2); g.fillStyle = hsl(CHAKRA_HUES[(k + ring) % 7], 90, 62, 0.1); g.beginPath(); g.ellipse(rad, 0, 0.05 * DIAG, 0.016 * DIAG, 0, 0, Math.PI * 2); g.fill(); g.restore(); }
+      }
+    });
+    ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(T * 0.08); ctx.drawImage(img, -half, -half, half * 2, half * 2); ctx.restore();
   }
   ctx.globalCompositeOperation = "source-over";
 }
@@ -1156,119 +1228,87 @@ function starPath(x, y, r, t) {                         // four-point sparkle
   ctx.closePath();
 }
 
-// crackle: 0 none, 1 light, 2 full. The look of the string depends on the theme.
-function drawChain(o, hue, a, ws, crackle) {
-  const th = THEMES[state.theme], pts = o.pts, n = pts.length, u = DPR * ws, T = animT, wob = o.wobble, A = Math.min(1, a);
-  // vibration ghosts: faint copies either side while the string is shaking (all themes)
-  if (wob > 0.04) for (const sg of [-1, 1])
-    strokePath(offsetPath(pts, uu => sg * Math.sin(uu * Math.PI) * wob * 15 * u), 5 * u, hsl(hue, th.sat, th.lit + 10, 0.2 * a));
+const glowCache = {};
+function glowSprite(hue) {                             // a soft glowing dot, painted once per colour and reused
+  const th = THEMES[state.theme], key = `${state.theme}|${Math.round(hue / 8)}`; let c = glowCache[key];
+  if (!c) { c = document.createElement("canvas"); c.width = c.height = 96; const g = c.getContext("2d"), gr = g.createRadialGradient(48, 48, 0, 48, 48, 48);
+    gr.addColorStop(0, "rgba(255,255,255,.95)"); gr.addColorStop(0.3, hsl(hue, th.sat, th.lit, 0.55)); gr.addColorStop(1, hsl(hue, th.sat, th.lit, 0)); g.fillStyle = gr; g.fillRect(0, 0, 96, 96); glowCache[key] = c; }
+  return c;
+}
+function drawGlow(x, y, r, hue, a) { ctx.globalAlpha = Math.min(1, a); ctx.drawImage(glowSprite(hue), x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1; }
 
-  if (th.style === "candy") {
-    strokePath(pts, 40 * u, hsl(hue, th.sat, th.lit, 0.16 * a));                              // soft glow
-    ctx.globalCompositeOperation = "source-over";                                             // opaque, like a real candy rope
-    strokePath(pts, 17 * u, `rgba(255,250,252,${A})`);
-    ctx.setLineDash([13 * u, 13 * u]); ctx.lineDashOffset = -T * 55 * u;                      // stripes crawling along the rope
-    strokePath(pts, 17 * u, hsl(hue, th.sat, th.lit - 6, A), "butt");
-    ctx.setLineDash([]);
-    strokePath(offsetPath(pts, () => -3.5 * u), 3.5 * u, `rgba(255,255,255,${0.75 * A})`);      // glossy highlight
-    ctx.globalCompositeOperation = "lighter";
-    const count = crackle ? 4 : 2;                                                             // twinkling stars on the string
-    for (let k = 0; k < count; k++) {
-      const f = (k + 0.5) / count + 0.06 * Math.sin(T * 1.7 + k * 2), p = pointAt(pts, clamp(f, 0.04, 0.96)), tw = 0.5 + 0.5 * Math.sin(T * 6 + k * 2.1);
-      ctx.fillStyle = `rgba(255,255,255,${(0.35 + 0.65 * tw) * a})`; starPath(p.x, p.y - 16 * u, (8 + 9 * tw) * u, T * 0.5 + k); ctx.fill();
-    }
-  } else if (th.style === "ocean") {
-    strokePath(pts, 42 * u, hsl(hue, th.sat, th.lit, 0.13 * a));
-    for (let r = 0; r < 2; r++) {                                                              // two flowing water ribbons
-      const dir = r ? -1 : 1, amp = (6 + 13 * wob) * u;
-      strokePath(offsetPath(pts, uu => amp * Math.sin(uu * Math.PI * 3.2 + T * 3.2 * dir + r * 2) * (0.35 + 0.65 * Math.sin(uu * Math.PI))), 7 * u, hsl(hue + (r ? 16 : -12), th.sat, th.lit + 6, 0.42 * a));
-    }
-    strokePath(pts, 12 * u, hsl(hue, th.sat, th.lit, 0.32 * a));
-    strokePath(pts, 3.5 * u, `rgba(230,255,255,${0.92 * A})`);
-    if (crackle) for (let k = 0; k < 3; k++) {                                                 // shimmer glints riding the surface
-      const f = (T * 0.25 + k / 3) % 1, p = pointAt(pts, f), g = Math.sin(f * Math.PI);
-      ctx.fillStyle = `rgba(255,255,255,${0.7 * g * a})`; ctx.beginPath(); ctx.ellipse(p.x, p.y, 9 * u, 2.5 * u, 0, 0, Math.PI * 2); ctx.fill();
-    }
-  } else if (th.style === "fire") {
-    const fl = 0.85 + 0.15 * Math.random();
-    strokePath(pts, 42 * u, hsl(hue - 8, 100, 45, 0.16 * a * fl));                              // heat glow
-    for (let r = 0; r < 3; r++)                                                                // flickering flame ribbons
-      strokePath(offsetPath(pts, (uu, i) => (Math.sin(T * 9 + i * 1.3 + r * 2) * 4 + (Math.random() - 0.5) * 5) * u * (1 + wob * 2)), (15 - r * 3.5) * u, hsl(hue + r * 14, 100, 50 + r * 6, 0.4 * a));
-    strokePath(pts, 8 * u, hsl(hue + 25, 100, 62, 0.7 * a));
-    strokePath(pts, 3.5 * u, `rgba(255,250,215,${0.95 * A})`);
-    const count = crackle ? 9 : 5;
-    for (let k = 0; k < count; k++) {                                                          // tongues of flame licking upwards
-      const p = pointAt(pts, clamp((k + 0.5) / count + 0.03 * Math.sin(T * 2 + k * 3), 0.02, 0.98));
-      const flick = 0.6 + 0.4 * Math.sin(T * 8 + k * 5.1) * Math.sin(T * 3.3 + k), h = (16 + 24 * flick) * u * (1 + wob * 1.5), w = 7.5 * u, sw = Math.sin(T * 5 + k * 2) * 5 * u;
-      for (const [sc, hh, lt, al] of [[1, hue + 4, 50, 0.45], [0.58, hue + 34, 68, 0.65]]) {
-        ctx.fillStyle = hsl(hh, 100, lt, al * a); ctx.beginPath(); ctx.moveTo(p.x - w * sc, p.y);
-        ctx.quadraticCurveTo(p.x - w * 0.8 * sc + sw * 0.3, p.y - h * sc * 0.5, p.x + sw * sc, p.y - h * sc);
-        ctx.quadraticCurveTo(p.x + w * 0.8 * sc + sw * 0.3, p.y - h * sc * 0.5, p.x + w * sc, p.y); ctx.closePath(); ctx.fill();
-      }
-    }
-  } else if (th.style === "space") {
-    strokePath(pts, 28 * u, hsl(hue, th.sat, th.lit, 0.12 * a));
-    strokePath(pts, 8 * u, hsl(hue, th.sat, th.lit, 0.33 * a));
-    strokePath(pts, 2.6 * u, `rgba(235,240,255,${0.9 * A})`);
-    const comets = crackle ? 4 : 2;
-    for (let k = 0; k < comets; k++) {                                                         // comets streaking along the string
-      const f = (T * (0.09 + 0.05 * k) + k * 0.27) % 1, head = pointAt(pts, f), tail = pointAt(pts, Math.max(0, f - 0.14));
-      const g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y); g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(1, `rgba(255,255,255,${0.9 * a})`);
-      strokePath([tail, head], 4 * u, g);
-      const hg = ctx.createRadialGradient(head.x, head.y, 0, head.x, head.y, 15 * u); hg.addColorStop(0, `rgba(255,255,255,${a})`); hg.addColorStop(1, hsl(hue, 90, 70, 0));
-      ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(head.x, head.y, 15 * u, 0, Math.PI * 2); ctx.fill();
-    }
-    for (let k = 0; k < 3; k++) {                                                              // little worlds orbiting the string
-      const p = pointAt(pts, (k + 0.5) / 3), ang = T * (1.6 + k * 0.4) + k * 2.1, x = p.x + Math.cos(ang) * 20 * u, y = p.y + Math.sin(ang) * 9 * u, back = Math.sin(ang) < 0;
-      ctx.fillStyle = hsl(hue + 40 * k - 40, 85, back ? 55 : 72, (back ? 0.45 : 0.95) * a); ctx.beginPath(); ctx.arc(x, y, (3 + k) * u, 0, Math.PI * 2); ctx.fill();
-    }
-    for (let k = 0; k < 5; k++) {                                                              // twinkles
-      const p = pointAt(pts, (k * 0.213 + 0.1) % 1), tw = 0.5 + 0.5 * Math.sin(T * 4 + k * 1.9);
-      ctx.fillStyle = `rgba(255,255,255,${tw * 0.9 * a})`; starPath(p.x + Math.sin(k * 7) * 10 * u, p.y + Math.cos(k * 5) * 16 * u, (3 + 5 * tw) * u, T * 0.3); ctx.fill();
-    }
-  } else if (th.style === "chakra") {
-    const grad = al => { const g = ctx.createLinearGradient(o.a.x, o.a.y, o.b.x, o.b.y); CHAKRA_HUES.forEach((h, k) => g.addColorStop(k / 6, hsl(h, 95, 60, al))); return g; };
-    strokePath(pts, 36 * u, grad(0.2 * a));
-    strokePath(pts, 11 * u, grad(0.6 * a));
-    strokePath(pts, 3.5 * u, `rgba(255,255,255,${0.9 * A})`);
-    for (let k = 0; k < 7; k++) {                                                              // seven energy centres along the string
-      const p = pointAt(pts, (k + 0.5) / 7), pulse = 1 + 0.25 * Math.sin(T * 2.4 + k * 0.9), r = 10 * pulse * u, c = CHAKRA_HUES[k];
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 1.6); g.addColorStop(0, `rgba(255,255,255,${0.95 * a})`); g.addColorStop(0.4, hsl(c, 95, 60, 0.8 * a)); g.addColorStop(1, hsl(c, 95, 55, 0));
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.6, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = hsl(c, 95, 70, 0.55 * a); ctx.lineWidth = 1.5 * u; ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.9, 0, Math.PI * 2); ctx.stroke();
-      if (ws > 0.8) { ctx.fillStyle = hsl(c, 95, 65, 0.4 * a);                                 // lotus petals turning around the single string's centres
-        for (let j = 0; j < 6; j++) { const an = T * 0.7 * (k % 2 ? -1 : 1) + j * Math.PI / 3; ctx.beginPath(); ctx.ellipse(p.x + Math.cos(an) * r * 2.1, p.y + Math.sin(an) * r * 2.1, r * 0.9, r * 0.35, an, 0, Math.PI * 2); ctx.fill(); } }
-    }
-  } else {                                                                                     // neon: buzzing electric tube
-    const fl = 0.86 + 0.14 * Math.random();
+// The string. With animation off it is always a plain glowing neon tube; otherwise each theme adds a light touch of its own.
+// crackle: 0 none, 1 light, 2 full (the single string).
+function drawChain(o, hue, a, ws, crackle) {
+  const th = THEMES[state.theme], pts = o.pts, n = pts.length, u = DPR * ws, T = animT, wob = o.wobble, A = Math.min(1, a), style = state.anim ? th.style : "plain";
+  const neon = fl => {
     strokePath(pts, 34 * u, hsl(hue, th.sat, th.lit, 0.2 * a * fl));
     strokePath(pts, 16 * u, hsl(hue, th.sat, th.lit, 0.55 * a * fl));
     strokePath(pts, 5 * u, `rgba(255,255,255,${0.95 * A})`);
-    const passes = crackle ? crackle : 1;
-    ctx.lineWidth = 1.6 * u; ctx.lineJoin = "miter";
-    for (let pass = 0; pass < passes + 1; pass++) {                                            // electric arcs hugging the tube
-      ctx.strokeStyle = pass ? hsl(hue, 100, 85, 0.7 * a) : `rgba(255,255,255,${0.75 * a})`;
-      ctx.beginPath();
-      const seg = 14;
-      for (let i = 0; i <= seg; i++) {
-        const p = pointAt(pts, i / seg), q = pointAt(pts, Math.min(1, i / seg + 0.02)), dx = q.x - p.x, dy = q.y - p.y, l = Math.hypot(dx, dy) || 1;
-        const j = (i === 0 || i === seg) ? 0 : rand(-1, 1) * (9 + 14 * wob) * u;
+  };
+  if (style !== "plain" && wob > 0.12) strokePath(offsetPath(pts, uu => Math.sin(uu * Math.PI) * wob * 12 * u), 5 * u, hsl(hue, th.sat, th.lit + 10, 0.18 * a));   // vibration ghost
+
+  if (style === "candy") {
+    strokePath(pts, 36 * u, hsl(hue, th.sat, th.lit, 0.16 * a));
+    ctx.globalCompositeOperation = "source-over";                                             // opaque, like a candy rope
+    strokePath(pts, 17 * u, `rgba(255,250,252,${A})`);
+    ctx.setLineDash([13 * u, 13 * u]); ctx.lineDashOffset = -T * 55 * u;
+    strokePath(pts, 17 * u, hsl(hue, th.sat, th.lit - 6, A), "butt");
+    ctx.setLineDash([]); ctx.globalCompositeOperation = "lighter";
+    const count = crackle > 1 ? 2 : 1;
+    for (let k = 0; k < count; k++) {
+      const p = pointAt(pts, clamp((k + 0.5) / count + 0.06 * Math.sin(T * 1.7 + k * 2), 0.04, 0.96)), tw = 0.5 + 0.5 * Math.sin(T * 6 + k * 2.1);
+      ctx.fillStyle = `rgba(255,255,255,${(0.35 + 0.65 * tw) * a})`; starPath(p.x, p.y - 16 * u, (8 + 8 * tw) * u, T * 0.5 + k); ctx.fill();
+    }
+  } else if (style === "ocean") {
+    strokePath(pts, 38 * u, hsl(hue, th.sat, th.lit, 0.13 * a));
+    const amp = (6 + 12 * wob) * u;
+    strokePath(offsetPath(pts, uu => amp * Math.sin(uu * Math.PI * 3.2 + T * 3.2) * (0.35 + 0.65 * Math.sin(uu * Math.PI))), 7 * u, hsl(hue - 12, th.sat, th.lit + 6, 0.42 * a));
+    strokePath(pts, 11 * u, hsl(hue, th.sat, th.lit, 0.32 * a));
+    strokePath(pts, 3.5 * u, `rgba(230,255,255,${0.92 * A})`);
+  } else if (style === "fire") {
+    strokePath(pts, 40 * u, hsl(hue - 8, 100, 45, 0.16 * a * (0.88 + 0.12 * Math.random())));
+    strokePath(offsetPath(pts, (uu, i) => Math.sin(T * 9 + i * 1.3) * 4 * u * (1 + wob * 2)), 13 * u, hsl(hue, 100, 52, 0.4 * a));
+    strokePath(pts, 8 * u, hsl(hue + 25, 100, 62, 0.7 * a));
+    strokePath(pts, 3.5 * u, `rgba(255,250,215,${0.95 * A})`);
+    const count = crackle > 1 ? 6 : 3;
+    ctx.fillStyle = hsl(hue + 12, 100, 55, 0.55 * a);
+    for (let k = 0; k < count; k++) {                                                          // tongues of flame licking upwards
+      const p = pointAt(pts, clamp((k + 0.5) / count, 0.04, 0.96)), flick = 0.6 + 0.4 * Math.sin(T * 8 + k * 5.1), h = (14 + 20 * flick) * u * (1 + wob), w = 7 * u, sw = Math.sin(T * 5 + k * 2) * 5 * u;
+      ctx.beginPath(); ctx.moveTo(p.x - w, p.y); ctx.quadraticCurveTo(p.x - w * 0.8 + sw * 0.3, p.y - h * 0.5, p.x + sw, p.y - h);
+      ctx.quadraticCurveTo(p.x + w * 0.8 + sw * 0.3, p.y - h * 0.5, p.x + w, p.y); ctx.closePath(); ctx.fill();
+    }
+  } else if (style === "space") {
+    strokePath(pts, 26 * u, hsl(hue, th.sat, th.lit, 0.12 * a));
+    strokePath(pts, 8 * u, hsl(hue, th.sat, th.lit, 0.33 * a));
+    strokePath(pts, 2.6 * u, `rgba(235,240,255,${0.9 * A})`);
+    for (let k = 0; k < (crackle > 1 ? 2 : 1); k++) {                                          // comets streaking along the string
+      const f = (T * (0.09 + 0.05 * k) + k * 0.4) % 1, head = pointAt(pts, f), tail = pointAt(pts, Math.max(0, f - 0.14));
+      const g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y); g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(1, `rgba(255,255,255,${0.9 * a})`);
+      strokePath([tail, head], 4 * u, g); drawGlow(head.x, head.y, 14 * u, hue, a);
+    }
+    for (let k = 0; k < 3; k++) {                                                              // twinkles
+      const p = pointAt(pts, (k * 0.31 + 0.12) % 1), tw = 0.5 + 0.5 * Math.sin(T * 4 + k * 1.9);
+      ctx.fillStyle = `rgba(255,255,255,${tw * 0.9 * a})`; starPath(p.x, p.y - 12 * u, (3 + 5 * tw) * u, T * 0.3); ctx.fill();
+    }
+  } else if (style === "chakra") {
+    const grad = al => { const g = ctx.createLinearGradient(o.a.x, o.a.y, o.b.x, o.b.y); CHAKRA_HUES.forEach((h, k) => g.addColorStop(k / 6, hsl(h, 95, 60, al))); return g; };
+    strokePath(pts, 30 * u, grad(0.22 * a));
+    strokePath(pts, 10 * u, grad(0.6 * a));
+    strokePath(pts, 3.5 * u, `rgba(255,255,255,${0.9 * A})`);
+    for (let k = 0; k < 7; k++) { const p = pointAt(pts, (k + 0.5) / 7); drawGlow(p.x, p.y, (12 + 3 * Math.sin(T * 2.4 + k * 0.9)) * u, CHAKRA_HUES[k], a); }   // seven energy centres
+  } else {                                                                                     // neon, and the plain no-animation look
+    neon(style === "plain" ? 1 : 0.88 + 0.12 * Math.random());
+    if (style !== "plain" && crackle) {                                                        // one thin electric arc hugging the tube
+      ctx.strokeStyle = `rgba(255,255,255,${0.75 * a})`; ctx.lineWidth = 1.5 * u; ctx.lineJoin = "miter"; ctx.beginPath();
+      for (let i = 0; i <= 10; i++) {
+        const p = pointAt(pts, i / 10), q = pointAt(pts, Math.min(1, i / 10 + 0.02)), dx = q.x - p.x, dy = q.y - p.y, l = Math.hypot(dx, dy) || 1, j = (i === 0 || i === 10) ? 0 : rand(-1, 1) * (9 + 14 * wob) * u;
         i ? ctx.lineTo(p.x - dy / l * j, p.y + dx / l * j) : ctx.moveTo(p.x, p.y);
       }
       ctx.stroke();
     }
-    if (crackle > 1 && Math.random() < 0.35) {                                                 // an occasional forked bolt
-      const p = pointAt(pts, rand(0.1, 0.9)), ang = rand(0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(255,255,255,${0.8 * a})`; ctx.lineWidth = 1.4 * u; ctx.beginPath(); ctx.moveTo(p.x, p.y);
-      let x = p.x, y = p.y; for (let k = 0; k < 4; k++) { x += Math.cos(ang + rand(-0.8, 0.8)) * 14 * u; y += Math.sin(ang + rand(-0.8, 0.8)) * 14 * u; ctx.lineTo(x, y); }
-      ctx.stroke();
-    }
   }
-  for (const p of [o.a, o.b]) {                       // glowing end points
-    const r = 36 * u, g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-    g.addColorStop(0, `rgba(255,255,255,${0.95 * A})`); g.addColorStop(0.3, hsl(hue, th.sat, th.lit, 0.55 * a)); g.addColorStop(1, hsl(hue, th.sat, th.lit, 0));
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
-  }
+  drawGlow(o.a.x, o.a.y, 36 * u, hue, A); drawGlow(o.b.x, o.b.y, 36 * u, hue, A);              // glowing end points
 }
 
 function drawSparks(dt) {
@@ -1284,48 +1324,31 @@ function drawSparks(dt) {
          : p.vy * 0.97 + 40 * DPR * dt;                                                      // everything else falls
     const a = clamp(p.life / 0.6, 0, 1), r = p.size * DPR;
     if (kind === "fire") {
-      const lf = clamp(p.life / 1.1, 0, 1), tw = 0.6 + 0.4 * Math.sin(p.life * 30 + p.spin);
-      ctx.fillStyle = hsl(10 + 45 * lf, 100, 50 + 15 * lf, a * tw); ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = `rgba(255,240,190,${a * tw})`; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.55, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = hsl(10 + 45 * clamp(p.life / 1.1, 0, 1), 100, 58, a); ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.4, 0, Math.PI * 2); ctx.fill();
     } else if (kind === "space") {
-      const tw = 0.5 + 0.5 * Math.sin(p.life * 14 + p.spin);
-      ctx.fillStyle = hsl(p.hue, 90, 82, a * (0.4 + 0.6 * tw)); starPath(p.x, p.y, r * (1.6 + 1.6 * tw), p.spin); ctx.fill();
-      ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = hsl(p.hue, 90, 82, a); starPath(p.x, p.y, r * 2.2, p.spin); ctx.fill();
     } else if (kind === "chakra") {
       ctx.fillStyle = hsl(p.hue, 90, 68, a * 0.85); ctx.beginPath(); ctx.ellipse(p.x, p.y, r * 2.3, r * 0.95, p.spin + p.life * 2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = `rgba(255,255,255,${a * 0.6})`; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.4, 0, Math.PI * 2); ctx.fill();
     } else if (kind === "candy") {
-      ctx.fillStyle = hsl(p.hue, 95, 78, a); starPath(p.x, p.y, r * 2.6, p.spin + p.life * 3); ctx.fill();
-      ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = hsl(p.hue, 95, 78, a); starPath(p.x, p.y, r * 2.4, p.spin + p.life * 3); ctx.fill();
     } else if (kind === "ocean") {
-      ctx.lineWidth = 1.5 * DPR; ctx.strokeStyle = hsl(p.hue, 80, 80, a * 0.9);
-      ctx.beginPath(); ctx.arc(p.x + Math.sin(p.spin + p.life * 6) * 4 * DPR, p.y, r * 1.4, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = `rgba(255,255,255,${a * 0.8})`; ctx.beginPath(); ctx.arc(p.x - r * 0.45, p.y - r * 0.45, r * 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 1.5 * DPR; ctx.strokeStyle = hsl(p.hue, 80, 80, a * 0.9); ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.4, 0, Math.PI * 2); ctx.stroke();
     } else {
       ctx.strokeStyle = hsl(p.hue, 100, 75, a); ctx.lineWidth = Math.max(1, r * 0.8); ctx.lineCap = "round";
       ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 0.05, p.y - p.vy * 0.05); ctx.stroke();            // streaking sparks
-      ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.5, 0, Math.PI * 2); ctx.fill();
     }
   }
-  if (sparks.length > 400) sparks.splice(0, sparks.length - 400);
 }
 
-function drawRipples(dt) {                              // rings spreading from every pluck
+function drawRipples(dt) {                              // one ring spreading from each pluck
   const style = THEMES[state.theme].style;
   for (let i = ripples.length - 1; i >= 0; i--) {
     const r = ripples[i]; r.life -= dt; if (r.life <= 0) { ripples.splice(i, 1); continue; }
-    const k = 1 - r.life / r.max, rad = (14 + 120 * easeOut(k)) * DPR, a = (1 - k) * 0.8;
-    ctx.strokeStyle = hsl(r.hue, 100, 72, a); ctx.lineWidth = (style === "candy" ? 4 : style === "fire" ? 4.5 : 2.5) * DPR;
-    ctx.setLineDash(style === "candy" ? [6 * DPR, 8 * DPR] : style === "chakra" ? [3 * DPR, 7 * DPR] : []);
-    if (style === "space") {                                                         // orbit-like tilted ellipses
-      ctx.beginPath(); ctx.ellipse(r.x, r.y, rad * 1.25, rad * 0.45, 0.5, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(r.x, r.y, rad * 0.8, rad * 0.3, 0.5, 0, Math.PI * 2); ctx.stroke();
-    } else {
-      ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, Math.PI * 2); ctx.stroke();
-      if (style === "ocean" || style === "chakra") { ctx.beginPath(); ctx.arc(r.x, r.y, rad * 0.62, 0, Math.PI * 2); ctx.stroke(); }
-      if (style === "chakra") { ctx.setLineDash([]); ctx.lineWidth = 1.5 * DPR; ctx.beginPath(); for (let t = 0; t < 8; t++) { const an = t * Math.PI / 4 + k * 1.5; ctx.moveTo(r.x + Math.cos(an) * rad * 0.7, r.y + Math.sin(an) * rad * 0.7); ctx.lineTo(r.x + Math.cos(an) * rad * 1.1, r.y + Math.sin(an) * rad * 1.1); } ctx.stroke(); }
-    }
-    ctx.setLineDash([]);
+    const k = 1 - r.life / r.max, rad = (14 + 100 * easeOut(k)) * DPR;
+    ctx.strokeStyle = hsl(r.hue, 100, 72, (1 - k) * 0.7); ctx.lineWidth = (style === "fire" || style === "candy" ? 4 : 2.5) * DPR;
+    ctx.beginPath();
+    if (style === "space") ctx.ellipse(r.x, r.y, rad * 1.25, rad * 0.45, 0.5, 0, Math.PI * 2); else ctx.arc(r.x, r.y, rad, 0, Math.PI * 2);
+    ctx.stroke();
   }
 }
 
@@ -1368,7 +1391,7 @@ async function start() {
   startBtn.textContent = "Starting…";
   try {
     voice = new Voice(); await voice.resume();
-    voice.setMuted(state.muted); voice.setInstrument(inst());
+    voice.setMuted(state.muted); voice.setInstrument(inst()); voice.loadSamples();
     engines.orch = new Orchestra(voice); engines.edm = new Edm(voice); setMusic(state.music);
   } catch (e) { voice = null; console.warn("audio failed", e); }
 
@@ -1417,6 +1440,9 @@ function buildThemePanel() {
     b.onclick = e => { e.stopPropagation(); state.theme = i; save(); themePanel.classList.add("hidden"); syncButtons(); };
     themePanel.appendChild(b);
   });
+  const ab = document.createElement("button"); ab.id = "animBtn"; ab.innerHTML = '<span class="i">🎞️</span><span class="t">Anim On</span>';
+  ab.onclick = e => { e.stopPropagation(); state.anim = !state.anim; save(); if (!state.anim) { sparks.length = 0; ripples.length = 0; } syncButtons(); };
+  themePanel.appendChild(ab);
 }
 function buildMusicPanel() {
   musicPanel.innerHTML = "";
@@ -1445,16 +1471,17 @@ function pickInstrument(i) {
 }
 function syncButtons() {
   const ins = inst();
-  $("bVoice").querySelector(".i").textContent = ins.icon; $("bVoice").querySelector(".t").textContent = ins.name;
+  $("bVoice").querySelector(".i").textContent = ins.icon;
   [...instPanel.children].forEach((b, i) => b.classList.toggle("sel", i === state.inst));
   const mu = MUSIC.find(x => x.id === state.music);
   $("bMusic").classList.toggle("off", state.music === "off");
-  $("bMusic").querySelector(".i").textContent = mu.icon; $("bMusic").querySelector(".t").textContent = state.music === "off" ? "Music" : mu.name;
+  $("bMusic").querySelector(".i").textContent = mu.icon; 
   [...musicPanel.children].forEach((b, k) => b.classList.toggle("sel", MUSIC[k].id === state.music));
   $("bMute").classList.toggle("off", state.muted);
   $("bMute").querySelector(".i").textContent = state.muted ? "🔇" : "🔊";
-  $("bTheme").querySelector(".t").textContent = THEMES[state.theme].name; $("bTheme").querySelector(".i").textContent = THEME_ICONS[state.theme];
-  [...themePanel.children].forEach((b, k) => b.classList.toggle("sel", k === state.theme));
+  $("bTheme").querySelector(".i").textContent = THEME_ICONS[state.theme];
+  [...themePanel.children].slice(0, THEMES.length).forEach((b, k) => b.classList.toggle("sel", k === state.theme));
+  const ab = $("animBtn"); if (ab) { ab.classList.toggle("sel", !state.anim); ab.querySelector(".i").textContent = state.anim ? "🎞️" : "⏸️"; ab.querySelector(".t").textContent = state.anim ? "Anim On" : "Anim Off"; }
   $("bFull").querySelector(".i").textContent = isFS() ? "🗗" : "⛶";
   $("bFull").querySelector(".t").textContent = isFS() ? "Exit" : "Full";
 }
