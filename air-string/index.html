@@ -36,16 +36,16 @@
     font-size:clamp(18px,3.2vw,30px); font-weight:700; z-index:5; pointer-events:none; white-space:nowrap; max-width:96vw; overflow:hidden; text-overflow:ellipsis; }
   #controls { position:fixed; right:max(10px,env(safe-area-inset-right)); bottom:max(10px,env(safe-area-inset-bottom));
     display:flex; gap:8px; z-index:5; }
-  #controls button, #instPanel button, #musicPanel button { min-width:58px; height:62px; padding:0 10px; border:0; border-radius:18px; cursor:pointer;
+  #controls button, #instPanel button, #musicPanel button, #themePanel button { min-width:58px; height:62px; padding:0 10px; border:0; border-radius:18px; cursor:pointer;
     background:var(--panel); backdrop-filter:blur(6px); color:#fff; font-size:13px; font-weight:700;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
-  #controls button .i, #instPanel button .i, #musicPanel button .i { font-size:24px; line-height:1; }
+  #controls button .i, #instPanel button .i, #musicPanel button .i, #themePanel button .i { font-size:24px; line-height:1; }
   #controls button.off { opacity:.5; }
-  #controls button:active, #instPanel button:active, #musicPanel button:active { transform:scale(.94); }
-  #instPanel, #musicPanel { position:fixed; right:max(10px,env(safe-area-inset-right)); bottom:calc(max(10px,env(safe-area-inset-bottom)) + 72px);
+  #controls button:active, #instPanel button:active, #musicPanel button:active, #themePanel button:active { transform:scale(.94); }
+  #instPanel, #musicPanel, #themePanel { flex-wrap:wrap; justify-content:flex-end; max-width:calc(100vw - 20px); position:fixed; right:max(10px,env(safe-area-inset-right)); bottom:calc(max(10px,env(safe-area-inset-bottom)) + 72px);
     display:flex; gap:8px; z-index:6; padding:8px; border-radius:22px; background:rgba(10,6,26,.8); backdrop-filter:blur(8px); }
-  #instPanel button, #musicPanel button { min-width:64px; height:70px; }
-  #instPanel button.sel, #musicPanel button.sel { outline:3px solid #ffd36b; background:rgba(255,211,107,.18); }
+  #instPanel button, #musicPanel button, #themePanel button { min-width:64px; height:70px; }
+  #instPanel button.sel, #musicPanel button.sel, #themePanel button.sel { outline:3px solid #ffd36b; background:rgba(255,211,107,.18); }
   #help { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:8; width:min(560px,92vw); max-height:84vh; overflow:auto;
     padding:20px 22px 18px; border-radius:24px; background:rgba(14,9,34,.92); backdrop-filter:blur(10px);
     box-shadow:0 10px 60px rgba(0,0,0,.6); font-size:16px; line-height:1.45; touch-action:pan-y; }
@@ -55,7 +55,7 @@
   #helpClose { position:absolute; right:12px; top:10px; width:40px; height:40px; border:0; border-radius:50%; background:rgba(255,255,255,.14); color:#fff; font-size:20px; cursor:pointer; }
   @media (max-width:700px) { #controls { flex-wrap:wrap; justify-content:flex-end; max-width:calc(100vw - 20px); }
     #controls button { min-width:50px; height:54px; padding:0 6px; font-size:11px; } #controls button .i { font-size:20px; }
-    #instPanel, #musicPanel { bottom:calc(max(10px,env(safe-area-inset-bottom)) + 124px); } #instPanel button, #musicPanel button { min-width:52px; height:60px; } }
+    #instPanel, #musicPanel, #themePanel { bottom:calc(max(10px,env(safe-area-inset-bottom)) + 124px); } #instPanel button, #musicPanel button, #themePanel button { min-width:52px; height:60px; } }
   #debug { position:fixed; left:8px; bottom:8px; font:12px/1.4 ui-monospace,monospace; background:rgba(0,0,0,.6);
     padding:6px 8px; border-radius:6px; z-index:5; white-space:pre; display:none; pointer-events:none; }
   .hidden { display:none !important; }
@@ -75,6 +75,7 @@
 <div id="chip" class="hidden">Loading…</div>
 <div id="instPanel" class="hidden"></div>
 <div id="musicPanel" class="hidden"></div>
+<div id="themePanel" class="hidden"></div>
 <div id="help" class="hidden" role="dialog" aria-label="How to play">
   <button id="helpClose" aria-label="Close">✕</button>
   <h2>How to play</h2>
@@ -104,7 +105,7 @@
   <ul>
     <li><b>Instrument:</b> Synth, Violin, Harp, Guitar or Bells.</li>
     <li><b>Music:</b> pick the backing music. <b>Sound:</b> mute.</li>
-    <li><b>Colour:</b> switch between Neon (electric), Candy (sweet and sparkly) and Ocean (watery) looks. <b>Full:</b> full screen.</li>
+    <li><b>Theme:</b> pick a look: Neon (electric), Candy (sweet and sparkly), Ocean (watery), Fire (flames and embers), Space (comets and stars) or Chakra (seven glowing energy centres). <b>Full:</b> full screen.</li>
   </ul>
   <h3>Tips</h3>
   <ul>
@@ -117,7 +118,7 @@
   <button id="bVoice" title="Instrument"><span class="i">🎹</span><span class="t">Synth</span></button>
   <button id="bMusic" title="Backing music"><span class="i">🎧</span><span class="t">Music</span></button>
   <button id="bMute"  title="Mute"><span class="i">🔊</span><span class="t">Sound</span></button>
-  <button id="bTheme" title="Colour theme"><span class="i">🎨</span><span class="t">Neon</span></button>
+  <button id="bTheme" title="Visual theme"><span class="i">⚡</span><span class="t">Neon</span></button>
   <button id="bFull"  title="Full screen"><span class="i">⛶</span><span class="t">Full</span></button>
 </div>
 <div id="debug"></div>
@@ -145,7 +146,12 @@ const THEMES = [
   { name:"Neon",  style:"neon",  warm:320, cool:185, sat:100, lit:58, tint:"rgba(10,2,30,.55)",  bone:"rgba(0,255,230,.9)",   joint:"rgba(255,40,200,.95)" },
   { name:"Candy", style:"candy", warm:340, cool:175, sat:88,  lit:74, tint:"rgba(70,20,70,.32)", bone:"rgba(255,255,255,.92)", joint:"rgba(255,110,180,.95)" },
   { name:"Ocean", style:"ocean", warm:170, cool:215, sat:90,  lit:62, tint:"rgba(0,28,48,.5)",   bone:"rgba(130,255,240,.85)", joint:"rgba(255,255,255,.95)" },
+  { name:"Fire",  style:"fire",  warm:6,   cool:52,  sat:100, lit:54, tint:"rgba(40,6,0,.58)",   bone:"rgba(255,175,45,.92)",  joint:"rgba(255,70,0,.95)" },
+  { name:"Space", style:"space", warm:285, cool:195, sat:90,  lit:70, tint:"rgba(2,0,22,.66)",   bone:"rgba(170,200,255,.9)",  joint:"rgba(255,255,255,.95)" },
+  { name:"Chakra",style:"chakra",warm:0,   cool:280, sat:90,  lit:62, tint:"rgba(20,6,42,.5)",   bone:"rgba(255,225,150,.92)", joint:"rgba(255,255,255,.95)" },
 ];
+const THEME_ICONS = ["⚡", "🍭", "🌊", "🔥", "🌌", "🧘"];
+const CHAKRA_HUES = [0, 28, 52, 130, 200, 245, 285];        // root to crown
 // Five sounds. "sustain" ones hum while you hold the string; "pluck" ones ring on each new note.
 const INSTRUMENTS = [
   { id:"synth",  name:"Synth",  icon:"🎹", mode:"sustain", w1:"sine", w2:"triangle", det:7,  q:1.2, lo:500, hi:4000, atk:0.027, rel:0.13, vib:45, baseVib:0,  mix:[0.65,0.35], note:{ atk:0.01, dec:1.4, cut:2400 } },
@@ -660,11 +666,16 @@ const hsl = (h, s, l, a = 1) => `hsla(${((h % 360) + 360) % 360},${s}%,${l}%,${a
 
 const ripples = [];
 let animT = 0;
+const SPARK_LIFE = { ocean:1.8, space:1.6, chakra:1.8, fire:1.2 }, SPARK_SIZE = { ocean:1.6, space:1.2, chakra:1.5 }, SPARK_HUE = { candy:70, chakra:14, fire:14 };
+function spawnSpark(x, y, vx, vy, hue, life, size) {
+  const kind = THEMES[state.theme].style, spread = SPARK_HUE[kind] ?? 25;
+  if (kind === "fire") vy -= 0.4 * Math.abs(vy) + 25 * DPR;                       // embers rise
+  sparks.push({ x, y, vx, vy, life:life * (SPARK_LIFE[kind] ?? 1), hue:hue + rand(-spread, spread), size:size * (SPARK_SIZE[kind] ?? 1), kind, spin:rand(0, 6) });
+}
 function burst(x, y, n, speed, hue) {
-  const kind = THEMES[state.theme].style;
   for (let i = 0; i < n; i++) {
     const ang = rand(0, Math.PI * 2), sp = rand(0.2, 1) * speed;
-    sparks.push({ x, y, vx:Math.cos(ang) * sp, vy:Math.sin(ang) * sp, life:rand(0.5, 1.1), hue:(hue ?? S.hue) + (kind === "candy" ? rand(-70, 70) : rand(-25, 25)), size:rand(2, 5), kind, spin:rand(0, 6) });
+    spawnSpark(x, y, Math.cos(ang) * sp, Math.sin(ang) * sp, hue ?? S.hue, rand(0.5, 1.1), rand(2, 5));
   }
 }
 function ripple(x, y, hue) { ripples.push({ x, y, life:0.75, max:0.75, hue }); if (ripples.length > 30) ripples.shift(); }
@@ -948,6 +959,7 @@ function render(dt, now) {
     ctx.fillStyle = THEMES[state.theme].tint; ctx.fillRect(0, 0, W, H);       // each theme tints the camera feed differently
   }
   animT = now / 1000;
+  drawBackdrop();
   if (state.skeleton) drawHands();
 
   ctx.globalCompositeOperation = "lighter";
@@ -955,8 +967,7 @@ function render(dt, now) {
     drawChain(S, S.hue, S.fade, 1, 2);
     if (S.active && Math.random() < 0.7) {            // drifting sparks off the string
       const pts = S.pts, f = Math.random() * (N_PTS - 1), i0 = Math.floor(f), i1 = Math.min(N_PTS - 1, i0 + 1);
-      const kind = THEMES[state.theme].style;
-      sparks.push({ x:lerp(pts[i0].x, pts[i1].x, f - i0), y:lerp(pts[i0].y, pts[i1].y, f - i0), vx:rand(-30, 30) * DPR, vy:rand(-60, -10) * DPR, life:rand(0.4, 0.9) * (kind === "ocean" ? 1.8 : 1), hue:S.hue + rand(kind === "candy" ? -70 : -20, kind === "candy" ? 70 : 20), size:rand(1.5, 3.5) * (kind === "ocean" ? 1.6 : 1), kind, spin:rand(0, 6) });
+      spawnSpark(lerp(pts[i0].x, pts[i1].x, f - i0), lerp(pts[i0].y, pts[i1].y, f - i0), rand(-30, 30) * DPR, rand(-60, -10) * DPR, S.hue, rand(0.4, 0.9), rand(1.5, 3.5));
     }
   }
   if (M.fade > 0) {
@@ -967,6 +978,31 @@ function render(dt, now) {
   ctx.globalCompositeOperation = "source-over";
   drawNoteLabels();
   if (orch && orch.on) drawOrchestraViz();
+}
+const STARS = Array.from({ length:90 }, () => ({ x:Math.random(), y:Math.random(), r:rand(0.6, 2.2), ph:rand(0, 6.3), sp:rand(1, 4) }));
+function drawBackdrop() {                              // per-theme atmosphere behind the strings
+  const style = THEMES[state.theme].style, T = animT;
+  ctx.globalCompositeOperation = "lighter";
+  if (style === "fire") {                              // heat glow rising from the bottom
+    const g = ctx.createLinearGradient(0, H, 0, H * 0.45); const k = 0.26 + 0.07 * Math.sin(T * 3) + 0.04 * Math.sin(T * 7.3);
+    g.addColorStop(0, `rgba(255,90,0,${k})`); g.addColorStop(0.5, `rgba(200,30,0,${k * 0.4})`); g.addColorStop(1, "rgba(120,0,0,0)");
+    ctx.fillStyle = g; ctx.fillRect(0, H * 0.45, W, H * 0.55);
+  } else if (style === "space") {                      // nebula clouds and a twinkling starfield
+    for (const [cx, cy, r, h] of [[0.25, 0.3, 0.45, 270], [0.78, 0.65, 0.5, 200], [0.55, 0.2, 0.3, 320]]) {
+      const g = ctx.createRadialGradient(cx * W, cy * H, 0, cx * W, cy * H, r * DIAG * 0.5);
+      g.addColorStop(0, hsl(h, 80, 45, 0.2)); g.addColorStop(1, hsl(h, 80, 40, 0)); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    for (const st of STARS) { const tw = 0.35 + 0.65 * Math.abs(Math.sin(T * st.sp * 0.5 + st.ph)); ctx.fillStyle = `rgba(255,255,255,${0.75 * tw})`; ctx.beginPath(); ctx.arc(st.x * W, st.y * H, st.r * DPR, 0, Math.PI * 2); ctx.fill(); }
+  } else if (style === "chakra") {                     // a slowly turning mandala behind everything
+    ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(T * 0.08);
+    for (let ring = 0; ring < 3; ring++) {
+      const rad = (0.16 + ring * 0.1) * DIAG; ctx.strokeStyle = hsl(CHAKRA_HUES[(ring * 2 + 1) % 7], 90, 65, 0.1); ctx.lineWidth = 2 * DPR;
+      ctx.setLineDash([6 * DPR, 10 * DPR]); ctx.beginPath(); ctx.arc(0, 0, rad, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      for (let k = 0; k < 12; k++) { ctx.save(); ctx.rotate(k * Math.PI / 6 + ring * 0.2); ctx.fillStyle = hsl(CHAKRA_HUES[(k + ring) % 7], 90, 62, 0.06); ctx.beginPath(); ctx.ellipse(rad, 0, 0.05 * DIAG, 0.016 * DIAG, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    }
+    ctx.restore();
+  }
+  ctx.globalCompositeOperation = "source-over";
 }
 function drawOrchestraViz() {                         // beat pulse + a little level meter per section
   ctx.globalCompositeOperation = "lighter";
@@ -1085,6 +1121,56 @@ function drawChain(o, hue, a, ws, crackle) {
       const f = (T * 0.25 + k / 3) % 1, p = pointAt(pts, f), g = Math.sin(f * Math.PI);
       ctx.fillStyle = `rgba(255,255,255,${0.7 * g * a})`; ctx.beginPath(); ctx.ellipse(p.x, p.y, 9 * u, 2.5 * u, 0, 0, Math.PI * 2); ctx.fill();
     }
+  } else if (th.style === "fire") {
+    const fl = 0.85 + 0.15 * Math.random();
+    strokePath(pts, 42 * u, hsl(hue - 8, 100, 45, 0.16 * a * fl));                              // heat glow
+    for (let r = 0; r < 3; r++)                                                                // flickering flame ribbons
+      strokePath(offsetPath(pts, (uu, i) => (Math.sin(T * 9 + i * 1.3 + r * 2) * 4 + (Math.random() - 0.5) * 5) * u * (1 + wob * 2)), (15 - r * 3.5) * u, hsl(hue + r * 14, 100, 50 + r * 6, 0.4 * a));
+    strokePath(pts, 8 * u, hsl(hue + 25, 100, 62, 0.7 * a));
+    strokePath(pts, 3.5 * u, `rgba(255,250,215,${0.95 * A})`);
+    const count = crackle ? 9 : 5;
+    for (let k = 0; k < count; k++) {                                                          // tongues of flame licking upwards
+      const p = pointAt(pts, clamp((k + 0.5) / count + 0.03 * Math.sin(T * 2 + k * 3), 0.02, 0.98));
+      const flick = 0.6 + 0.4 * Math.sin(T * 8 + k * 5.1) * Math.sin(T * 3.3 + k), h = (16 + 24 * flick) * u * (1 + wob * 1.5), w = 7.5 * u, sw = Math.sin(T * 5 + k * 2) * 5 * u;
+      for (const [sc, hh, lt, al] of [[1, hue + 4, 50, 0.45], [0.58, hue + 34, 68, 0.65]]) {
+        ctx.fillStyle = hsl(hh, 100, lt, al * a); ctx.beginPath(); ctx.moveTo(p.x - w * sc, p.y);
+        ctx.quadraticCurveTo(p.x - w * 0.8 * sc + sw * 0.3, p.y - h * sc * 0.5, p.x + sw * sc, p.y - h * sc);
+        ctx.quadraticCurveTo(p.x + w * 0.8 * sc + sw * 0.3, p.y - h * sc * 0.5, p.x + w * sc, p.y); ctx.closePath(); ctx.fill();
+      }
+    }
+  } else if (th.style === "space") {
+    strokePath(pts, 28 * u, hsl(hue, th.sat, th.lit, 0.12 * a));
+    strokePath(pts, 8 * u, hsl(hue, th.sat, th.lit, 0.33 * a));
+    strokePath(pts, 2.6 * u, `rgba(235,240,255,${0.9 * A})`);
+    const comets = crackle ? 4 : 2;
+    for (let k = 0; k < comets; k++) {                                                         // comets streaking along the string
+      const f = (T * (0.09 + 0.05 * k) + k * 0.27) % 1, head = pointAt(pts, f), tail = pointAt(pts, Math.max(0, f - 0.14));
+      const g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y); g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(1, `rgba(255,255,255,${0.9 * a})`);
+      strokePath([tail, head], 4 * u, g);
+      const hg = ctx.createRadialGradient(head.x, head.y, 0, head.x, head.y, 15 * u); hg.addColorStop(0, `rgba(255,255,255,${a})`); hg.addColorStop(1, hsl(hue, 90, 70, 0));
+      ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(head.x, head.y, 15 * u, 0, Math.PI * 2); ctx.fill();
+    }
+    for (let k = 0; k < 3; k++) {                                                              // little worlds orbiting the string
+      const p = pointAt(pts, (k + 0.5) / 3), ang = T * (1.6 + k * 0.4) + k * 2.1, x = p.x + Math.cos(ang) * 20 * u, y = p.y + Math.sin(ang) * 9 * u, back = Math.sin(ang) < 0;
+      ctx.fillStyle = hsl(hue + 40 * k - 40, 85, back ? 55 : 72, (back ? 0.45 : 0.95) * a); ctx.beginPath(); ctx.arc(x, y, (3 + k) * u, 0, Math.PI * 2); ctx.fill();
+    }
+    for (let k = 0; k < 5; k++) {                                                              // twinkles
+      const p = pointAt(pts, (k * 0.213 + 0.1) % 1), tw = 0.5 + 0.5 * Math.sin(T * 4 + k * 1.9);
+      ctx.fillStyle = `rgba(255,255,255,${tw * 0.9 * a})`; starPath(p.x + Math.sin(k * 7) * 10 * u, p.y + Math.cos(k * 5) * 16 * u, (3 + 5 * tw) * u, T * 0.3); ctx.fill();
+    }
+  } else if (th.style === "chakra") {
+    const grad = al => { const g = ctx.createLinearGradient(o.a.x, o.a.y, o.b.x, o.b.y); CHAKRA_HUES.forEach((h, k) => g.addColorStop(k / 6, hsl(h, 95, 60, al))); return g; };
+    strokePath(pts, 36 * u, grad(0.2 * a));
+    strokePath(pts, 11 * u, grad(0.6 * a));
+    strokePath(pts, 3.5 * u, `rgba(255,255,255,${0.9 * A})`);
+    for (let k = 0; k < 7; k++) {                                                              // seven energy centres along the string
+      const p = pointAt(pts, (k + 0.5) / 7), pulse = 1 + 0.25 * Math.sin(T * 2.4 + k * 0.9), r = 10 * pulse * u, c = CHAKRA_HUES[k];
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 1.6); g.addColorStop(0, `rgba(255,255,255,${0.95 * a})`); g.addColorStop(0.4, hsl(c, 95, 60, 0.8 * a)); g.addColorStop(1, hsl(c, 95, 55, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = hsl(c, 95, 70, 0.55 * a); ctx.lineWidth = 1.5 * u; ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.9, 0, Math.PI * 2); ctx.stroke();
+      if (ws > 0.8) { ctx.fillStyle = hsl(c, 95, 65, 0.4 * a);                                 // lotus petals turning around the single string's centres
+        for (let j = 0; j < 6; j++) { const an = T * 0.7 * (k % 2 ? -1 : 1) + j * Math.PI / 3; ctx.beginPath(); ctx.ellipse(p.x + Math.cos(an) * r * 2.1, p.y + Math.sin(an) * r * 2.1, r * 0.9, r * 0.35, an, 0, Math.PI * 2); ctx.fill(); } }
+    }
   } else {                                                                                     // neon: buzzing electric tube
     const fl = 0.86 + 0.14 * Math.random();
     strokePath(pts, 34 * u, hsl(hue, th.sat, th.lit, 0.2 * a * fl));
@@ -1123,9 +1209,24 @@ function drawSparks(dt) {
     p.life -= dt; if (p.life <= 0) { sparks.splice(i, 1); continue; }
     const kind = p.kind || "neon";
     p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.97;
-    p.vy = kind === "ocean" ? p.vy * 0.98 - 28 * DPR * dt : p.vy * 0.97 + 40 * DPR * dt;      // bubbles float up, the rest fall
+    p.vy = kind === "ocean" ? p.vy * 0.98 - 28 * DPR * dt                                  // bubbles float up
+         : kind === "fire" ? p.vy * 0.985 - 45 * DPR * dt                                  // embers rise
+         : kind === "space" ? p.vy * 0.99                                                    // stardust drifts
+         : kind === "chakra" ? p.vy * 0.985 - 14 * DPR * dt                                  // petals float up slowly
+         : p.vy * 0.97 + 40 * DPR * dt;                                                      // everything else falls
     const a = clamp(p.life / 0.6, 0, 1), r = p.size * DPR;
-    if (kind === "candy") {
+    if (kind === "fire") {
+      const lf = clamp(p.life / 1.1, 0, 1), tw = 0.6 + 0.4 * Math.sin(p.life * 30 + p.spin);
+      ctx.fillStyle = hsl(10 + 45 * lf, 100, 50 + 15 * lf, a * tw); ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(255,240,190,${a * tw})`; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.55, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === "space") {
+      const tw = 0.5 + 0.5 * Math.sin(p.life * 14 + p.spin);
+      ctx.fillStyle = hsl(p.hue, 90, 82, a * (0.4 + 0.6 * tw)); starPath(p.x, p.y, r * (1.6 + 1.6 * tw), p.spin); ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.4, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === "chakra") {
+      ctx.fillStyle = hsl(p.hue, 90, 68, a * 0.85); ctx.beginPath(); ctx.ellipse(p.x, p.y, r * 2.3, r * 0.95, p.spin + p.life * 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${a * 0.6})`; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.4, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === "candy") {
       ctx.fillStyle = hsl(p.hue, 95, 78, a); starPath(p.x, p.y, r * 2.6, p.spin + p.life * 3); ctx.fill();
       ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.5, 0, Math.PI * 2); ctx.fill();
     } else if (kind === "ocean") {
@@ -1146,10 +1247,16 @@ function drawRipples(dt) {                              // rings spreading from 
   for (let i = ripples.length - 1; i >= 0; i--) {
     const r = ripples[i]; r.life -= dt; if (r.life <= 0) { ripples.splice(i, 1); continue; }
     const k = 1 - r.life / r.max, rad = (14 + 120 * easeOut(k)) * DPR, a = (1 - k) * 0.8;
-    ctx.strokeStyle = hsl(r.hue, 100, 72, a); ctx.lineWidth = (style === "candy" ? 4 : 2.5) * DPR;
-    ctx.setLineDash(style === "candy" ? [6 * DPR, 8 * DPR] : []);
-    ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, Math.PI * 2); ctx.stroke();
-    if (style === "ocean") { ctx.beginPath(); ctx.arc(r.x, r.y, rad * 0.62, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.strokeStyle = hsl(r.hue, 100, 72, a); ctx.lineWidth = (style === "candy" ? 4 : style === "fire" ? 4.5 : 2.5) * DPR;
+    ctx.setLineDash(style === "candy" ? [6 * DPR, 8 * DPR] : style === "chakra" ? [3 * DPR, 7 * DPR] : []);
+    if (style === "space") {                                                         // orbit-like tilted ellipses
+      ctx.beginPath(); ctx.ellipse(r.x, r.y, rad * 1.25, rad * 0.45, 0.5, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(r.x, r.y, rad * 0.8, rad * 0.3, 0.5, 0, Math.PI * 2); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, Math.PI * 2); ctx.stroke();
+      if (style === "ocean" || style === "chakra") { ctx.beginPath(); ctx.arc(r.x, r.y, rad * 0.62, 0, Math.PI * 2); ctx.stroke(); }
+      if (style === "chakra") { ctx.setLineDash([]); ctx.lineWidth = 1.5 * DPR; ctx.beginPath(); for (let t = 0; t < 8; t++) { const an = t * Math.PI / 4 + k * 1.5; ctx.moveTo(r.x + Math.cos(an) * rad * 0.7, r.y + Math.sin(an) * rad * 0.7); ctx.lineTo(r.x + Math.cos(an) * rad * 1.1, r.y + Math.sin(an) * rad * 1.1); } ctx.stroke(); }
+    }
     ctx.setLineDash([]);
   }
 }
@@ -1206,7 +1313,7 @@ async function start() {
 
   startEl.classList.add("hidden");
   $("controls").classList.remove("hidden");
-  buildInstPanel(); buildMusicPanel(); syncButtons();
+  buildInstPanel(); buildMusicPanel(); buildThemePanel(); syncButtons();
   requestAnimationFrame(frame);                                                  // camera feed shows while the model loads
 
   try {
@@ -1233,7 +1340,16 @@ document.addEventListener("visibilitychange", () => {
 });
 
 /* ============================ controls ============================ */
-const musicPanel = $("musicPanel");
+const musicPanel = $("musicPanel"), themePanel = $("themePanel");
+function buildThemePanel() {
+  themePanel.innerHTML = "";
+  THEMES.forEach((th, i) => {
+    const b = document.createElement("button");
+    b.innerHTML = `<span class="i">${THEME_ICONS[i]}</span><span class="t">${th.name}</span>`;
+    b.onclick = e => { e.stopPropagation(); state.theme = i; save(); themePanel.classList.add("hidden"); syncButtons(); };
+    themePanel.appendChild(b);
+  });
+}
 function buildMusicPanel() {
   musicPanel.innerHTML = "";
   MUSIC.forEach(mu => {
@@ -1269,19 +1385,20 @@ function syncButtons() {
   [...musicPanel.children].forEach((b, k) => b.classList.toggle("sel", MUSIC[k].id === state.music));
   $("bMute").classList.toggle("off", state.muted);
   $("bMute").querySelector(".i").textContent = state.muted ? "🔇" : "🔊";
-  $("bTheme").querySelector(".t").textContent = THEMES[state.theme].name;
+  $("bTheme").querySelector(".t").textContent = THEMES[state.theme].name; $("bTheme").querySelector(".i").textContent = THEME_ICONS[state.theme];
+  [...themePanel.children].forEach((b, k) => b.classList.toggle("sel", k === state.theme));
   $("bFull").querySelector(".i").textContent = isFS() ? "🗗" : "⛶";
   $("bFull").querySelector(".t").textContent = isFS() ? "Exit" : "Full";
 }
-$("bVoice").onclick = e => { e.stopPropagation(); musicPanel.classList.add("hidden"); instPanel.classList.toggle("hidden"); };
-$("bMusic").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); musicPanel.classList.toggle("hidden"); };
-document.addEventListener("click", e => { if (!instPanel.contains(e.target)) instPanel.classList.add("hidden"); if (!musicPanel.contains(e.target)) musicPanel.classList.add("hidden"); });
+$("bVoice").onclick = e => { e.stopPropagation(); musicPanel.classList.add("hidden"); themePanel.classList.add("hidden"); instPanel.classList.toggle("hidden"); };
+$("bMusic").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); themePanel.classList.add("hidden"); musicPanel.classList.toggle("hidden"); };
+document.addEventListener("click", e => { if (!instPanel.contains(e.target)) instPanel.classList.add("hidden"); if (!musicPanel.contains(e.target)) musicPanel.classList.add("hidden"); if (!themePanel.contains(e.target)) themePanel.classList.add("hidden"); });
 $("bMute").onclick = () => { state.muted = !state.muted; voice && voice.setMuted(state.muted); save(); syncButtons(); };
-$("bTheme").onclick = () => { state.theme = (state.theme + 1) % THEMES.length; save(); syncButtons(); };
+$("bTheme").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); musicPanel.classList.add("hidden"); themePanel.classList.toggle("hidden"); };
 $("bFull").onclick = toggleFS;
 const helpEl = $("help");
 const setHelp = open => helpEl.classList.toggle("hidden", !open);
-$("bHelp").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); musicPanel.classList.add("hidden"); setHelp(helpEl.classList.contains("hidden")); };
+$("bHelp").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); musicPanel.classList.add("hidden"); themePanel.classList.add("hidden"); setHelp(helpEl.classList.contains("hidden")); };
 $("helpClose").onclick = () => setHelp(false);
 document.addEventListener("click", e => { if (!helpEl.contains(e.target)) setHelp(false); });
 addEventListener("keydown", e => { if (e.key === "Escape") setHelp(false); if (e.key === "?" || e.key === "h" || e.key === "H") setHelp(helpEl.classList.contains("hidden")); });
