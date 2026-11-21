@@ -67,12 +67,7 @@
 
 <div id="start">
   <h1>Air String</h1>
-  <p>Pinch both hands to make a string.</p>
-  <p class="sub">Or press your hands together like a prayer, then pull them apart for five strings.</p>
-  <div class="row">
-    <button id="startBtn" class="big">Start</button>
-    <button id="startFsBtn" class="big alt">Start full screen</button>
-  </div>
+  <button id="startBtn" class="big">Start</button>
   <div id="err"></div>
   <small>Everything stays on this device. The camera feed is never recorded, uploaded or saved.</small>
 </div>
@@ -95,6 +90,7 @@
     <li>Press your hands together like a prayer, then pull them apart.</li>
     <li>Thumb to pinky play C, D, E, G, A. Hands closer together plays an octave higher.</li>
     <li>Wiggle a finger to pluck its string. Bring your hands back together to reset.</li>
+    <li>Curl the same finger on both hands to remove that string and its note. Open both again to bring it back.</li>
     <li><b>Duet:</b> while someone holds the five strings, a friend can pluck them by sweeping their fingers across the strings. Up to four hands are tracked.</li>
   </ul>
   <h3>Backing music</h3>
@@ -107,8 +103,8 @@
   <h3>Buttons</h3>
   <ul>
     <li><b>Instrument:</b> Synth, Violin, Harp, Guitar or Bells.</li>
-    <li><b>Music:</b> pick the backing music. <b>Sound:</b> mute. <b>Snap:</b> lock notes to a pleasant scale, or glide freely.</li>
-    <li><b>Hands:</b> show or hide the skeleton. <b>Colour:</b> change theme. <b>Full:</b> full screen.</li>
+    <li><b>Music:</b> pick the backing music. <b>Sound:</b> mute.</li>
+    <li><b>Colour:</b> switch between Neon (electric), Candy (sweet and sparkly) and Ocean (watery) looks. <b>Full:</b> full screen.</li>
   </ul>
   <h3>Tips</h3>
   <ul>
@@ -121,8 +117,6 @@
   <button id="bVoice" title="Instrument"><span class="i">🎹</span><span class="t">Synth</span></button>
   <button id="bMusic" title="Backing music"><span class="i">🎧</span><span class="t">Music</span></button>
   <button id="bMute"  title="Mute"><span class="i">🔊</span><span class="t">Sound</span></button>
-  <button id="bSnap"  title="Snap to scale"><span class="i">🎵</span><span class="t">Snap</span></button>
-  <button id="bSkel"  title="Hand skeleton"><span class="i">🖐️</span><span class="t">Hands</span></button>
   <button id="bTheme" title="Colour theme"><span class="i">🎨</span><span class="t">Neon</span></button>
   <button id="bFull"  title="Full screen"><span class="i">⛶</span><span class="t">Full</span></button>
 </div>
@@ -148,9 +142,9 @@ const NOTE_NAMES = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","
 const FINGERS = [4, 8, 12, 16, 20];            // thumb, index, middle, ring, pinky tips
 const MULTI_ARM = 0.6, MULTI_OPEN = 1.0, MULTI_CLOSE = 0.5, ARM_WINDOW_MS = 1800;  // five-string gesture, in hand sizes
 const THEMES = [
-  { name:"Neon",  warm:18,  cool:200, sat:100, lit:60 },
-  { name:"Candy", warm:330, cool:285, sat:95,  lit:70 },
-  { name:"Ocean", warm:160, cool:235, sat:90,  lit:62 },
+  { name:"Neon",  style:"neon",  warm:320, cool:185, sat:100, lit:58, tint:"rgba(10,2,30,.55)",  bone:"rgba(0,255,230,.9)",   joint:"rgba(255,40,200,.95)" },
+  { name:"Candy", style:"candy", warm:340, cool:175, sat:88,  lit:74, tint:"rgba(70,20,70,.32)", bone:"rgba(255,255,255,.92)", joint:"rgba(255,110,180,.95)" },
+  { name:"Ocean", style:"ocean", warm:170, cool:215, sat:90,  lit:62, tint:"rgba(0,28,48,.5)",   bone:"rgba(130,255,240,.85)", joint:"rgba(255,255,255,.95)" },
 ];
 // Five sounds. "sustain" ones hum while you hold the string; "pluck" ones ring on each new note.
 const INSTRUMENTS = [
@@ -166,7 +160,7 @@ const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],
 /* ============================ dom ============================ */
 const $ = id => document.getElementById(id);
 const canvas = $("c"), ctx = canvas.getContext("2d");
-const video = $("v"), chip = $("chip"), startEl = $("start"), startBtn = $("startBtn"), startFsBtn = $("startFsBtn"), errEl = $("err");
+const video = $("v"), chip = $("chip"), startEl = $("start"), startBtn = $("startBtn"), errEl = $("err");
 const debugEl = $("debug"), instPanel = $("instPanel");
 const DEBUG = new URLSearchParams(location.search).has("debug");
 if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { allHands = h; newDet = true; }; window.__dbg = () => ({ M, S, voice }); }
@@ -176,6 +170,7 @@ try { Object.assign(state, JSON.parse(localStorage.getItem("airstring") || "{}")
 if (!INSTRUMENTS[state.inst]) state.inst = 0;
 if (!["off", "orch", "edm"].includes(state.music)) state.music = state.orch ? "orch" : "off";
 if (!THEMES[state.theme]) state.theme = 0;
+state.snap = true; state.skeleton = true;            // no longer switchable: always snap to the scale, always show hands
 const save = () => { try { localStorage.setItem("airstring", JSON.stringify(state)); } catch {} };
 const inst = () => INSTRUMENTS[state.inst];
 
@@ -607,7 +602,9 @@ function detect(nowMs) {
     const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const ratio = d(px(4), px(8)) / Math.max(1e-3, d(px(0), px(9)));
     const size = Math.max(1, Math.hypot(lm[0].x - lm[9].x, lm[0].y - lm[9].y));
-    out.push({ lm, ratio, size, pinch:{ x:(lm[4].x + lm[8].x) / 2, y:(lm[4].y + lm[8].y) / 2 }, wrist:lm[0] });
+    // how curled each finger is: tip-to-wrist over knuckle-to-wrist (about 2 when straight, about 1 when closed)
+    const fr = [[4, 2], [8, 5], [12, 9], [16, 13], [20, 17]].map(([t, k]) => d(px(t), px(0)) / Math.max(1e-3, d(px(k), px(0))));
+    out.push({ lm, ratio, size, fr, pinch:{ x:(lm[4].x + lm[8].x) / 2, y:(lm[4].y + lm[8].y) / 2 }, wrist:lm[0] });
   }
   out.sort((a, b) => a.wrist.x - b.wrist.x);
   allHands = out.slice(0, 4); newDet = true;
@@ -621,7 +618,8 @@ const S = Object.assign(makeChain(N_PTS), {           // the single (pinch) stri
 });
 // five-string mode: 5 chains, one per finger pair
 const tips = [0, 1].map(() => FINGERS.map(() => ({ fx:new OneEuro(2, 0.03), fy:new OneEuro(2, 0.03), x:0, y:0 })));
-const M = { holderWrist:[{ x:0, y:0 }, { x:0, y:0 }], state:"idle", armedAt:-1e9, lostAt:0, fade:0, D:0, strings:FINGERS.map((_, i) => Object.assign(makeChain(M_PTS), { canTrig:true, flash:0, lastPluck:0, midi:BASE_MIDI + PENT[i] })) };
+const curled = [0, 1].map(() => [false, false, false, false, false]);
+const M = { holderWrist:[{ x:0, y:0 }, { x:0, y:0 }], state:"idle", armedAt:-1e9, lostAt:0, fade:0, D:0, strings:FINGERS.map((_, i) => Object.assign(makeChain(M_PTS), { canTrig:true, flash:0, lastPluck:0, midi:BASE_MIDI + PENT[i], removed:false, vis:1 })) };
 const sparks = [];
 
 function initChain(o, a, b) {
@@ -660,12 +658,16 @@ function hueFor(t) {                                  // t: 0 short/high .. 1 lo
 }
 const hsl = (h, s, l, a = 1) => `hsla(${((h % 360) + 360) % 360},${s}%,${l}%,${a})`;
 
+const ripples = [];
+let animT = 0;
 function burst(x, y, n, speed, hue) {
+  const kind = THEMES[state.theme].style;
   for (let i = 0; i < n; i++) {
     const ang = rand(0, Math.PI * 2), sp = rand(0.2, 1) * speed;
-    sparks.push({ x, y, vx:Math.cos(ang) * sp, vy:Math.sin(ang) * sp, life:rand(0.5, 1.1), hue:(hue ?? S.hue) + rand(-25, 25), size:rand(2, 5) });
+    sparks.push({ x, y, vx:Math.cos(ang) * sp, vy:Math.sin(ang) * sp, life:rand(0.5, 1.1), hue:(hue ?? S.hue) + (kind === "candy" ? rand(-70, 70) : rand(-25, 25)), size:rand(2, 5), kind, spin:rand(0, 6) });
   }
 }
+function ripple(x, y, hue) { ripples.push({ x, y, life:0.75, max:0.75, hue }); if (ripples.length > 30) ripples.shift(); }
 
 /* ============================ five-string mode ============================ */
 function meanTipDistance() {
@@ -680,13 +682,14 @@ function multiOctave() {                              // closer hands = an octav
 const multiMidi = i => BASE_MIDI + PENT[i] + multiOctave();
 function pluckString(i, vel, delay = 0) {
   const o = M.strings[i], now = performance.now();
+  if (o.removed) return;
   o.midi = multiMidi(i); o.flash = 1; o.lastPluck = now;
   if (voice && !state.muted) voice.playNote(inst(), o.midi, vel, delay);
-  const u = rand(0.2, 0.8); burst(lerp(o.a.x, o.b.x, u), lerp(o.a.y, o.b.y, u), 5, 0.12 * DIAG, hueFor(1 - i / 4));
+  const u = rand(0.2, 0.8), px = lerp(o.a.x, o.b.x, u), py = lerp(o.a.y, o.b.y, u); burst(px, py, 5, 0.12 * DIAG, hueFor(1 - i / 4)); ripple(px, py, hueFor(1 - i / 4));
 }
 function startMulti() {
   M.state = "active"; M.fade = 1; M.lostAt = 0;
-  for (let f = 0; f < 5; f++) { const o = M.strings[f]; initChain(o, tips[0][f], tips[1][f]); o.canTrig = true; }
+  for (let f = 0; f < 5; f++) { const o = M.strings[f]; initChain(o, tips[0][f], tips[1][f]); o.canTrig = true; o.removed = false; o.vis = 1; curled[0][f] = curled[1][f] = false; }
   voice && voice.setNoteCutoff(6500);
   for (let f = 0; f < 5; f++) {                       // harp-style strum, thumb to pinky
     const o = M.strings[f], midY = (o.a.y + o.b.y) / 2;
@@ -730,7 +733,7 @@ function updatePlucking(now, live) {
         if (speed < 0.05 * DIAG) continue;            // ignore resting or tiny drifts
         for (let i = 0; i < 5; i++) {
           const o = M.strings[i], rx = o.b.x - o.a.x, ry = o.b.y - o.a.y, den = cross(rx, ry, sx, sy);
-          if (Math.abs(den) < 1e-6 || now - (o.lastTouch || 0) < 120) continue;
+          if (o.removed || Math.abs(den) < 1e-6 || now - (o.lastTouch || 0) < 120) continue;
           const qx = p0.x - o.a.x, qy = p0.y - o.a.y;
           const t = cross(qx, qy, sx, sy) / den, u = cross(qx, qy, rx, ry) / den;   // t: along the string, u: along the finger's path
           if (t < -0.02 || t > 1.02 || u < 0 || u > 1) continue;
@@ -756,6 +759,10 @@ function updateMulti(now, dt) {
       tp.x = tp.fx.filter(p.x, t); tp.y = tp.fy.filter(p.y, t);
     }
     M.D = meanTipDistance();
+    if (M.state === "active") for (let s = 0; s < 2; s++) for (let f = 0; f < 5; f++) {       // curled fingers (with a little hysteresis)
+      const r = hands[s].fr ? hands[s].fr[f] : 2;
+      if (r < 1.3) curled[s][f] = true; else if (r > 1.6) curled[s][f] = false;
+    }
   } else { for (const row of tips) for (const tp of row) { tp.fx.reset(); tp.fy.reset(); } M.D = 0; }
 
   if (M.state === "active") {
@@ -784,14 +791,22 @@ function updateMulti(now, dt) {
       o.a.x = lerp(o.a.x, mx, k); o.a.y = lerp(o.a.y, my, k); o.b.x = lerp(o.b.x, mx, k); o.b.y = lerp(o.b.y, my, k); }
     stepString(o, dt);
     o.flash = Math.max(0, o.flash - dt * 2.2);
-    if (live) {                                       // wiggle a finger to pluck its string
+    if (live) {                                       // curl the same finger on both hands: its string goes away; open both: it comes back
+      const was = o.removed;
+      if (curled[0][f] && curled[1][f]) o.removed = true; else if (!curled[0][f] && !curled[1][f]) o.removed = false;
+      if (o.removed && !was) { const mx = (o.a.x + o.b.x) / 2, my = (o.a.y + o.b.y) / 2; burst(mx, my, 14, 0.25 * DIAG, hueFor(1 - f / 4)); ripple(mx, my, hueFor(1 - f / 4)); }
+      if (!o.removed && was) { o.canTrig = true; o.lastPluck = 0; pluckString(f, 0.8); }
+    }
+    o.vis = lerp(o.vis, live && o.removed ? 0 : 1, Math.min(1, dt * 10));
+    if (live && o.removed && voice) voice.padSet(f, midiToFreq(BASE_MIDI + PENT[f] + oct), 0);
+    if (live && !o.removed && !curled[0][f] && !curled[1][f]) {                       // wiggle a finger to pluck its string
       if (o.canTrig && o.wobble > 0.16 && now - o.lastPluck > 130) { o.canTrig = false; pluckString(f, clamp(0.65 + o.wobble, 0.65, 1)); }
       else if (!o.canTrig && o.wobble < 0.07) o.canTrig = true;
       else if (o.speed > 0.2 * DIAG && now - o.lastPluck > 170) pluckString(f, clamp(0.6 + o.speed / DIAG * 0.5, 0.6, 1));   // moving a finger plays its note too
-      if (voice && !state.muted) {                    // quiet sustained chord that swells as each string moves
-        const midY = (o.a.y + o.b.y) / 2, lift = 0.6 + 0.4 * (1 - clamp(midY / H, 0, 1));
-        voice.padSet(f, midiToFreq(BASE_MIDI + PENT[f] + oct), (0.05 + 0.3 * Math.min(1, o.wobble * 2)) * lift);
-      }
+    }
+    if (live && !o.removed && voice && !state.muted) {   // quiet sustained chord that swells as each string moves
+      const midY = (o.a.y + o.b.y) / 2, lift = 0.6 + 0.4 * (1 - clamp(midY / H, 0, 1));
+      voice.padSet(f, midiToFreq(BASE_MIDI + PENT[f] + oct), (0.05 + 0.3 * Math.min(1, o.wobble * 2)) * lift);
     }
   }
 }
@@ -930,21 +945,24 @@ function render(dt, now) {
     ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1);
     ctx.drawImage(video, videoMap.ox, videoMap.oy, videoMap.vw * videoMap.s, videoMap.vh * videoMap.s);
     ctx.restore();
-    ctx.fillStyle = "rgba(8,4,20,.45)"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = THEMES[state.theme].tint; ctx.fillRect(0, 0, W, H);       // each theme tints the camera feed differently
   }
+  animT = now / 1000;
   if (state.skeleton) drawHands();
 
   ctx.globalCompositeOperation = "lighter";
   if (S.active || S.recoil) {
-    drawChain(S, S.hue, S.fade, 1, true);
+    drawChain(S, S.hue, S.fade, 1, 2);
     if (S.active && Math.random() < 0.7) {            // drifting sparks off the string
       const pts = S.pts, f = Math.random() * (N_PTS - 1), i0 = Math.floor(f), i1 = Math.min(N_PTS - 1, i0 + 1);
-      sparks.push({ x:lerp(pts[i0].x, pts[i1].x, f - i0), y:lerp(pts[i0].y, pts[i1].y, f - i0), vx:rand(-30, 30) * DPR, vy:rand(-60, -10) * DPR, life:rand(0.4, 0.9), hue:S.hue + rand(-20, 20), size:rand(1.5, 3.5) });
+      const kind = THEMES[state.theme].style;
+      sparks.push({ x:lerp(pts[i0].x, pts[i1].x, f - i0), y:lerp(pts[i0].y, pts[i1].y, f - i0), vx:rand(-30, 30) * DPR, vy:rand(-60, -10) * DPR, life:rand(0.4, 0.9) * (kind === "ocean" ? 1.8 : 1), hue:S.hue + rand(kind === "candy" ? -70 : -20, kind === "candy" ? 70 : 20), size:rand(1.5, 3.5) * (kind === "ocean" ? 1.6 : 1), kind, spin:rand(0, 6) });
     }
   }
   if (M.fade > 0) {
-    M.strings.forEach((o, i) => drawChain(o, hueFor(1 - i / 4), M.fade * (0.65 + 0.35 * o.flash), 0.55 + 0.25 * o.flash, false));
+    M.strings.forEach((o, i) => { if (o.vis > 0.02) drawChain(o, hueFor(1 - i / 4), M.fade * o.vis * (0.65 + 0.35 * o.flash), 0.55 + 0.25 * o.flash, 1); });
   }
+  drawRipples(dt);
   drawSparks(dt);
   ctx.globalCompositeOperation = "source-over";
   drawNoteLabels();
@@ -983,10 +1001,10 @@ function drawNoteLabels() {
     const gap = 42 * DPR, items = M.strings.map((o, i) => {
       const left = o.a.x <= o.b.x ? o.a : o.b;
       return { i, o, x:clamp(Math.min(o.a.x, o.b.x) - 46 * DPR, 34 * DPR, W - 34 * DPR), y:left.y };
-    }).sort((p, q) => p.y - q.y);
-    for (let k = 1; k < items.length; k++) if (items[k].y - items[k-1].y < gap) items[k].y = items[k-1].y + gap;   // keep them from overlapping
-    const shift = Math.max(0, items[items.length - 1].y - (H - 30 * DPR)); items.forEach(it => { it.y -= shift; });
-    items.forEach(it => drawLabel(noteName(it.o.midi), it.x, it.y, hueFor(1 - it.i / 4), M.fade, it.o.flash > 0.3));
+    }).filter(it => it.o.vis > 0.05).sort((p, q) => p.y - q.y);
+    if (items.length) for (let k = 1; k < items.length; k++) if (items[k].y - items[k-1].y < gap) items[k].y = items[k-1].y + gap;   // keep them from overlapping
+    if (items.length) { const shift = Math.max(0, items[items.length - 1].y - (H - 30 * DPR)); items.forEach(it => { it.y -= shift; }); }
+    items.forEach(it => drawLabel(noteName(it.o.midi), it.x, it.y, hueFor(1 - it.i / 4), M.fade * it.o.vis, it.o.flash > 0.3));
   }
   if ((S.active || S.recoil) && S.fade > 0 && M.state !== "active")
     drawLabel(S.note, (S.a.x + S.b.x) / 2, (S.a.y + S.b.y) / 2 - 44 * DPR, S.hue, S.fade, true);
@@ -996,17 +1014,17 @@ function drawHands() {
   const lw = Math.max(2, 3 * DPR);
   ctx.lineCap = "round";
   for (const h of allHands) {
-    ctx.strokeStyle = "rgba(80,255,120,.9)"; ctx.lineWidth = lw;
+    ctx.strokeStyle = THEMES[state.theme].bone; ctx.lineWidth = lw;
     ctx.beginPath();
     for (const [i, j] of HAND_CONNECTIONS) { ctx.moveTo(h.lm[i].x, h.lm[i].y); ctx.lineTo(h.lm[j].x, h.lm[j].y); }
     ctx.stroke();
-    ctx.fillStyle = "rgba(255,60,70,.95)";
+    ctx.fillStyle = THEMES[state.theme].joint;
     for (const p of h.lm) { ctx.beginPath(); ctx.arc(p.x, p.y, lw * 1.35, 0, Math.PI * 2); ctx.fill(); }
   }
 }
 
-function strokePath(pts, width, style) {
-  ctx.lineWidth = width; ctx.strokeStyle = style; ctx.lineJoin = ctx.lineCap = "round";
+function strokePath(pts, width, style, cap = "round") {
+  ctx.lineWidth = width; ctx.strokeStyle = style; ctx.lineJoin = "round"; ctx.lineCap = cap;
   ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
   for (let i = 1; i < pts.length - 1; i++) {
     const mx = (pts[i].x + pts[i+1].x) / 2, my = (pts[i].y + pts[i+1].y) / 2;
@@ -1015,32 +1033,86 @@ function strokePath(pts, width, style) {
   ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
   ctx.stroke();
 }
+// the chain pushed sideways by fn(u, index), u = 0..1 along the string
+function offsetPath(pts, fn) {
+  const n = pts.length;
+  return pts.map((p, i) => {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[Math.min(n - 1, i + 1)];
+    const tx = p1.x - p0.x, ty = p1.y - p0.y, l = Math.hypot(tx, ty) || 1, o = fn(i / (n - 1), i);
+    return { x:p.x - ty / l * o, y:p.y + tx / l * o };
+  });
+}
+function pointAt(pts, f) {                              // f: 0..1 along the chain
+  const x = f * (pts.length - 1), i0 = Math.floor(x), i1 = Math.min(pts.length - 1, i0 + 1), fr = x - i0;
+  return { x:lerp(pts[i0].x, pts[i1].x, fr), y:lerp(pts[i0].y, pts[i1].y, fr) };
+}
+function starPath(x, y, r, t) {                         // four-point sparkle
+  ctx.beginPath();
+  for (let k = 0; k < 8; k++) { const ang = k * Math.PI / 4 + t, rr = k % 2 ? r * 0.28 : r; ctx.lineTo(x + Math.cos(ang) * rr, y + Math.sin(ang) * rr); }
+  ctx.closePath();
+}
 
+// crackle: 0 none, 1 light, 2 full. The look of the string depends on the theme.
 function drawChain(o, hue, a, ws, crackle) {
-  const th = THEMES[state.theme], pts = o.pts, n = pts.length, u = DPR * ws;
-  strokePath(pts, 34 * u, hsl(hue, th.sat, th.lit, 0.18 * a));
-  strokePath(pts, 16 * u, hsl(hue, th.sat, th.lit, 0.5 * a));
-  strokePath(pts, 5 * u, `rgba(255,255,255,${Math.min(1, 0.95 * a)})`);
-  if (crackle) {                                      // electric crackle: jagged thin lines hugging the string
-    ctx.lineWidth = 1.6 * u;
-    for (let pass = 0; pass < 2; pass++) {
+  const th = THEMES[state.theme], pts = o.pts, n = pts.length, u = DPR * ws, T = animT, wob = o.wobble, A = Math.min(1, a);
+  // vibration ghosts: faint copies either side while the string is shaking (all themes)
+  if (wob > 0.04) for (const sg of [-1, 1])
+    strokePath(offsetPath(pts, uu => sg * Math.sin(uu * Math.PI) * wob * 15 * u), 5 * u, hsl(hue, th.sat, th.lit + 10, 0.2 * a));
+
+  if (th.style === "candy") {
+    strokePath(pts, 40 * u, hsl(hue, th.sat, th.lit, 0.16 * a));                              // soft glow
+    ctx.globalCompositeOperation = "source-over";                                             // opaque, like a real candy rope
+    strokePath(pts, 17 * u, `rgba(255,250,252,${A})`);
+    ctx.setLineDash([13 * u, 13 * u]); ctx.lineDashOffset = -T * 55 * u;                      // stripes crawling along the rope
+    strokePath(pts, 17 * u, hsl(hue, th.sat, th.lit - 6, A), "butt");
+    ctx.setLineDash([]);
+    strokePath(offsetPath(pts, () => -3.5 * u), 3.5 * u, `rgba(255,255,255,${0.75 * A})`);      // glossy highlight
+    ctx.globalCompositeOperation = "lighter";
+    const count = crackle ? 4 : 2;                                                             // twinkling stars on the string
+    for (let k = 0; k < count; k++) {
+      const f = (k + 0.5) / count + 0.06 * Math.sin(T * 1.7 + k * 2), p = pointAt(pts, clamp(f, 0.04, 0.96)), tw = 0.5 + 0.5 * Math.sin(T * 6 + k * 2.1);
+      ctx.fillStyle = `rgba(255,255,255,${(0.35 + 0.65 * tw) * a})`; starPath(p.x, p.y - 16 * u, (8 + 9 * tw) * u, T * 0.5 + k); ctx.fill();
+    }
+  } else if (th.style === "ocean") {
+    strokePath(pts, 42 * u, hsl(hue, th.sat, th.lit, 0.13 * a));
+    for (let r = 0; r < 2; r++) {                                                              // two flowing water ribbons
+      const dir = r ? -1 : 1, amp = (6 + 13 * wob) * u;
+      strokePath(offsetPath(pts, uu => amp * Math.sin(uu * Math.PI * 3.2 + T * 3.2 * dir + r * 2) * (0.35 + 0.65 * Math.sin(uu * Math.PI))), 7 * u, hsl(hue + (r ? 16 : -12), th.sat, th.lit + 6, 0.42 * a));
+    }
+    strokePath(pts, 12 * u, hsl(hue, th.sat, th.lit, 0.32 * a));
+    strokePath(pts, 3.5 * u, `rgba(230,255,255,${0.92 * A})`);
+    if (crackle) for (let k = 0; k < 3; k++) {                                                 // shimmer glints riding the surface
+      const f = (T * 0.25 + k / 3) % 1, p = pointAt(pts, f), g = Math.sin(f * Math.PI);
+      ctx.fillStyle = `rgba(255,255,255,${0.7 * g * a})`; ctx.beginPath(); ctx.ellipse(p.x, p.y, 9 * u, 2.5 * u, 0, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {                                                                                     // neon: buzzing electric tube
+    const fl = 0.86 + 0.14 * Math.random();
+    strokePath(pts, 34 * u, hsl(hue, th.sat, th.lit, 0.2 * a * fl));
+    strokePath(pts, 16 * u, hsl(hue, th.sat, th.lit, 0.55 * a * fl));
+    strokePath(pts, 5 * u, `rgba(255,255,255,${0.95 * A})`);
+    const passes = crackle ? crackle : 1;
+    ctx.lineWidth = 1.6 * u; ctx.lineJoin = "miter";
+    for (let pass = 0; pass < passes + 1; pass++) {                                            // electric arcs hugging the tube
       ctx.strokeStyle = pass ? hsl(hue, 100, 85, 0.7 * a) : `rgba(255,255,255,${0.75 * a})`;
       ctx.beginPath();
       const seg = 14;
       for (let i = 0; i <= seg; i++) {
-        const f = (i / seg) * (n - 1), i0 = Math.floor(f), i1 = Math.min(n - 1, i0 + 1), fr = f - i0;
-        const x = lerp(pts[i0].x, pts[i1].x, fr), y = lerp(pts[i0].y, pts[i1].y, fr);
-        const j = (i === 0 || i === seg) ? 0 : rand(-1, 1) * (9 + 14 * o.wobble) * u;
-        const dx = pts[i1].x - pts[i0].x, dy = pts[i1].y - pts[i0].y, l = Math.hypot(dx, dy) || 1;
-        const px = x + (-dy / l) * j, py = y + (dx / l) * j;
-        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+        const p = pointAt(pts, i / seg), q = pointAt(pts, Math.min(1, i / seg + 0.02)), dx = q.x - p.x, dy = q.y - p.y, l = Math.hypot(dx, dy) || 1;
+        const j = (i === 0 || i === seg) ? 0 : rand(-1, 1) * (9 + 14 * wob) * u;
+        i ? ctx.lineTo(p.x - dy / l * j, p.y + dx / l * j) : ctx.moveTo(p.x, p.y);
       }
+      ctx.stroke();
+    }
+    if (crackle > 1 && Math.random() < 0.35) {                                                 // an occasional forked bolt
+      const p = pointAt(pts, rand(0.1, 0.9)), ang = rand(0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,255,255,${0.8 * a})`; ctx.lineWidth = 1.4 * u; ctx.beginPath(); ctx.moveTo(p.x, p.y);
+      let x = p.x, y = p.y; for (let k = 0; k < 4; k++) { x += Math.cos(ang + rand(-0.8, 0.8)) * 14 * u; y += Math.sin(ang + rand(-0.8, 0.8)) * 14 * u; ctx.lineTo(x, y); }
       ctx.stroke();
     }
   }
   for (const p of [o.a, o.b]) {                       // glowing end points
     const r = 36 * u, g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-    g.addColorStop(0, `rgba(255,255,255,${Math.min(1, 0.95 * a)})`); g.addColorStop(0.3, hsl(hue, th.sat, th.lit, 0.55 * a)); g.addColorStop(1, hsl(hue, th.sat, th.lit, 0));
+    g.addColorStop(0, `rgba(255,255,255,${0.95 * A})`); g.addColorStop(0.3, hsl(hue, th.sat, th.lit, 0.55 * a)); g.addColorStop(1, hsl(hue, th.sat, th.lit, 0));
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
   }
 }
@@ -1049,14 +1121,37 @@ function drawSparks(dt) {
   for (let i = sparks.length - 1; i >= 0; i--) {
     const p = sparks[i];
     p.life -= dt; if (p.life <= 0) { sparks.splice(i, 1); continue; }
-    p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.97; p.vy = p.vy * 0.97 + 40 * DPR * dt;
+    const kind = p.kind || "neon";
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.97;
+    p.vy = kind === "ocean" ? p.vy * 0.98 - 28 * DPR * dt : p.vy * 0.97 + 40 * DPR * dt;      // bubbles float up, the rest fall
     const a = clamp(p.life / 0.6, 0, 1), r = p.size * DPR;
-    ctx.fillStyle = hsl(p.hue, 100, 72, a);
-    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = `rgba(255,255,255,${a})`;
-    ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.45, 0, Math.PI * 2); ctx.fill();
+    if (kind === "candy") {
+      ctx.fillStyle = hsl(p.hue, 95, 78, a); starPath(p.x, p.y, r * 2.6, p.spin + p.life * 3); ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.5, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === "ocean") {
+      ctx.lineWidth = 1.5 * DPR; ctx.strokeStyle = hsl(p.hue, 80, 80, a * 0.9);
+      ctx.beginPath(); ctx.arc(p.x + Math.sin(p.spin + p.life * 6) * 4 * DPR, p.y, r * 1.4, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = `rgba(255,255,255,${a * 0.8})`; ctx.beginPath(); ctx.arc(p.x - r * 0.45, p.y - r * 0.45, r * 0.35, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.strokeStyle = hsl(p.hue, 100, 75, a); ctx.lineWidth = Math.max(1, r * 0.8); ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 0.05, p.y - p.vy * 0.05); ctx.stroke();            // streaking sparks
+      ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.5, 0, Math.PI * 2); ctx.fill();
+    }
   }
   if (sparks.length > 400) sparks.splice(0, sparks.length - 400);
+}
+
+function drawRipples(dt) {                              // rings spreading from every pluck
+  const style = THEMES[state.theme].style;
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i]; r.life -= dt; if (r.life <= 0) { ripples.splice(i, 1); continue; }
+    const k = 1 - r.life / r.max, rad = (14 + 120 * easeOut(k)) * DPR, a = (1 - k) * 0.8;
+    ctx.strokeStyle = hsl(r.hue, 100, 72, a); ctx.lineWidth = (style === "candy" ? 4 : 2.5) * DPR;
+    ctx.setLineDash(style === "candy" ? [6 * DPR, 8 * DPR] : []);
+    ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, Math.PI * 2); ctx.stroke();
+    if (style === "ocean") { ctx.beginPath(); ctx.arc(r.x, r.y, rad * 0.62, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.setLineDash([]);
+  }
 }
 
 /* ============================ full screen ============================ */
@@ -1093,10 +1188,9 @@ function friendlyCamError(e) {
   return "Could not start the camera: " + (e && e.message || e);
 }
 
-async function start(fullscreen) {
-  startBtn.disabled = startFsBtn.disabled = true; errEl.textContent = "";
+async function start() {
+  startBtn.disabled = true; errEl.textContent = "";
   startBtn.textContent = "Starting…";
-  if (fullscreen) enterFS();                                                     // must be called inside the click
   try {
     voice = new Voice(); await voice.resume();
     voice.setMuted(state.muted); voice.setInstrument(inst());
@@ -1128,10 +1222,8 @@ async function start(fullscreen) {
     trackerMsg = "Couldn't load the hand tracker. Check your internet and reload.";
   }
 }
-function fail(msg) { errEl.textContent = msg; startBtn.disabled = startFsBtn.disabled = false; startBtn.textContent = "Try again"; }
-startBtn.addEventListener("click", () => start(false));
-if (!fsRequest) startFsBtn.classList.add("hidden");
-startFsBtn.addEventListener("click", () => start(true));
+function fail(msg) { errEl.textContent = msg; startBtn.disabled = false; startBtn.textContent = "Try again"; }
+startBtn.addEventListener("click", () => start());
 
 addEventListener("resize", updateVideoMap);
 video.addEventListener("loadedmetadata", updateVideoMap);
@@ -1177,8 +1269,6 @@ function syncButtons() {
   [...musicPanel.children].forEach((b, k) => b.classList.toggle("sel", MUSIC[k].id === state.music));
   $("bMute").classList.toggle("off", state.muted);
   $("bMute").querySelector(".i").textContent = state.muted ? "🔇" : "🔊";
-  $("bSnap").classList.toggle("off", !state.snap);
-  $("bSkel").classList.toggle("off", !state.skeleton);
   $("bTheme").querySelector(".t").textContent = THEMES[state.theme].name;
   $("bFull").querySelector(".i").textContent = isFS() ? "🗗" : "⛶";
   $("bFull").querySelector(".t").textContent = isFS() ? "Exit" : "Full";
@@ -1187,8 +1277,6 @@ $("bVoice").onclick = e => { e.stopPropagation(); musicPanel.classList.add("hidd
 $("bMusic").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); musicPanel.classList.toggle("hidden"); };
 document.addEventListener("click", e => { if (!instPanel.contains(e.target)) instPanel.classList.add("hidden"); if (!musicPanel.contains(e.target)) musicPanel.classList.add("hidden"); });
 $("bMute").onclick = () => { state.muted = !state.muted; voice && voice.setMuted(state.muted); save(); syncButtons(); };
-$("bSnap").onclick = () => { state.snap = !state.snap; save(); syncButtons(); };
-$("bSkel").onclick = () => { state.skeleton = !state.skeleton; save(); syncButtons(); };
 $("bTheme").onclick = () => { state.theme = (state.theme + 1) % THEMES.length; save(); syncButtons(); };
 $("bFull").onclick = toggleFS;
 const helpEl = $("help");
