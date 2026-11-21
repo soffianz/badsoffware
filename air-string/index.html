@@ -103,7 +103,7 @@
   </ul>
   <h3>Buttons</h3>
   <ul>
-    <li><b>Instrument:</b> Synth, Violin, Harp, Guitar or Bells.</li>
+    <li><b>Instrument:</b> Synth, Violin, Harp, Guitar, Bells or Voice (a soprano singing "aaah").</li>
     <li><b>Music:</b> pick the backing music. <b>Sound:</b> mute.</li>
     <li><b>Theme:</b> pick a look: Neon (electric), Candy (sweet and sparkly), Ocean (watery), Fire (flames and embers), Space (comets and stars) or Chakra (seven glowing energy centres). <b>Full:</b> full screen.</li>
   </ul>
@@ -159,6 +159,7 @@ const INSTRUMENTS = [
   { id:"harp",   name:"Harp",   icon:"🎶", mode:"pluck", kind:"harp" },
   { id:"guitar", name:"Guitar", icon:"🎸", mode:"pluck", kind:"guitar" },
   { id:"bells",  name:"Bells",  icon:"🔔", mode:"pluck", kind:"bell" },
+  { id:"voice",  name:"Voice",  icon:"🎤", mode:"vocal", lo:600, hi:3200, atk:0.09, rel:0.28, vib:40, baseVib:22, note:{ atk:0.12, dec:1.9 } },   // soprano "aaah"
 ];
 const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
   [9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
@@ -257,6 +258,22 @@ class Voice {
     this.dry.connect(this.comp); this.delayOut.connect(this.comp); this.verbOut.connect(this.comp);
     this.comp.connect(this.master); this.master.connect(a.destination);
     this.o1.start(); this.o2.start(); this.lfo.start();
+    // sung "aaah": a buzzy source pushed through three vowel (formant) filters, plus a little breath
+    this.vo1 = a.createOscillator(); this.vo2 = a.createOscillator(); this.vo1.type = this.vo2.type = "sawtooth"; this.vo2.detune.value = 9;
+    this.vsrc = a.createGain(); this.vsrc.gain.value = 0.5; this.vo1.connect(this.vsrc); this.vo2.connect(this.vsrc);
+    const nb = a.createBuffer(1, a.sampleRate, a.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    this.breath = a.createBufferSource(); this.breath.buffer = nb; this.breath.loop = true;
+    const bg = a.createGain(); bg.gain.value = 0.07; this.breath.connect(bg); bg.connect(this.vsrc);
+    this.vsum = a.createGain(); this.vsum.gain.value = 5;
+    this.formants = [[850, 10, 1], [1220, 13, 0.55], [2810, 22, 0.3]].map(([f, q, g]) => {
+      const bp = a.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = f; bp.Q.value = q;
+      const fg = a.createGain(); fg.gain.value = g; this.vsrc.connect(bp); bp.connect(fg); fg.connect(this.vsum); return bp;
+    });
+    this.vlp = a.createBiquadFilter(); this.vlp.type = "lowpass"; this.vlp.frequency.value = 4000; this.vlp.Q.value = 0.5;
+    this.vamp = a.createGain(); this.vamp.gain.value = 0;
+    this.vsum.connect(this.vlp); this.vlp.connect(this.vamp); this.vamp.connect(this.sendIn);
+    this.lfoDepth.connect(this.vo1.detune); this.lfoDepth.connect(this.vo2.detune);
+    this.vo1.start(); this.vo2.start(); this.breath.start();
     // five-string pad: one quiet sustained tone per string, swells when that string moves
     this.padFilter = a.createBiquadFilter(); this.padFilter.type = "lowpass"; this.padFilter.frequency.value = 2200; this.padFilter.Q.value = 0.5;
     this.padFilter.connect(this.sendIn);
@@ -297,6 +314,7 @@ class Voice {
   // ---- continuous voice, called every frame while a single string is held ----
   update(freq, vol, cutoff, vibCents) {
     const t = this.ctx.currentTime, ins = this.inst;
+    if (ins.mode === "vocal") return this.updateVocal(freq, vol, cutoff, vibCents);
     if (!this.on) {                                   // note start: jump pitch, then fade in (amp is at 0, so no click)
       this.on = true;
       this.o1.frequency.cancelScheduledValues(t); this.o2.frequency.cancelScheduledValues(t);
@@ -310,10 +328,27 @@ class Voice {
     this.lfoDepth.gain.setTargetAtTime(vibCents, t, 0.08);
     this.freq = freq;
   }
+  vowel(f) { const f1 = Math.max(850, f * 1.08); return [f1, Math.max(1220, f1 * 1.45), 2810]; }   // sopranos raise the vowel with the pitch
+  updateVocal(freq, vol, cutoff, vibCents) {
+    const t = this.ctx.currentTime, ins = this.inst, fm = this.vowel(freq);
+    if (!this.on) {
+      this.on = true;
+      this.vo1.frequency.cancelScheduledValues(t); this.vo2.frequency.cancelScheduledValues(t);
+      this.vo1.frequency.setValueAtTime(freq, t); this.vo2.frequency.setValueAtTime(freq, t);
+      this.formants.forEach((b, i) => b.frequency.setValueAtTime(fm[i], t));
+    }
+    this.vo1.frequency.setTargetAtTime(freq, t, 0.05); this.vo2.frequency.setTargetAtTime(freq, t, 0.05);   // a touch of glide, like singing
+    this.formants.forEach((b, i) => b.frequency.setTargetAtTime(fm[i], t, 0.06));
+    this.vlp.frequency.setTargetAtTime(clamp(cutoff * 2.2, 1500, 7000), t, 0.06);
+    this.vamp.gain.setTargetAtTime(vol, t, ins.atk);
+    this.lfoDepth.gain.setTargetAtTime(vibCents, t, 0.1);
+    this.freq = freq;
+  }
   release() {                                         // fade out, with a small pitch drop (twang)
     if (!this.on) return;
     this.on = false;
     const t = this.ctx.currentTime, ins = this.inst;
+    if (ins.mode === "vocal") { this.vamp.gain.cancelScheduledValues(t); this.vamp.gain.setTargetAtTime(0, t, ins.rel); this.lfoDepth.gain.setTargetAtTime(0, t, 0.1); return; }
     this.o1.frequency.cancelScheduledValues(t); this.o2.frequency.cancelScheduledValues(t);
     this.o1.frequency.setTargetAtTime(this.freq * 0.72, t, 0.09);
     this.o2.frequency.setTargetAtTime(this.freq * 0.72, t, 0.09);
@@ -343,7 +378,7 @@ class Voice {
   playNote(ins, midi, vel, delay = 0) {
     const a = this.ctx, t = a.currentTime + 0.012 + delay, f = midiToFreq(midi);
     const g = a.createGain(); g.connect(this.noteFilter);
-    let src = null;
+    let src = null, src2 = null;
     const cleanup = n => { n.onended = () => { try { g.disconnect(); } catch {} }; };
     if (ins.mode === "sustain") {                     // swell and decay, like a bowed or synth note
       const n = ins.note;
@@ -356,6 +391,20 @@ class Voice {
       g.gain.exponentialRampToValueAtTime(0.0008, t + n.atk + n.dec);
       const end = t + n.atk + n.dec + 0.05;
       o1.start(t); o2.start(t); o1.stop(end); o2.stop(end); src = o1;
+    } else if (ins.mode === "vocal") {                // a sung "aaah" that swells and fades
+      const n = ins.note, o1 = a.createOscillator(), o2 = a.createOscillator(), src = a.createGain(), sum = a.createGain(), lp = a.createBiquadFilter(), lfo = a.createOscillator(), ld = a.createGain();
+      o1.type = o2.type = "sawtooth"; o1.frequency.value = f; o2.frequency.value = f; o2.detune.value = 9; src.gain.value = 0.5;
+      lfo.frequency.value = 5.6; ld.gain.value = 16; lfo.connect(ld); ld.connect(o1.detune); ld.connect(o2.detune);
+      o1.connect(src); o2.connect(src); sum.gain.value = 5; lp.type = "lowpass"; lp.frequency.value = 4200; lp.Q.value = 0.5;
+      const fm = this.vowel(f);
+      [[fm[0], 10, 1], [fm[1], 13, 0.55], [fm[2], 22, 0.3]].forEach(([ff, q, gg]) => {
+        const bp = a.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = ff; bp.Q.value = q;
+        const fg = a.createGain(); fg.gain.value = gg; src.connect(bp); bp.connect(fg); fg.connect(sum);
+      });
+      sum.connect(lp); lp.connect(g);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vel * 0.85, t + n.atk); g.gain.exponentialRampToValueAtTime(0.0008, t + n.atk + n.dec);
+      const end = t + n.atk + n.dec + 0.05;
+      o1.start(t); o2.start(t); lfo.start(t); o1.stop(end); o2.stop(end); lfo.stop(end); src2 = o1;
     } else if (ins.kind === "bell") {                 // FM bell
       const car = a.createOscillator(), mod = a.createOscillator(), mg = a.createGain(), p2 = a.createOscillator(), p2g = a.createGain();
       car.frequency.value = f; mod.frequency.value = f * 3.5; p2.frequency.value = f * 2.76;
@@ -372,7 +421,7 @@ class Voice {
       g.gain.setValueAtTime(vel * 0.8, t);
       s.connect(g); s.start(t); src = s;
     }
-    if (src) cleanup(src);
+    if (src) cleanup(src); if (src2) cleanup(src2);
   }
 }
 let voice = null;
@@ -923,7 +972,7 @@ function frame(now) {
     const dx = S.b.x - S.a.x, dy = S.b.y - S.a.y;
     const tilt = Math.abs(Math.atan2(dy, dx === 0 ? 1e-6 : Math.abs(dx))) / (Math.PI / 2);   // 0 flat .. 1 vertical
     if (voice && !state.muted) {
-      if (ins.mode === "sustain") {
+      if (ins.mode !== "pluck") {
         const cutoff = ins.lo * Math.pow(ins.hi / ins.lo, clamp(tilt * 1.2, 0, 1));
         voice.update(S.freq, vol * (ins.id === "violin" ? 0.85 : 0.8), cutoff, ins.baseVib + S.wobble * ins.vib);
       } else {                                                                    // plucked: ring a new note whenever the pitch moves or the string is shaken
