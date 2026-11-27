@@ -190,3 +190,40 @@ list) are all different.
   wordmark, corner schematic diagrams, and rain-soaked hero photo would need real exported art
   assets (a background image, a logo file) supplied the same way the BSWV21 packs were - those
   can't be generated here, only composited once provided.
+
+## Air String as a mode inside BSW (docs/PRD_air_string_integration.md)
+
+- **Where it lives.** Air String is its own page, `air-string/index.html` (vanilla JS, MediaPipe from
+  jsDelivr, Web Audio). It is not merged into the game and not an iframe: the game stays one
+  canvas-only file and its frame rate is untouched. `index.html` grew by about 1.3 KB.
+- **Menu placement (assumption from the PRD, built as written).** Air String is the third tile on the
+  battle-settings mode row (BADSOFFWARES, CHARACTER POWERS, AIR STRING). The title screen is unchanged.
+  Picking it greys out and ignores BOTS and MATCH LENGTH, shows "Uses your camera. Play a string in the
+  air.", and turns START into OPEN AIR STRING, which does `location.href = 'air-string/'` (relative, so
+  it works on Pages, a local server and forks). BSW never touches the camera.
+- **No match code sees the new choice.** It is stored as `S.battleCfg.airString`; `S.battleCfg.mode`
+  stays `'drones' | 'powers'`. The host lobby is untouched, so nothing new goes over the network.
+- **Remembered tile** uses BSW's `store` under `bsw_battle_tile` (`drones | powers | air`); anything
+  else falls back to `drones`. Air String's own key is `airstring`, so no collision with `bsw_*`.
+- **Tile labels.** Three tiles at 390 px are about 105 px wide. `segRow()` now splits a label on its
+  space onto two lines when it will not fit, so tile height (48 px) and font (11 px) are unchanged.
+- **Air String cut to Synth, Bells, Guitar** (in that order). Removed with them: the Voice sample
+  loader and decoder, the synthesized-voice fallback, the harp and bowed paths, `air-string/samples/`
+  (13 MP3s and the CC BY credit) and the help-panel credit line. The Orchestra and EDM backings have
+  their own synthesis ("Violins" in the orchestra is a section of the backing, not the cut Violin
+  instrument), so they were left as they are.
+- **Saved instrument is stored by id** (`instId`: `synth | bells | guitar`). The old numeric `inst`
+  index is ignored, so any old or junk save loads as Synth instead of the wrong sound.
+- **Way back.** A BSW button in the control bar (and a Back to BSW button when the camera is denied or
+  missing) stops the camera tracks, closes the audio context and the hand tracker, leaves full screen,
+  unlocks orientation, then goes to `../`. It is a normal navigation, so the browser back button works;
+  if the browser restores Air String from its back/forward cache, the page reloads so nothing stale
+  (camera, audio) is left behind.
+- **Offline.** Air String needs the internet (jsDelivr and `storage.googleapis.com`); its error text
+  says so. BSW practice stays offline.
+- **Left alone on purpose.** Backing music, the six visual themes, five-string mode, duet plucking and
+  the Anim toggle are as before. The optional "turn your phone sideways" tip was skipped to keep the
+  Air String start screen to the title, Start and the privacy line.
+- **Not verified.** Hand tracking on a real phone (the PRD's Reno 2F), real camera permission prompts,
+  and iOS Safari. `test/perf.mjs` is a v1-era script that fails on `startRound is not defined` both
+  with and without this change, so it was not used.

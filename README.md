@@ -39,6 +39,17 @@ Needs https for fullscreen, wake lock and WebRTC.
 - Netlify Drop: drag this folder onto https://app.netlify.com/drop
 - GitHub Pages: the built game lives on the `gh-pages` branch. Repo Settings > Pages > Deploy from a branch > `gh-pages` / `(root)`. Live at https://soffianz.github.io/badsoffware/ . After changing `index.html`, run `tools/deploy_pages.sh` to republish.
 
+## Air String (webcam hand-tracking instrument)
+`air-string/index.html` is a separate page: pinch both hands and a glowing string appears between them (or press hands together
+and pull apart for five strings). It is reached in the game from PRACTICE VS BOTS, then the **AIR STRING** tile, then **OPEN AIR
+STRING**, and has a **BSW** button to come back. Live at https://soffianz.github.io/badsoffware/air-string/ . Instruments: Synth,
+Bells, Guitar. It needs the internet to start (MediaPipe from jsDelivr, hand model from `storage.googleapis.com`) and asks for the
+camera only after you tap Start. The game itself still works offline.
+
+Deploy: `tools/deploy_air_string.sh` copies only `air-string/` to `gh-pages`; `tools/deploy_pages.sh` copies only the game's
+`index.html`. Each leaves the other's files alone, so run them in either order. Tests: `node test/v2_airstring.mjs` (part of
+`run_all.mjs`) checks the mode tile and the launch.
+
 ## Publishing as a claude.ai artifact (optional ClaudeRoom transport)
 If `window.claude.use("room")` resolves within 3 s, the game uses it instead of PeerJS and skips room codes (both players tap PLAY ONLINE). Needs the artifact published with `capabilities: {room: {}}` and every player signed in to claude.ai. Outside network calls, PeerJS included, are blocked inside published artifacts, which is why this transport exists.
 

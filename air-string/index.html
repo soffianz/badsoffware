@@ -69,6 +69,7 @@
   <h1>Air String</h1>
   <button id="startBtn" class="big">Start</button>
   <div id="err"></div>
+  <button id="backBtn" class="big alt hidden">Back to BSW</button>
   <small>Everything stays on this device. The camera feed is never recorded, uploaded or saved.</small>
 </div>
 
@@ -84,7 +85,7 @@
     <li>Show both hands and pinch thumb and index finger on each. A string appears between them.</li>
     <li>Move your hands apart for a lower note, together for a higher one.</li>
     <li>Raise the string for louder, lower it for quieter. Tilt it to make the tone brighter or mellower.</li>
-    <li>Wiggle a hand for vibrato (or a re-pluck on Harp, Guitar and Bells). Let go to twang it away.</li>
+    <li>Wiggle a hand for vibrato (or a re-pluck on Guitar and Bells). Let go to twang it away.</li>
   </ul>
   <h3>Five strings</h3>
   <ul>
@@ -103,7 +104,7 @@
   </ul>
   <h3>Buttons</h3>
   <ul>
-    <li><b>Instrument:</b> Synth, Violin, Harp, Guitar, Bells or Voice (a real recording of a choir singing "aaah").</li>
+    <li><b>Instrument:</b> Synth, Bells or Guitar.</li>
     <li><b>Music:</b> pick the backing music. <b>Sound:</b> mute.</li>
     <li><b>Visuals:</b> pick a look: Neon (electric), Candy (sweet and sparkly), Ocean (watery), Fire (flames and embers), Space (comets and stars) or Chakra (seven glowing energy centres). <b>Anim Off</b> keeps just a plain glowing string and turns off the extra effects, which helps if things feel laggy. <b>Full:</b> full screen.</li>
   </ul>
@@ -111,7 +112,6 @@
   <ul>
     <li>Use good light and keep both hands in view of the front camera.</li>
     <li>Everything stays on your device. Nothing is recorded.</li>
-    <li>Voice samples: "Choir Aahs" from the FluidR3 GM SoundFont (Frank Wen), rendered by midi-js-soundfonts, licensed CC BY 3.0.</li>
   </ul>
 </div>
 <div id="controls" class="hidden">
@@ -121,6 +121,7 @@
   <button id="bMute"  title="Mute"><span class="i">🔊</span><span class="t">Sound</span></button>
   <button id="bTheme" title="Visuals"><span class="i">⚡</span><span class="t">Visuals</span></button>
   <button id="bFull"  title="Full screen"><span class="i">⛶</span><span class="t">Full</span></button>
+  <button id="bBack"  title="Back to Badsoffware"><span class="i">🏠</span><span class="t">BSW</span></button>
 </div>
 <div id="debug"></div>
 
@@ -153,14 +154,11 @@ const THEMES = [
 ];
 const THEME_ICONS = ["⚡", "🍭", "🌊", "🔥", "🌌", "🧘"];
 const CHAKRA_HUES = [0, 28, 52, 130, 200, 245, 285];        // root to crown
-// Five sounds. "sustain" ones hum while you hold the string; "pluck" ones ring on each new note.
+// Three sounds. "sustain" hums while you hold the string; "pluck" ones ring on each new note.
 const INSTRUMENTS = [
   { id:"synth",  name:"Synth",  icon:"🎹", mode:"sustain", w1:"sine", w2:"triangle", det:7,  q:1.2, lo:500, hi:4000, atk:0.027, rel:0.13, vib:45, baseVib:0,  mix:[0.65,0.35], note:{ atk:0.01, dec:1.4, cut:2400 } },
-  { id:"violin", name:"Violin", icon:"🎻", mode:"sustain", w1:"sawtooth", w2:"sawtooth", det:11, q:0.7, lo:700, hi:3200, atk:0.075, rel:0.16, vib:55, baseVib:14, mix:[0.3,0.3],   note:{ atk:0.09, dec:1.6, cut:2600 } },
-  { id:"harp",   name:"Harp",   icon:"🎶", mode:"pluck", kind:"harp" },
-  { id:"guitar", name:"Guitar", icon:"🎸", mode:"pluck", kind:"guitar" },
   { id:"bells",  name:"Bells",  icon:"🔔", mode:"pluck", kind:"bell" },
-  { id:"voice",  name:"Voice",  icon:"🎤", mode:"vocal", lo:600, hi:3200, atk:0.09, rel:0.28, vib:25, baseVib:10, note:{ atk:0.08, dec:2.0 } },   // soprano "aaah"
+  { id:"guitar", name:"Guitar", icon:"🎸", mode:"pluck", kind:"guitar" },
 ];
 const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
   [9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
@@ -174,12 +172,13 @@ const DEBUG = new URLSearchParams(location.search).has("debug");
 if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { allHands = h; newDet = true; }; window.__dbg = () => ({ M, S, voice }); }
 
 const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0, music:"off", anim:true };
-try { Object.assign(state, JSON.parse(localStorage.getItem("airstring") || "{}")); } catch {}
-if (!INSTRUMENTS[state.inst]) state.inst = 0;
+let savedInstId = "synth";
+try { const sv = JSON.parse(localStorage.getItem("airstring") || "{}"); Object.assign(state, sv); savedInstId = sv.instId; } catch {}
+state.inst = Math.max(0, INSTRUMENTS.findIndex(i => i.id === savedInstId));     // saved by id; old numeric saves and junk fall back to Synth
 if (!["off", "orch", "edm"].includes(state.music)) state.music = state.orch ? "orch" : "off";
 if (!THEMES[state.theme]) state.theme = 0;
 state.snap = true; state.skeleton = true;            // no longer switchable: always snap to the scale, always show hands
-const save = () => { try { localStorage.setItem("airstring", JSON.stringify(state)); } catch {} };
+const save = () => { try { const { inst: _i, ...rest } = state; localStorage.setItem("airstring", JSON.stringify({ ...rest, instId:INSTRUMENTS[state.inst].id })); } catch {} };
 const inst = () => INSTRUMENTS[state.inst];
 
 let toast = "", toastUntil = 0;
@@ -219,48 +218,11 @@ class OneEuro {
 }
 
 /* ============================ audio ============================ */
-// A sung "aaah" (young girl): a glottal-pulse source through five vowel formants, with the small imperfections that make a voice sound alive
-const VOICE_ROOTS = [48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84];   // recorded "aaah" samples, every three semitones
-const VOICE_GAIN = 10;                                 // the recordings are quiet
-const GIRL_FORMANTS = [[930, 150, 1], [1350, 170, 0.55], [3100, 250, 0.22], [4300, 300, 0.1], [5400, 350, 0.05]];   // [Hz, bandwidth, level]
-class Singer {
-  constructor(v, dest) {
-    const a = this.a = v.ctx;
-    this.o = [0, 1].map(i => { const o = a.createOscillator(); o.setPeriodicWave(v.glottal); o.detune.value = i ? 5 : -4; return o; });
-    this.src = a.createGain(); this.src.gain.value = 0.55; this.o.forEach(o => o.connect(this.src));
-    this.jit = a.createBufferSource(); this.jit.buffer = v.smoothNoise; this.jit.loop = true;                      // jitter: tiny random pitch drift
-    const jg = a.createGain(); jg.gain.value = 9; this.jit.connect(jg); this.o.forEach(o => jg.connect(o.detune));
-    this.lfo = a.createOscillator(); this.lfo.frequency.value = rand(5.2, 6.0);                                    // vibrato
-    this.vib = a.createGain(); this.vib.gain.value = 0; this.lfo.connect(this.vib); this.o.forEach(o => this.vib.connect(o.detune));
-    this.noise = a.createBufferSource(); this.noise.buffer = v.noiseBuf; this.noise.loop = true;                     // breath
-    this.asp = a.createGain(); this.asp.gain.value = 0.05; this.noise.connect(this.asp); this.asp.connect(this.src);
-    this.sum = a.createGain(); this.sum.gain.value = 5;
-    this.bp = GIRL_FORMANTS.map(([f, bw, g]) => {
-      const b = a.createBiquadFilter(); b.type = "bandpass"; b.frequency.value = f; b.Q.value = f / bw;
-      const fg = a.createGain(); fg.gain.value = g; this.src.connect(b); b.connect(fg); fg.connect(this.sum); return b;
-    });
-    this.lp = a.createBiquadFilter(); this.lp.type = "lowpass"; this.lp.frequency.value = 4800; this.lp.Q.value = 0.5;
-    this.pres = a.createBiquadFilter(); this.pres.type = "peaking"; this.pres.frequency.value = 3000; this.pres.Q.value = 0.9; this.pres.gain.value = 4;   // "singer's" presence
-    this.shim = a.createGain(); this.shim.gain.value = 1;                                                           // shimmer: tiny random loudness drift
-    this.shimSrc = a.createBufferSource(); this.shimSrc.buffer = v.smoothNoise; this.shimSrc.loop = true;
-    const sg = a.createGain(); sg.gain.value = 0.07; this.shimSrc.connect(sg); sg.connect(this.shim.gain);
-    this.amp = a.createGain(); this.amp.gain.value = 0;
-    this.sum.connect(this.lp); this.lp.connect(this.pres); this.pres.connect(this.shim); this.shim.connect(this.amp); this.amp.connect(dest);
-  }
-  start(t) { this.o.forEach(o => o.start(t)); this.jit.start(t, rand(0, 3)); this.lfo.start(t); this.noise.start(t, rand(0, 0.5)); this.shimSrc.start(t, rand(0, 3)); }
-  stop(t) { this.o.forEach(o => o.stop(t)); for (const n of [this.jit, this.lfo, this.noise, this.shimSrc]) n.stop(t); }
-  formants(f0, t, tc) {                                // keep the first formant sitting on a harmonic, the way trained singers do
-    const f1 = f0 * Math.max(1, Math.round(930 / f0)), fm = [f1, f1 * 1.45, 3100, 4300, 5400];
-    this.bp.forEach((b, i) => tc ? b.frequency.setTargetAtTime(fm[i], t, tc) : b.frequency.setValueAtTime(fm[i], t));
-  }
-  breathOnset(t, peak) { this.asp.gain.cancelScheduledValues(t); this.asp.gain.setValueAtTime(peak, t); this.asp.gain.setTargetAtTime(0.05, t + 0.02, 0.06); }
-}
-
 class Voice {
   constructor() {
     const AC = window.AudioContext || window.webkitAudioContext;
     const a = this.ctx = new AC();
-    // continuous voice (synth / violin while a single string is held)
+    // continuous voice (the synth while a single string is held)
     this.o1 = a.createOscillator(); this.o1.type = "sine";
     this.o2 = a.createOscillator(); this.o2.type = "triangle"; this.o2.detune.value = 7;
     this.mix1 = a.createGain(); this.mix1.gain.value = 0.65;
@@ -296,20 +258,6 @@ class Voice {
     this.dry.connect(this.comp); this.delayOut.connect(this.comp); this.verbOut.connect(this.comp);
     this.comp.connect(this.master); this.master.connect(a.destination);
     this.o1.start(); this.o2.start(); this.lfo.start();
-    // shared material for the sung voice: a glottal pulse waveform and smooth random drift
-    { const N = 512, Tp = 0.4 * N, Tn = 0.16 * N, g = new Float32Array(N);
-      for (let n = 0; n < N; n++) g[n] = n < Tp ? 0.5 * (1 - Math.cos(Math.PI * n / Tp)) : n < Tp + Tn ? Math.cos(Math.PI / 2 * (n - Tp) / Tn) : 0;
-      const K = 48, re = new Float32Array(K + 1), im = new Float32Array(K + 1);                 // spectrum of the flow's derivative (what the lips radiate)
-      for (let k = 1; k <= K; k++) for (let n = 0; n < N; n++) { const d = g[n] - g[(n + N - 1) % N], ang = 2 * Math.PI * k * n / N; re[k] += d * Math.cos(ang); im[k] += d * Math.sin(ang); }
-      this.glottal = a.createPeriodicWave(re, im); }
-    { const sr = a.sampleRate, len = sr * 4, nb = a.createBuffer(1, len, sr), d = nb.getChannelData(0), al = 1 - Math.exp(-2 * Math.PI * 9 / sr);
-      let y = 0, pk = 1e-6; for (let i = 0; i < len; i++) { y += al * ((Math.random() * 2 - 1) - y); d[i] = y; pk = Math.max(pk, Math.abs(y)); }
-      for (let i = 0; i < len; i++) d[i] /= pk; this.smoothNoise = nb;
-      const wb = a.createBuffer(1, sr, sr), w = wb.getChannelData(0); for (let i = 0; i < sr; i++) w[i] = Math.random() * 2 - 1; this.noiseBuf = wb; }
-    this.singer = new Singer(this, this.sendIn); this.singer.start(a.currentTime);      // synthesized stand-in, used only if the recordings fail to load
-    this.svFilter = a.createBiquadFilter(); this.svFilter.type = "lowpass"; this.svFilter.frequency.value = 6000; this.svFilter.Q.value = 0.5;
-    this.svAmp = a.createGain(); this.svAmp.gain.value = 0; this.svFilter.connect(this.svAmp); this.svAmp.connect(this.sendIn);
-    this.sv = null; this.vs = { bufs:new Map(), loops:new Map(), ready:false, promise:null };
     // five-string pad: one quiet sustained tone per string, swells when that string moves
     this.padFilter = a.createBiquadFilter(); this.padFilter.type = "lowpass"; this.padFilter.frequency.value = 2200; this.padFilter.Q.value = 0.5;
     this.padFilter.connect(this.sendIn);
@@ -350,7 +298,6 @@ class Voice {
   // ---- continuous voice, called every frame while a single string is held ----
   update(freq, vol, cutoff, vibCents) {
     const t = this.ctx.currentTime, ins = this.inst;
-    if (ins.mode === "vocal") return this.updateVocal(freq, vol, cutoff, vibCents);
     if (!this.on) {                                   // note start: jump pitch, then fade in (amp is at 0, so no click)
       this.on = true;
       this.o1.frequency.cancelScheduledValues(t); this.o2.frequency.cancelScheduledValues(t);
@@ -364,68 +311,10 @@ class Voice {
     this.lfoDepth.gain.setTargetAtTime(vibCents, t, 0.08);
     this.freq = freq;
   }
-  // ---- real sung samples ----
-  loadSamples() {
-    if (this.vs.promise) return this.vs.promise;
-    this.vs.promise = Promise.all(VOICE_ROOTS.map(async m => {
-      const r = await fetch(`samples/voice_${m}.mp3`); if (!r.ok) throw new Error("sample " + m + " " + r.status);
-      const buf = await this.ctx.decodeAudioData(await r.arrayBuffer());
-      this.vs.bufs.set(m, buf); this.vs.loops.set(m, this.makeLoop(buf));
-    })).then(() => { this.vs.ready = true; }).catch(e => { console.warn("voice samples unavailable, using the synthesized voice", e); });
-    return this.vs.promise;
-  }
-  makeLoop(buf) {                                     // hold the steady part of the recording by looping it with a crossfade
-    const sr = buf.sampleRate, a0 = Math.floor(1.0 * sr), b0 = Math.floor(Math.min(2.9, buf.duration - 0.15) * sr), X = Math.floor(0.35 * sr);
-    const out = this.ctx.createBuffer(buf.numberOfChannels, buf.length, sr);
-    for (let c = 0; c < buf.numberOfChannels; c++) {
-      const src = buf.getChannelData(c), d = out.getChannelData(c); d.set(src);
-      for (let i = 0; i < X; i++) { const t = i / X; d[b0 - X + i] = src[b0 - X + i] * Math.cos(t * Math.PI / 2) + src[a0 - X + i] * Math.sin(t * Math.PI / 2); }
-    }
-    return { buf:out, a:a0 / sr, b:b0 / sr };
-  }
-  nearestRoot(midi) { let best = VOICE_ROOTS[0]; for (const r of VOICE_ROOTS) if (Math.abs(r - midi) < Math.abs(best - midi)) best = r; return best; }
-  startSample(midi, xfade) {
-    const a = this.ctx, t = a.currentTime, root = this.nearestRoot(midi), L = this.vs.loops.get(root);
-    const src = a.createBufferSource(); src.buffer = L.buf; src.loop = true; src.loopStart = L.a; src.loopEnd = L.b; src.playbackRate.value = 2 ** ((midi - root) / 12);
-    const g = a.createGain(); g.gain.setValueAtTime(xfade ? 0 : 1, t); if (xfade) g.gain.linearRampToValueAtTime(1, t + 0.06);
-    src.connect(g); g.connect(this.svFilter); this.lfoDepth.connect(src.detune);
-    src.onended = () => { try { this.lfoDepth.disconnect(src.detune); g.disconnect(); } catch {} };
-    src.start(t, xfade ? L.a : 0);
-    if (this.sv) { const old = this.sv; old.g.gain.setTargetAtTime(0, t, 0.02); old.src.stop(t + 0.2); }
-    this.sv = { src, g, root };
-  }
-  updateSample(freq, vol, cutoff, vibCents) {
-    const t = this.ctx.currentTime, ins = this.inst, midi = 69 + 12 * Math.log2(freq / 440);
-    if (!this.on) { this.on = true; this.startSample(midi, false); }
-    else if (!this.sv || Math.abs(midi - this.sv.root) > 2.2) this.startSample(midi, true);
-    this.sv.src.playbackRate.setTargetAtTime(2 ** ((midi - this.sv.root) / 12), t, 0.05);
-    this.svFilter.frequency.setTargetAtTime(clamp(cutoff * 2.5, 1500, 9000), t, 0.06);
-    this.svAmp.gain.setTargetAtTime(vol * VOICE_GAIN, t, ins.atk);
-    this.lfoDepth.gain.setTargetAtTime(vibCents, t, 0.35);
-    this.freq = freq;
-  }
-  updateVocal(freq, vol, cutoff, vibCents) {
-    if (this.vs.ready) return this.updateSample(freq, vol, cutoff, vibCents);
-    const t = this.ctx.currentTime, ins = this.inst, sg = this.singer;
-    if (!this.on) {                                   // start of a sung note: a breath of "h", a little scoop up to the pitch
-      this.on = true;
-      sg.o.forEach(o => { o.frequency.cancelScheduledValues(t); o.frequency.setValueAtTime(freq * 0.95, t); o.frequency.setTargetAtTime(freq, t + 0.01, 0.04); });
-      sg.formants(freq, t); sg.breathOnset(t, 0.28); sg.vib.gain.setValueAtTime(0, t);
-    } else { sg.o.forEach(o => o.frequency.setTargetAtTime(freq, t, 0.05)); sg.formants(freq, t, 0.06); }
-    sg.lp.frequency.setTargetAtTime(clamp(cutoff * 2.2, 1500, 7000), t, 0.06);
-    sg.amp.gain.setTargetAtTime(vol, t, ins.atk);
-    sg.vib.gain.setTargetAtTime(vibCents, t, 0.35);   // vibrato blooms in slowly, like a real singer
-    this.freq = freq;
-  }
   release() {                                         // fade out, with a small pitch drop (twang)
     if (!this.on) return;
     this.on = false;
     const t = this.ctx.currentTime, ins = this.inst;
-    if (ins.mode === "vocal" && this.sv) {
-      this.svAmp.gain.cancelScheduledValues(t); this.svAmp.gain.setTargetAtTime(0, t, ins.rel * 0.7); this.lfoDepth.gain.setTargetAtTime(0, t, 0.1);
-      this.sv.src.stop(t + 1.0); this.sv = null; return;
-    }
-    if (ins.mode === "vocal") { const sg = this.singer; sg.amp.gain.cancelScheduledValues(t); sg.amp.gain.setTargetAtTime(0, t, ins.rel); sg.vib.gain.setTargetAtTime(0, t, 0.1); return; }
     this.o1.frequency.cancelScheduledValues(t); this.o2.frequency.cancelScheduledValues(t);
     this.o1.frequency.setTargetAtTime(this.freq * 0.72, t, 0.09);
     this.o2.frequency.setTargetAtTime(this.freq * 0.72, t, 0.09);
@@ -438,12 +327,11 @@ class Voice {
   ksBuffer(kind, freq) {                              // Karplus-Strong plucked string, rendered once per pitch
     const sr = this.ctx.sampleRate, N = Math.max(2, Math.round(sr / freq)), key = kind + N;
     let hit = this.ksCache.get(key); if (hit) return hit;
-    const T60 = kind === "harp" ? 3.0 : 2.0, dur = kind === "harp" ? 3.0 : 2.2;
+    const T60 = 2.0, dur = 2.2;
     const len = Math.floor(sr * dur), buf = this.ctx.createBuffer(1, len, sr), y = buf.getChannelData(0);
     const d = Math.min(0.9996, Math.pow(0.001, N / (sr * T60)));
     for (let i = 0; i < N; i++) y[i] = Math.random() * 2 - 1;
-    if (kind === "harp") { for (let p = 0; p < 2; p++) for (let i = N - 1; i > 0; i--) y[i] = (y[i] + y[i-1]) / 2; }   // softer pluck
-    else { const k = Math.max(1, Math.floor(N * 0.17)); for (let i = N - 1; i >= k; i--) y[i] -= 0.7 * y[i-k]; }       // pick position comb
+    { const k = Math.max(1, Math.floor(N * 0.17)); for (let i = N - 1; i >= k; i--) y[i] -= 0.7 * y[i-k]; }           // pick position comb
     for (let i = N; i < len; i++) { const a = y[i-N], b = i - N - 1 >= 0 ? y[i-N-1] : a; y[i] = d * 0.5 * (a + b); }
     let pk = 1e-6; for (let i = 0; i < len; i++) pk = Math.max(pk, Math.abs(y[i]));
     const fade = Math.floor(sr * 0.06);
@@ -455,7 +343,7 @@ class Voice {
   playNote(ins, midi, vel, delay = 0) {
     const a = this.ctx, t = a.currentTime + 0.012 + delay, f = midiToFreq(midi);
     const g = a.createGain(); g.connect(this.noteFilter);
-    let src = null, src2 = null;
+    let src = null;
     const cleanup = n => { n.onended = () => { try { g.disconnect(); } catch {} }; };
     if (ins.mode === "sustain") {                     // swell and decay, like a bowed or synth note
       const n = ins.note;
@@ -468,21 +356,6 @@ class Voice {
       g.gain.exponentialRampToValueAtTime(0.0008, t + n.atk + n.dec);
       const end = t + n.atk + n.dec + 0.05;
       o1.start(t); o2.start(t); o1.stop(end); o2.stop(end); src = o1;
-    } else if (ins.mode === "vocal") {                // a sung "aaah" that swells and fades
-      const n = ins.note, end = t + n.atk + n.dec + 0.1;
-      if (this.vs.ready) {                            // a real recorded "aaah", pitched to the note
-        const root = this.nearestRoot(midi), s = a.createBufferSource();
-        s.buffer = this.vs.bufs.get(root); s.playbackRate.value = 2 ** ((midi - root) / 12);
-        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vel * 0.9 * VOICE_GAIN, t + n.atk); g.gain.exponentialRampToValueAtTime(0.0008, t + n.atk + n.dec);
-        s.connect(g); s.start(t); s.stop(end); src2 = s;
-      } else {
-      const sg = new Singer(this, g);
-      sg.o.forEach(o => { o.frequency.setValueAtTime(f * 0.95, t); o.frequency.setTargetAtTime(f, t + 0.012, 0.04); });
-      sg.formants(f, t); sg.breathOnset(t, 0.3);
-      sg.vib.gain.setValueAtTime(0, t); sg.vib.gain.setTargetAtTime(22, t + 0.15, 0.3);
-      sg.amp.gain.setValueAtTime(0, t); sg.amp.gain.linearRampToValueAtTime(vel * 0.9, t + n.atk); sg.amp.gain.exponentialRampToValueAtTime(0.0008, t + n.atk + n.dec);
-      sg.start(t); sg.stop(end); src2 = sg.o[0];
-      }
     } else if (ins.kind === "bell") {                 // FM bell
       const car = a.createOscillator(), mod = a.createOscillator(), mg = a.createGain(), p2 = a.createOscillator(), p2g = a.createGain();
       car.frequency.value = f; mod.frequency.value = f * 3.5; p2.frequency.value = f * 2.76;
@@ -493,13 +366,13 @@ class Voice {
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vel * 0.6, t + 0.004);
       g.gain.exponentialRampToValueAtTime(0.0008, t + 2.4);
       car.start(t); mod.start(t); p2.start(t); car.stop(t + 2.5); mod.stop(t + 2.5); p2.stop(t + 2.5); src = car;
-    } else {                                          // harp or guitar
+    } else {                                          // guitar
       const { buf, rate } = this.ksBuffer(ins.kind, f);
       const s = a.createBufferSource(); s.buffer = buf; s.playbackRate.value = f / rate;
       g.gain.setValueAtTime(vel * 0.8, t);
       s.connect(g); s.start(t); src = s;
     }
-    if (src) cleanup(src); if (src2) cleanup(src2);
+    if (src) cleanup(src);
   }
 }
 let voice = null;
@@ -1054,9 +927,9 @@ function frame(now) {
     const dx = S.b.x - S.a.x, dy = S.b.y - S.a.y;
     const tilt = Math.abs(Math.atan2(dy, dx === 0 ? 1e-6 : Math.abs(dx))) / (Math.PI / 2);   // 0 flat .. 1 vertical
     if (voice && !state.muted) {
-      if (ins.mode !== "pluck") {
+      if (ins.mode === "sustain") {
         const cutoff = ins.lo * Math.pow(ins.hi / ins.lo, clamp(tilt * 1.2, 0, 1));
-        voice.update(S.freq, vol * (ins.id === "violin" ? 0.85 : 0.8), cutoff, ins.baseVib + S.wobble * ins.vib);
+        voice.update(S.freq, vol * 0.8, cutoff, ins.baseVib + S.wobble * ins.vib);
       } else {                                                                    // plucked: ring a new note whenever the pitch moves or the string is shaken
         voice.setNoteCutoff(900 * Math.pow(7, clamp(tilt * 1.2, 0, 1)));
         const first = S.lastPluckMidi === null, nowMs = now;
@@ -1390,9 +1263,11 @@ async function start() {
   startBtn.disabled = true; errEl.textContent = "";
   startBtn.textContent = "Starting…";
   try {
-    voice = new Voice(); await voice.resume();
-    voice.setMuted(state.muted); voice.setInstrument(inst()); voice.loadSamples();
-    engines.orch = new Orchestra(voice); engines.edm = new Edm(voice); setMusic(state.music);
+    if (!voice) voice = new Voice();
+    await voice.resume();
+    voice.setMuted(state.muted); voice.setInstrument(inst());
+    if (!engines.orch) { engines.orch = new Orchestra(voice); engines.edm = new Edm(voice); }
+    setMusic(state.music);
   } catch (e) { voice = null; console.warn("audio failed", e); }
 
   try {
@@ -1417,11 +1292,27 @@ async function start() {
     trackerMsg = "";
   } catch (e) {
     console.error(e);
-    trackerMsg = "Couldn't load the hand tracker. Check your internet and reload.";
+    trackerMsg = "Couldn't load the hand tracker. Air String needs the internet to start. Check your connection and reload.";
   }
 }
-function fail(msg) { errEl.textContent = msg; startBtn.disabled = false; startBtn.textContent = "Try again"; }
+function fail(msg) { errEl.textContent = msg; startBtn.disabled = false; startBtn.textContent = "Try again"; $("backBtn").classList.remove("hidden"); }
 startBtn.addEventListener("click", () => start());
+
+// ---- leaving: let go of the camera, sound, full screen and orientation, then go back to the game ----
+let leaving = false;
+function leaveToBSW() {
+  if (leaving) return; leaving = true;
+  try { if (orch) orch.stop(); } catch {}
+  try { if (camStream) camStream.getTracks().forEach(t => t.stop()); video.srcObject = null; } catch {}
+  try { if (landmarker) landmarker.close(); } catch {}
+  try { if (voice) voice.ctx.close(); } catch {}
+  try { if (isFS()) fsExit.call(document); } catch {}
+  try { screen.orientation.unlock(); } catch {}
+  location.href = "../";
+}
+$("backBtn").addEventListener("click", leaveToBSW);
+$("bBack").onclick = leaveToBSW;
+addEventListener("pageshow", e => { if (e.persisted) location.reload(); });       // returning with the browser back button: start fresh, no stale camera or audio
 
 addEventListener("resize", updateVideoMap);
 video.addEventListener("loadedmetadata", updateVideoMap);
