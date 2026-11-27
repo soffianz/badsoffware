@@ -208,3 +208,10 @@ list) are all different.
   height (C pentatonic over three octaves from C3), using the selected instrument. Both hands can draw. Undo and Clear live in its panel.
   While it is on, the one-string, five-string and Float gestures are paused so a pinch only draws. "In the game" was read as "in Air
   String", since Air String was made separate from the BSW game earlier; nothing was added to the game.
+
+- **Danger music** (new, third backing option after EDM): fast dark action music (Em F Em D, 140-170 BPM, syncopated kick and war drums,
+  bass ostinato, brass hits, staccato string stabs, synth arpeggio, alarm risers). It reuses EDM's mixer and pump. While Danger is on the
+  selected instrument is replaced by a low laser hum (`LASER`: saw plus square, two octaves down, free glide; one-shot notes are a low
+  "pew"), note letters are hidden, and the string visuals become a **digital power ball** where the hands meet (streams from the
+  fingertips, wireframe orb, specks, glitch line; simplified when Animation is off) with a subtle charging sound on formation and a soft
+  thump on release. The power ball applies to the pinch string and the five-string gesture; Float and Air write keep their own look.
