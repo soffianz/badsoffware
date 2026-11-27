@@ -12,7 +12,7 @@
   :root { --ink:#fff; --panel:rgba(18,12,40,.62); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { margin:0; height:100%; background:#07040f; color:var(--ink);
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden; touch-action:none; }
+    font-family:var(--font); -webkit-font-smoothing:antialiased; overflow:hidden; touch-action:none; }
   canvas { position:fixed; inset:0; width:100%; height:100%; display:block; }
   #start { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:16px; text-align:center; padding:24px;
@@ -31,35 +31,40 @@
   .big:active { transform:scale(.96); }
   .big[disabled] { opacity:.6; cursor:wait; }
   #err { color:#ffb4b4; font-size:clamp(14px,2.2vw,19px); max-width:46ch; min-height:1.2em; }
-  :root { --muted:#bdb6dc; --glass:rgba(16,11,36,.88); --glass2:rgba(24,17,54,.95); --line:rgba(255,255,255,.16); --accent:#ffd36b; }
+  :root { --muted:rgba(235,235,245,.62); --glass:rgba(28,28,34,.64); --glass2:rgba(28,28,34,.84); --line:rgba(255,255,255,.16); --accent:#4da3ff;
+    --blue:#0a84ff; --green:#30d158; --red:#ff453a; --material:blur(30px) saturate(180%);
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",system-ui,"Segoe UI",Roboto,sans-serif; }
   :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
   button { font:inherit; color:inherit; }
   /* status bubble (loading and errors only) */
   #chip { position:fixed; left:50%; top:max(14px,env(safe-area-inset-top)); transform:translateX(-50%);
-    padding:.55em 1.1em; border-radius:20px; background:var(--glass); border:1px solid var(--line); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
-    font-size:clamp(15px,2.4vw,20px); font-weight:650; z-index:5; pointer-events:none; text-align:center; max-width:min(92vw,640px); box-shadow:0 6px 24px rgba(0,0,0,.4); }
-  /* the control dock */
-  #controls { position:fixed; left:50%; transform:translateX(-50%); bottom:max(12px,env(safe-area-inset-bottom)); width:min(800px,calc(100vw - 24px));
-    display:flex; gap:4px; padding:7px; border-radius:26px; background:var(--glass); border:1px solid var(--line); z-index:5;
-    box-shadow:0 10px 34px rgba(0,0,0,.5); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
-  #controls .sep { flex:0 0 1px; width:1px; margin:9px 3px; background:var(--line); }
-  #controls button { flex:1 1 0; min-width:0; min-height:62px; padding:6px 3px; border:0; border-radius:18px; background:transparent; cursor:pointer;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; transition:background .15s, transform .1s; }
-  #controls button .i { font-size:24px; line-height:1.15; }
-  #controls button .t { font-size:13px; font-weight:700; line-height:1.2; letter-spacing:.01em; white-space:nowrap; }
-  #controls button .v { font-size:11.5px; font-weight:600; line-height:1.2; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+    padding:.55em 1.1em; border-radius:20px; background:var(--glass); backdrop-filter:var(--material); -webkit-backdrop-filter:var(--material);
+    box-shadow:0 0 0 .5px var(--line), 0 8px 28px rgba(0,0,0,.35), inset 0 .5px 0 rgba(255,255,255,.22);
+    font-size:clamp(15px,2.4vw,19px); font-weight:600; letter-spacing:-.01em; z-index:5; pointer-events:none; text-align:center; max-width:min(92vw,640px); }
+  /* the control dock: frosted glass, like the iOS dock and tab bar */
+  #controls { position:fixed; left:50%; transform:translateX(-50%); bottom:max(12px,env(safe-area-inset-bottom)); width:min(760px,calc(100vw - 24px));
+    display:flex; align-items:stretch; gap:0; padding:6px 8px; border-radius:30px; background:var(--glass); z-index:5;
+    backdrop-filter:var(--material); -webkit-backdrop-filter:var(--material);
+    box-shadow:0 0 0 .5px var(--line), 0 14px 40px rgba(0,0,0,.45), inset 0 .5px 0 rgba(255,255,255,.28); }
+  #controls .sep { flex:0 0 .5px; width:.5px; margin:12px 4px; background:rgba(255,255,255,.22); }
+  #controls button { flex:1 1 0; min-width:0; min-height:60px; padding:7px 2px 6px; border:0; border-radius:20px; background:transparent; cursor:pointer; color:rgba(255,255,255,.92);
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:9px; gap:3px; transition:background .18s, color .18s, opacity .12s; -webkit-user-select:none; user-select:none; }
+  #controls button .i { display:block; width:26px; height:26px; }
+  #controls button .i svg { display:block; width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+  #controls button .t { font-size:10.5px; font-weight:600; line-height:1.15; letter-spacing:.005em; white-space:nowrap; }
+  #controls button .v { font-size:10px; font-weight:500; line-height:1.1; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
   #controls button .v:empty { display:none; }
-  #controls button:hover { background:rgba(255,255,255,.08); }
-  #controls button:active { transform:scale(.95); background:rgba(255,255,255,.16); }
-  #controls button[aria-expanded="true"] { background:rgba(255,255,255,.14); box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5); }
-  #controls button.on { background:rgba(255,211,107,.16); box-shadow:inset 0 0 0 1.5px rgba(255,211,107,.85); }
-  #controls button.on .v { color:var(--accent); }
-  #controls button.warn { background:rgba(255,90,110,.18); box-shadow:inset 0 0 0 1.5px rgba(255,120,135,.9); }
-  #controls button.warn .v { color:#ffb0ba; }
+  #controls button:hover { background:rgba(255,255,255,.07); }
+  #controls button:active { opacity:.5; }
+  #controls button[aria-expanded="true"] { background:rgba(255,255,255,.16); }
+  #controls button.on { color:var(--blue); }
+  #controls button.on .t { font-weight:700; } #controls button.on .v { color:var(--blue); }
+  #controls button.warn { color:var(--red); }
+  #controls button.warn .v { color:var(--red); }
   /* picker sheets */
   .sheet { position:fixed; left:50%; bottom:calc(var(--dock,86px) + max(12px,env(safe-area-inset-bottom)) + 10px); width:min(580px,calc(100vw - 24px)); z-index:7;
-    padding:14px; border-radius:24px; background:var(--glass2); border:1px solid var(--line); box-shadow:0 16px 56px rgba(0,0,0,.6);
-    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); transform:translateX(-50%); animation:pop .16s ease-out; max-height:calc(100vh - var(--dock,86px) - 70px); overflow:auto; }
+    padding:14px; border-radius:26px; background:var(--glass2); box-shadow:0 0 0 .5px var(--line), 0 18px 56px rgba(0,0,0,.55), inset 0 .5px 0 rgba(255,255,255,.22);
+    backdrop-filter:var(--material); -webkit-backdrop-filter:var(--material); transform:translateX(-50%); animation:pop .16s ease-out; max-height:calc(100vh - var(--dock,86px) - 70px); overflow:auto; }
   @keyframes pop { from { opacity:0; transform:translate(-50%,8px); } to { opacity:1; transform:translate(-50%,0); } }
   .sheet h2 { margin:2px 4px 10px; font-size:13px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:8px; }
@@ -70,32 +75,34 @@
   .card .i { font-size:28px; line-height:1; flex:0 0 auto; }
   .card .t { display:block; font-size:15px; font-weight:700; }
   .card .d { display:block; margin-top:2px; font-size:12.5px; line-height:1.3; color:var(--muted); }
-  .card.sel { border-color:var(--accent); background:rgba(255,211,107,.14); }
-  .card.sel::after { content:"✓"; position:absolute; right:12px; top:50%; transform:translateY(-50%); font-weight:900; color:var(--accent); }
+  .card.sel { border-color:var(--blue); background:rgba(10,132,255,.2); }
+  .card.sel::after { content:"✓"; position:absolute; right:12px; top:50%; transform:translateY(-50%); font-weight:800; color:var(--blue); }
   .switchrow { display:flex; align-items:center; justify-content:space-between; gap:14px; width:100%; margin-top:10px; padding:12px 14px; cursor:pointer; text-align:left;
     border-radius:16px; border:1.5px solid var(--line); background:rgba(255,255,255,.05); }
   .switchrow .t { display:block; font-size:15px; font-weight:700; }
   .switchrow .d { display:block; margin-top:2px; font-size:12.5px; line-height:1.3; color:var(--muted); }
   .switch { position:relative; flex:0 0 auto; width:48px; height:28px; border-radius:14px; background:rgba(255,255,255,.28); transition:background .15s; }
   .switch::after { content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:left .15s; }
-  .switchrow[aria-checked="true"] .switch { background:var(--accent); }
-  .switchrow[aria-checked="true"] .switch::after { left:23px; background:#1a0838; }
+  .switchrow[aria-checked="true"] .switch { background:var(--green); }
+  .switchrow[aria-checked="true"] .switch::after { left:23px; }
+  .switch::after { box-shadow:0 2px 5px rgba(0,0,0,.35); }
   /* help */
   #scrim { position:fixed; inset:0; z-index:7; background:rgba(4,2,14,.62); }
   #help { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:8; width:min(640px,calc(100vw - 24px)); max-height:calc(100vh - 28px); overflow:auto;
-    padding:22px 24px 20px; border-radius:26px; background:var(--glass2); border:1px solid var(--line); box-shadow:0 20px 70px rgba(0,0,0,.65); font-size:16px; line-height:1.55; touch-action:pan-y; }
+    padding:22px 24px 20px; border-radius:28px; background:var(--glass2); backdrop-filter:var(--material); -webkit-backdrop-filter:var(--material); box-shadow:0 0 0 .5px var(--line), 0 24px 70px rgba(0,0,0,.6), inset 0 .5px 0 rgba(255,255,255,.22); font-size:16px; line-height:1.55; touch-action:pan-y; }
   #help h2 { margin:0 48px 2px 0; font-size:25px; }
   #help .lede { margin:0 0 4px; font-size:14.5px; color:var(--muted); }
   #help h3 { margin:20px 0 6px; font-size:13px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--accent); }
   #help ul { margin:0; padding-left:20px; } #help li { margin:6px 0; }
   #help b { color:#fff; }
-  #helpClose { position:absolute; right:14px; top:14px; width:44px; height:44px; border:0; border-radius:50%; background:rgba(255,255,255,.14); font-size:20px; cursor:pointer; }
+  #helpClose { position:absolute; right:14px; top:14px; width:34px; height:34px; border:0; border-radius:50%; background:rgba(255,255,255,.18); font-size:16px; cursor:pointer; }
   #helpClose:hover { background:rgba(255,255,255,.24); }
-  #helpDone { display:block; width:100%; margin-top:20px; min-height:52px; border:0; border-radius:16px; cursor:pointer; font-size:17px; font-weight:800; color:#1a0838; background:linear-gradient(90deg,#ffd36b,#ff8ad8); }
+  #helpDone { display:block; width:100%; margin-top:20px; min-height:52px; border:0; border-radius:16px; cursor:pointer; font-size:17px; font-weight:600; color:#fff; background:var(--blue); }
+  #helpDone:active { opacity:.7; }
   @media (max-width:640px) {
-    #controls { flex-wrap:wrap; }
+    #controls { flex-wrap:wrap; padding:6px; row-gap:2px; border-radius:28px; }
     #controls .sep { display:none; }
-    #controls button { flex:1 1 calc(25% - 4px); min-height:58px; }
+    #controls button { flex:1 1 25%; min-height:60px; }
     .grid { grid-template-columns:1fr 1fr; }
     .card { padding-right:30px; } .card .d { display:none; } .card { min-height:58px; }
   }
@@ -175,16 +182,16 @@
   <button id="helpDone">Got it</button>
 </div>
 <nav id="controls" class="hidden" aria-label="Controls">
-  <button id="bHelp"  aria-label="How to play" aria-haspopup="dialog" aria-expanded="false"><span class="i">❓</span><span class="t">Help</span><span class="v"></span></button>
+  <button id="bHelp"  aria-label="How to play" aria-haspopup="dialog" aria-expanded="false"><span class="i"></span><span class="t">Help</span><span class="v"></span></button>
   <span class="sep"></span>
-  <button id="bVoice" aria-label="Instrument" aria-haspopup="dialog" aria-expanded="false"><span class="i">🎹</span><span class="t">Instrument</span><span class="v">Synth</span></button>
-  <button id="bMusic" aria-label="Music" aria-haspopup="dialog" aria-expanded="false"><span class="i">🎧</span><span class="t">Music</span><span class="v">Off</span></button>
-  <button id="bTheme" aria-label="Visuals" aria-haspopup="dialog" aria-expanded="false"><span class="i">⚡</span><span class="t">Visuals</span><span class="v">Neon</span></button>
+  <button id="bVoice" aria-label="Instrument" aria-haspopup="dialog" aria-expanded="false"><span class="i"></span><span class="t">Instrument</span><span class="v">Synth</span></button>
+  <button id="bMusic" aria-label="Music" aria-haspopup="dialog" aria-expanded="false"><span class="i"></span><span class="t">Music</span><span class="v">Off</span></button>
+  <button id="bTheme" aria-label="Visuals" aria-haspopup="dialog" aria-expanded="false"><span class="i"></span><span class="t">Visuals</span><span class="v">Neon</span></button>
   <span class="sep"></span>
-  <button id="bMute"  aria-label="Sound" aria-pressed="false"><span class="i">🔊</span><span class="t">Sound</span><span class="v">On</span></button>
-  <button id="bFloat" aria-label="Float: leave the string in the air" aria-pressed="false"><span class="i">📌</span><span class="t">Float</span><span class="v">Off</span></button>
-  <button id="bWrite" aria-label="Air write" aria-haspopup="dialog" aria-expanded="false"><span class="i">✍️</span><span class="t">Air write</span><span class="v">Off</span></button>
-  <button id="bFull"  aria-label="Full screen" aria-pressed="false"><span class="i">⛶</span><span class="t">Full screen</span><span class="v">Off</span></button>
+  <button id="bMute"  aria-label="Sound" aria-pressed="false"><span class="i"></span><span class="t">Sound</span><span class="v">On</span></button>
+  <button id="bFloat" aria-label="Float: leave the string in the air" aria-pressed="false"><span class="i"></span><span class="t">Float</span><span class="v">Off</span></button>
+  <button id="bWrite" aria-label="Air write" aria-haspopup="dialog" aria-expanded="false"><span class="i"></span><span class="t">Air write</span><span class="v">Off</span></button>
+  <button id="bFull"  aria-label="Full screen" aria-pressed="false"><span class="i"></span><span class="t">Full screen</span><span class="v">Off</span></button>
 </nav>
 <div id="debug"></div>
 
@@ -1505,6 +1512,19 @@ document.addEventListener("visibilitychange", () => {
 
 /* ============================ controls ============================ */
 const musicPanel = $("musicPanel"), themePanel = $("themePanel"), helpEl = $("help"), scrim = $("scrim");
+const ICONS = {                                       // SF Symbols-style line icons
+  help:    '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2.9-1.2 1.8"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
+  inst:    '<path d="M9 18V6.5l10-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
+  music:   '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4" height="6.5" rx="1.6"/><rect x="16.5" y="14" width="4" height="6.5" rx="1.6"/>',
+  visuals: '<path d="M11 3.5l1.9 5 5 1.9-5 1.9-1.9 5-1.9-5-5-1.9 5-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+  sound:   '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6"/><path d="M18.3 6.6a8 8 0 0 1 0 10.8"/>',
+  mute:    '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
+  float:   '<path d="M9 4h6l-1 5.5 3 3.5H7l3-3.5z"/><path d="M12 13v7.5"/>',
+  write:   '<path d="M4.5 19.5l1-4L16 5a2.1 2.1 0 0 1 3 3L8.5 18.5z"/><path d="M14 7l3 3"/>',
+  full:    '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  exit:    '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
+};
+const svgIcon = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
 const INST_DESC = { synth:"Warm, smooth tone", bells:"Bright and ringing", guitar:"Plucked strings" };
 const MUSIC_DESC = { off:"No backing music", orch:"Strings, brass, timpani", edm:"Beat, bass and synths" };
 const THEME_DESC = ["Electric glow", "Sweet striped rope", "Flowing water", "Flames and embers", "Comets and stars", "Seven glowing centres"];
@@ -1553,20 +1573,21 @@ let dockPx = 0;
 function layoutDock() { const c = $("controls"); dockPx = c.classList.contains("hidden") ? 0 : c.offsetHeight + 16; document.documentElement.style.setProperty("--dock", c.offsetHeight + "px"); }
 addEventListener("resize", layoutDock);
 function setBtn(id, { value, icon, on, warn, pressed }) {
-  const b = $(id); if (value !== undefined) b.querySelector(".v").textContent = value; if (icon) b.querySelector(".i").textContent = icon;
+  const b = $(id); if (value !== undefined) b.querySelector(".v").textContent = value; if (icon) b.querySelector(".i").innerHTML = svgIcon(icon);
   b.classList.toggle("on", !!on); b.classList.toggle("warn", !!warn); if (pressed !== undefined) b.setAttribute("aria-pressed", String(pressed));
 }
 function syncButtons() {
   const ins = inst(), mu = MUSIC.find(x => x.id === state.music);
-  setBtn("bVoice", { value:ins.name, icon:ins.icon });
-  setBtn("bMusic", { value:mu.name, icon:mu.icon, on:state.music !== "off" });
-  setBtn("bTheme", { value:THEMES[state.theme].name, icon:THEME_ICONS[state.theme] });
-  setBtn("bMute", { value:state.muted ? "Muted" : "On", icon:state.muted ? "🔇" : "🔊", warn:state.muted, pressed:state.muted });
-  setBtn("bFloat", { value:state.float ? "On" : "Off", on:state.float, pressed:state.float });
-  setBtn("bWrite", { value:state.write ? "On" : "Off", on:state.write });
+  setBtn("bHelp", { icon:"help" });
+  setBtn("bVoice", { value:ins.name, icon:"inst" });
+  setBtn("bMusic", { value:mu.name, icon:"music", on:state.music !== "off" });
+  setBtn("bTheme", { value:THEMES[state.theme].name, icon:"visuals" });
+  setBtn("bMute", { value:state.muted ? "Muted" : "On", icon:state.muted ? "mute" : "sound", warn:state.muted, pressed:state.muted });
+  setBtn("bFloat", { value:state.float ? "On" : "Off", icon:"float", on:state.float, pressed:state.float });
+  setBtn("bWrite", { value:state.write ? "On" : "Off", icon:"write", on:state.write });
   [...writePanel.speedGrid.children].forEach((b, i) => b.classList.toggle("sel", i === state.writeSpeed));
   $("writeSwitch").setAttribute("aria-checked", String(state.write));
-  setBtn("bFull", { value:isFS() ? "On" : "Off", icon:isFS() ? "🗗" : "⛶", on:isFS(), pressed:isFS() });
+  setBtn("bFull", { value:isFS() ? "On" : "Off", icon:isFS() ? "exit" : "full", on:isFS(), pressed:isFS() });
   [...instPanel.grid.children].forEach((b, i) => b.classList.toggle("sel", i === state.inst));
   [...musicPanel.grid.children].forEach((b, k) => b.classList.toggle("sel", MUSIC[k].id === state.music));
   [...themePanel.grid.children].forEach((b, k) => b.classList.toggle("sel", k === state.theme));
