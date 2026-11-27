@@ -31,31 +31,75 @@
   .big:active { transform:scale(.96); }
   .big[disabled] { opacity:.6; cursor:wait; }
   #err { color:#ffb4b4; font-size:clamp(14px,2.2vw,19px); max-width:46ch; min-height:1.2em; }
+  :root { --muted:#bdb6dc; --glass:rgba(16,11,36,.88); --glass2:rgba(24,17,54,.95); --line:rgba(255,255,255,.16); --accent:#ffd36b; }
+  :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  button { font:inherit; color:inherit; }
+  /* status bubble (loading and errors only) */
   #chip { position:fixed; left:50%; top:max(14px,env(safe-area-inset-top)); transform:translateX(-50%);
-    padding:.45em 1.1em; border-radius:999px; background:var(--panel); backdrop-filter:blur(6px);
-    font-size:clamp(18px,3.2vw,30px); font-weight:700; z-index:5; pointer-events:none; white-space:nowrap; max-width:96vw; overflow:hidden; text-overflow:ellipsis; }
-  #controls { position:fixed; right:max(10px,env(safe-area-inset-right)); bottom:max(10px,env(safe-area-inset-bottom));
-    display:flex; gap:8px; z-index:5; }
-  #controls button, #instPanel button, #musicPanel button, #themePanel button { min-width:58px; height:62px; padding:0 10px; border:0; border-radius:18px; cursor:pointer;
-    background:var(--panel); backdrop-filter:blur(6px); color:#fff; font-size:13px; font-weight:700;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
-  #controls button .i, #instPanel button .i, #musicPanel button .i, #themePanel button .i { font-size:24px; line-height:1; }
-  #controls button.off { opacity:.5; }
-  #controls button:active, #instPanel button:active, #musicPanel button:active, #themePanel button:active { transform:scale(.94); }
-  #instPanel, #musicPanel, #themePanel { flex-wrap:wrap; justify-content:flex-end; max-width:calc(100vw - 20px); position:fixed; right:max(10px,env(safe-area-inset-right)); bottom:calc(max(10px,env(safe-area-inset-bottom)) + 72px);
-    display:flex; gap:8px; z-index:6; padding:8px; border-radius:22px; background:rgba(10,6,26,.8); backdrop-filter:blur(8px); }
-  #instPanel button, #musicPanel button, #themePanel button { min-width:64px; height:70px; }
-  #instPanel button.sel, #musicPanel button.sel, #themePanel button.sel { outline:3px solid #ffd36b; background:rgba(255,211,107,.18); }
-  #help { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:8; width:min(560px,92vw); max-height:84vh; overflow:auto;
-    padding:20px 22px 18px; border-radius:24px; background:rgba(14,9,34,.92); backdrop-filter:blur(10px);
-    box-shadow:0 10px 60px rgba(0,0,0,.6); font-size:16px; line-height:1.45; touch-action:pan-y; }
-  #help h2 { margin:0 0 10px; font-size:22px; }
-  #help h3 { margin:14px 0 4px; font-size:16px; color:#ffd36b; }
-  #help ul { margin:0; padding-left:20px; } #help li { margin:3px 0; }
-  #helpClose { position:absolute; right:12px; top:10px; width:40px; height:40px; border:0; border-radius:50%; background:rgba(255,255,255,.14); color:#fff; font-size:20px; cursor:pointer; }
-  @media (max-width:700px) { #controls { flex-wrap:wrap; justify-content:flex-end; max-width:calc(100vw - 20px); }
-    #controls button { min-width:50px; height:54px; padding:0 6px; font-size:11px; } #controls button .i { font-size:20px; }
-    #instPanel, #musicPanel, #themePanel { bottom:calc(max(10px,env(safe-area-inset-bottom)) + 124px); } #instPanel button, #musicPanel button, #themePanel button { min-width:52px; height:60px; } }
+    padding:.55em 1.1em; border-radius:20px; background:var(--glass); border:1px solid var(--line); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    font-size:clamp(15px,2.4vw,20px); font-weight:650; z-index:5; pointer-events:none; text-align:center; max-width:min(92vw,640px); box-shadow:0 6px 24px rgba(0,0,0,.4); }
+  /* the control dock */
+  #controls { position:fixed; left:50%; transform:translateX(-50%); bottom:max(12px,env(safe-area-inset-bottom)); width:min(800px,calc(100vw - 24px));
+    display:flex; gap:4px; padding:7px; border-radius:26px; background:var(--glass); border:1px solid var(--line); z-index:5;
+    box-shadow:0 10px 34px rgba(0,0,0,.5); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+  #controls .sep { flex:0 0 1px; width:1px; margin:9px 3px; background:var(--line); }
+  #controls button { flex:1 1 0; min-width:0; min-height:62px; padding:6px 3px; border:0; border-radius:18px; background:transparent; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; transition:background .15s, transform .1s; }
+  #controls button .i { font-size:24px; line-height:1.15; }
+  #controls button .t { font-size:13px; font-weight:700; line-height:1.2; letter-spacing:.01em; white-space:nowrap; }
+  #controls button .v { font-size:11.5px; font-weight:600; line-height:1.2; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  #controls button .v:empty { display:none; }
+  #controls button:hover { background:rgba(255,255,255,.08); }
+  #controls button:active { transform:scale(.95); background:rgba(255,255,255,.16); }
+  #controls button[aria-expanded="true"] { background:rgba(255,255,255,.14); box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5); }
+  #controls button.on { background:rgba(255,211,107,.16); box-shadow:inset 0 0 0 1.5px rgba(255,211,107,.85); }
+  #controls button.on .v { color:var(--accent); }
+  #controls button.warn { background:rgba(255,90,110,.18); box-shadow:inset 0 0 0 1.5px rgba(255,120,135,.9); }
+  #controls button.warn .v { color:#ffb0ba; }
+  /* picker sheets */
+  .sheet { position:fixed; left:50%; bottom:calc(var(--dock,86px) + max(12px,env(safe-area-inset-bottom)) + 10px); width:min(580px,calc(100vw - 24px)); z-index:7;
+    padding:14px; border-radius:24px; background:var(--glass2); border:1px solid var(--line); box-shadow:0 16px 56px rgba(0,0,0,.6);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); transform:translateX(-50%); animation:pop .16s ease-out; max-height:calc(100vh - var(--dock,86px) - 70px); overflow:auto; }
+  @keyframes pop { from { opacity:0; transform:translate(-50%,8px); } to { opacity:1; transform:translate(-50%,0); } }
+  .sheet h2 { margin:2px 4px 10px; font-size:13px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:8px; }
+  .card { position:relative; display:flex; align-items:center; gap:12px; min-height:64px; padding:10px 34px 10px 12px; text-align:left; cursor:pointer;
+    border-radius:16px; border:1.5px solid var(--line); background:rgba(255,255,255,.05); transition:background .15s; }
+  .card:hover { background:rgba(255,255,255,.11); }
+  .card:active { transform:scale(.98); }
+  .card .i { font-size:28px; line-height:1; flex:0 0 auto; }
+  .card .t { display:block; font-size:15px; font-weight:700; }
+  .card .d { display:block; margin-top:2px; font-size:12.5px; line-height:1.3; color:var(--muted); }
+  .card.sel { border-color:var(--accent); background:rgba(255,211,107,.14); }
+  .card.sel::after { content:"✓"; position:absolute; right:12px; top:50%; transform:translateY(-50%); font-weight:900; color:var(--accent); }
+  .switchrow { display:flex; align-items:center; justify-content:space-between; gap:14px; width:100%; margin-top:10px; padding:12px 14px; cursor:pointer; text-align:left;
+    border-radius:16px; border:1.5px solid var(--line); background:rgba(255,255,255,.05); }
+  .switchrow .t { display:block; font-size:15px; font-weight:700; }
+  .switchrow .d { display:block; margin-top:2px; font-size:12.5px; line-height:1.3; color:var(--muted); }
+  .switch { position:relative; flex:0 0 auto; width:48px; height:28px; border-radius:14px; background:rgba(255,255,255,.28); transition:background .15s; }
+  .switch::after { content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:left .15s; }
+  .switchrow[aria-checked="true"] .switch { background:var(--accent); }
+  .switchrow[aria-checked="true"] .switch::after { left:23px; background:#1a0838; }
+  /* help */
+  #scrim { position:fixed; inset:0; z-index:7; background:rgba(4,2,14,.62); }
+  #help { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:8; width:min(640px,calc(100vw - 24px)); max-height:calc(100vh - 28px); overflow:auto;
+    padding:22px 24px 20px; border-radius:26px; background:var(--glass2); border:1px solid var(--line); box-shadow:0 20px 70px rgba(0,0,0,.65); font-size:16px; line-height:1.55; touch-action:pan-y; }
+  #help h2 { margin:0 48px 2px 0; font-size:25px; }
+  #help .lede { margin:0 0 4px; font-size:14.5px; color:var(--muted); }
+  #help h3 { margin:20px 0 6px; font-size:13px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--accent); }
+  #help ul { margin:0; padding-left:20px; } #help li { margin:6px 0; }
+  #help b { color:#fff; }
+  #helpClose { position:absolute; right:14px; top:14px; width:44px; height:44px; border:0; border-radius:50%; background:rgba(255,255,255,.14); font-size:20px; cursor:pointer; }
+  #helpClose:hover { background:rgba(255,255,255,.24); }
+  #helpDone { display:block; width:100%; margin-top:20px; min-height:52px; border:0; border-radius:16px; cursor:pointer; font-size:17px; font-weight:800; color:#1a0838; background:linear-gradient(90deg,#ffd36b,#ff8ad8); }
+  @media (max-width:640px) {
+    #controls { flex-wrap:wrap; }
+    #controls .sep { display:none; }
+    #controls button { flex:1 1 calc(25% - 4px); min-height:58px; }
+    .grid { grid-template-columns:1fr 1fr; }
+    .card { padding-right:30px; } .card .d { display:none; } .card { min-height:58px; }
+  }
+  @media (prefers-reduced-motion:reduce) { .sheet { animation:none; } * { transition:none !important; } }
   #debug { position:fixed; left:8px; bottom:8px; font:12px/1.4 ui-monospace,monospace; background:rgba(0,0,0,.6);
     padding:6px 8px; border-radius:6px; z-index:5; white-space:pre; display:none; pointer-events:none; }
   .hidden { display:none !important; }
@@ -73,26 +117,28 @@
 </div>
 
 <div id="chip" class="hidden">Loading…</div>
-<div id="instPanel" class="hidden"></div>
-<div id="musicPanel" class="hidden"></div>
-<div id="themePanel" class="hidden"></div>
-<div id="help" class="hidden" role="dialog" aria-label="How to play">
-  <button id="helpClose" aria-label="Close">✕</button>
-  <h2>How to play</h2>
-  <h3>One string</h3>
+<div id="instPanel" class="sheet hidden" role="dialog" aria-label="Choose an instrument"></div>
+<div id="musicPanel" class="sheet hidden" role="dialog" aria-label="Choose backing music"></div>
+<div id="themePanel" class="sheet hidden" role="dialog" aria-label="Choose a look"></div>
+<div id="scrim" class="hidden"></div>
+<div id="help" class="hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <button id="helpClose" aria-label="Close help">✕</button>
+  <h2 id="helpTitle">How to play</h2>
+  <p class="lede">Hold your phone or laptop so the front camera sees both hands, in good light.</p>
+  <h3>🤏 One string</h3>
   <ul>
     <li>Show both hands and pinch thumb and index finger on each. A string appears between them.</li>
     <li>Move your hands apart for a lower note, together for a higher one.</li>
     <li>Raise the string for louder, lower it for quieter. Tilt it to make the tone brighter or mellower.</li>
     <li>Wiggle a hand for vibrato (or a re-pluck on Guitar and Bells). Let go to twang it away.</li>
   </ul>
-  <h3>Floating string</h3>
+  <h3>📌 Floating string</h3>
   <ul>
     <li>Turn on <b>Float</b>, pinch both hands, pull them apart, then let go. The string stays in the air.</li>
     <li>Pluck it with any finger of either hand. Where you pluck decides the note: low on the left, high on the right.</li>
     <li>Make a new one to replace it, or turn Float off to clear it.</li>
   </ul>
-  <h3>Five strings</h3>
+  <h3>🖐️ Five strings</h3>
   <ul>
     <li>Press your hands together like a prayer, then pull them apart.</li>
     <li>Thumb to pinky play C, D, E, G, A. Hands closer together plays an octave higher.</li>
@@ -100,34 +146,37 @@
     <li>Curl the same finger on both hands to remove that string and its note. Open both again to bring it back.</li>
     <li><b>Duet:</b> while someone holds the five strings, a friend can pluck them by sweeping their fingers across the strings. Up to four hands are tracked.</li>
   </ul>
-  <h3>Backing music</h3>
+  <h3>🎧 Backing music</h3>
   <ul>
     <li>Open <b>Music</b> and pick <b>Orchestra</b> (strings, cellos, violins, flute, brass, timpani) or <b>EDM</b> (kick, hats, bass, synth stabs and a lead). Pick Off to stop.</li>
     <li>Raise your hands for louder, lower them for softer. Spread your hands wide for more energy: brass and drums, or claps, stabs and lead.</li>
     <li>Move your hands faster to speed it up, hold still to let it slow down.</li>
     <li>You can still pinch, pull out the five strings, or pluck as a duet over the top.</li>
   </ul>
-  <h3>Buttons</h3>
+  <h3>🎛️ Buttons</h3>
   <ul>
     <li><b>Instrument:</b> Synth, Bells or Guitar.</li>
     <li><b>Music:</b> pick the backing music. <b>Sound:</b> mute.</li>
     <li><b>Visuals:</b> pick a look: Neon (electric), Candy (sweet and sparkly), Ocean (watery), Fire (flames and embers), Space (comets and stars) or Chakra (seven glowing energy centres). <b>Anim Off</b> keeps just a plain glowing string and turns off the extra effects, which helps if things feel laggy. <b>Full:</b> full screen.</li>
   </ul>
-  <h3>Tips</h3>
+  <h3>💡 Tips</h3>
   <ul>
     <li>Use good light and keep both hands in view of the front camera.</li>
     <li>Everything stays on your device. Nothing is recorded.</li>
   </ul>
+  <button id="helpDone">Got it</button>
 </div>
-<div id="controls" class="hidden">
-  <button id="bHelp"  title="How to play"><span class="i">❓</span><span class="t">Help</span></button>
-  <button id="bVoice" title="Instrument"><span class="i">🎹</span><span class="t">Instrument</span></button>
-  <button id="bMusic" title="Music"><span class="i">🎧</span><span class="t">Music</span></button>
-  <button id="bMute"  title="Mute"><span class="i">🔊</span><span class="t">Sound</span></button>
-  <button id="bTheme" title="Visuals"><span class="i">⚡</span><span class="t">Visuals</span></button>
-  <button id="bFloat" title="Leave the string floating in the air"><span class="i">📌</span><span class="t">Float</span></button>
-  <button id="bFull"  title="Full screen"><span class="i">⛶</span><span class="t">Full</span></button>
-</div>
+<nav id="controls" class="hidden" aria-label="Controls">
+  <button id="bHelp"  aria-label="How to play" aria-haspopup="dialog" aria-expanded="false"><span class="i">❓</span><span class="t">Help</span><span class="v"></span></button>
+  <span class="sep"></span>
+  <button id="bVoice" aria-label="Instrument" aria-haspopup="dialog" aria-expanded="false"><span class="i">🎹</span><span class="t">Instrument</span><span class="v">Synth</span></button>
+  <button id="bMusic" aria-label="Music" aria-haspopup="dialog" aria-expanded="false"><span class="i">🎧</span><span class="t">Music</span><span class="v">Off</span></button>
+  <button id="bTheme" aria-label="Visuals" aria-haspopup="dialog" aria-expanded="false"><span class="i">⚡</span><span class="t">Visuals</span><span class="v">Neon</span></button>
+  <span class="sep"></span>
+  <button id="bMute"  aria-label="Sound" aria-pressed="false"><span class="i">🔊</span><span class="t">Sound</span><span class="v">On</span></button>
+  <button id="bFloat" aria-label="Float: leave the string in the air" aria-pressed="false"><span class="i">📌</span><span class="t">Float</span><span class="v">Off</span></button>
+  <button id="bFull"  aria-label="Full screen" aria-pressed="false"><span class="i">⛶</span><span class="t">Full screen</span><span class="v">Off</span></button>
+</nav>
 <div id="debug"></div>
 
 <script type="module">
@@ -1072,7 +1121,7 @@ function drawOrchestraViz() {                         // beat pulse + a little l
   g.addColorStop(0, hsl(hue, th.sat, th.lit, 0)); g.addColorStop(1, hsl(hue, th.sat, th.lit, 0.22 * orch.pulse));
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   ctx.globalCompositeOperation = "source-over";
-  const bw = 22 * DPR, gap = 10 * DPR, x0 = 18 * DPR, base = H - 34 * DPR;
+  const bw = 22 * DPR, gap = 10 * DPR, x0 = 18 * DPR, base = H - (dockPx + 34) * DPR;
   ctx.font = `700 ${Math.round(11 * DPR)}px system-ui,sans-serif`; ctx.textAlign = "center";
   orch.sections.forEach((n, i) => {
     const x = x0 + i * (bw + gap + 18 * DPR), h = (10 + 56 * orch.meter[n]) * DPR;
@@ -1117,7 +1166,7 @@ function drawNoteLabels() {
       return { i, o, x:clamp(Math.min(o.a.x, o.b.x) - 46 * DPR, 34 * DPR, W - 34 * DPR), y:left.y };
     }).filter(it => it.o.vis > 0.05).sort((p, q) => p.y - q.y);
     if (items.length) for (let k = 1; k < items.length; k++) if (items[k].y - items[k-1].y < gap) items[k].y = items[k-1].y + gap;   // keep them from overlapping
-    if (items.length) { const shift = Math.max(0, items[items.length - 1].y - (H - 30 * DPR)); items.forEach(it => { it.y -= shift; }); }
+    if (items.length) { const shift = Math.max(0, items[items.length - 1].y - (H - (dockPx + 24) * DPR)); items.forEach(it => { it.y -= shift; }); }
     items.forEach(it => drawLabel(noteName(it.o.midi), it.x, it.y, hueFor(1 - it.i / 4), M.fade * it.o.vis, it.o.flash > 0.3));
   }
   if ((S.active || S.recoil) && S.fade > 0 && M.state !== "active")
@@ -1371,74 +1420,78 @@ document.addEventListener("visibilitychange", () => {
 });
 
 /* ============================ controls ============================ */
-const musicPanel = $("musicPanel"), themePanel = $("themePanel");
+const musicPanel = $("musicPanel"), themePanel = $("themePanel"), helpEl = $("help"), scrim = $("scrim");
+const INST_DESC = { synth:"Warm, smooth tone", bells:"Bright and ringing", guitar:"Plucked strings" };
+const MUSIC_DESC = { off:"No backing music", orch:"Strings, brass, timpani", edm:"Beat, bass and synths" };
+const THEME_DESC = ["Electric glow", "Sweet striped rope", "Flowing water", "Flames and embers", "Comets and stars", "Seven glowing centres"];
+const SHEETS = [["bVoice", instPanel], ["bMusic", musicPanel], ["bTheme", themePanel]];
+const card = (icon, name, desc, onclick) => {
+  const b = document.createElement("button"); b.className = "card"; b.innerHTML = `<span class="i">${icon}</span><span><span class="t">${name}</span><span class="d">${desc}</span></span>`;
+  b.onclick = e => { e.stopPropagation(); onclick(); }; return b;
+};
+function buildSheet(panel, title, cards, extra) {
+  panel.innerHTML = `<h2>${title}</h2>`; const g = document.createElement("div"); g.className = "grid"; cards.forEach(c => g.appendChild(c)); panel.appendChild(g); panel.grid = g;
+  if (extra) panel.appendChild(extra);
+}
 function buildThemePanel() {
-  themePanel.innerHTML = "";
-  THEMES.forEach((th, i) => {
-    const b = document.createElement("button");
-    b.innerHTML = `<span class="i">${THEME_ICONS[i]}</span><span class="t">${th.name}</span>`;
-    b.onclick = e => { e.stopPropagation(); state.theme = i; save(); themePanel.classList.add("hidden"); syncButtons(); };
-    themePanel.appendChild(b);
-  });
-  const ab = document.createElement("button"); ab.id = "animBtn"; ab.innerHTML = '<span class="i">🎞️</span><span class="t">Anim On</span>';
+  const ab = document.createElement("button"); ab.id = "animBtn"; ab.className = "switchrow"; ab.setAttribute("role", "switch");
+  ab.innerHTML = '<span><span class="t">Animation</span><span class="d">Turn off for a plain glowing string if things feel laggy</span></span><span class="switch"></span>';
   ab.onclick = e => { e.stopPropagation(); state.anim = !state.anim; save(); if (!state.anim) { sparks.length = 0; ripples.length = 0; } syncButtons(); };
-  themePanel.appendChild(ab);
+  buildSheet(themePanel, "Visuals", THEMES.map((th, i) => card(THEME_ICONS[i], th.name, THEME_DESC[i], () => { state.theme = i; save(); closeSheets(); syncButtons(); })), ab);
 }
-function buildMusicPanel() {
-  musicPanel.innerHTML = "";
-  MUSIC.forEach(mu => {
-    const b = document.createElement("button");
-    b.innerHTML = `<span class="i">${mu.icon}</span><span class="t">${mu.name}</span>`;
-    b.onclick = e => { e.stopPropagation(); setMusic(mu.id); musicPanel.classList.add("hidden"); syncButtons(); };
-    musicPanel.appendChild(b);
-  });
-}
-function buildInstPanel() {
-  instPanel.innerHTML = "";
-  INSTRUMENTS.forEach((ins, i) => {
-    const b = document.createElement("button");
-    b.innerHTML = `<span class="i">${ins.icon}</span><span class="t">${ins.name}</span>`;
-    b.dataset.i = i;
-    b.onclick = e => { e.stopPropagation(); pickInstrument(i); };
-    instPanel.appendChild(b);
-  });
-}
+function buildMusicPanel() { buildSheet(musicPanel, "Music", MUSIC.map(mu => card(mu.icon, mu.name, MUSIC_DESC[mu.id], () => { setMusic(mu.id); closeSheets(); syncButtons(); }))); }
+function buildInstPanel() { buildSheet(instPanel, "Instrument", INSTRUMENTS.map((ins, i) => card(ins.icon, ins.name, INST_DESC[ins.id], () => pickInstrument(i)))); }
 function pickInstrument(i) {
   state.inst = i; save();
   if (voice) { voice.setInstrument(inst()); if (!state.muted) voice.playNote(inst(), 72, 0.7); }   // preview
   S.lastPluckMidi = null;
-  instPanel.classList.add("hidden"); syncButtons();
+  closeSheets(); syncButtons();
+}
+// the dock's height, so pickers sit above it and note labels stay clear of it
+let dockPx = 0;
+function layoutDock() { const c = $("controls"); dockPx = c.classList.contains("hidden") ? 0 : c.offsetHeight + 16; document.documentElement.style.setProperty("--dock", c.offsetHeight + "px"); }
+addEventListener("resize", layoutDock);
+function setBtn(id, { value, icon, on, warn, pressed }) {
+  const b = $(id); if (value !== undefined) b.querySelector(".v").textContent = value; if (icon) b.querySelector(".i").textContent = icon;
+  b.classList.toggle("on", !!on); b.classList.toggle("warn", !!warn); if (pressed !== undefined) b.setAttribute("aria-pressed", String(pressed));
 }
 function syncButtons() {
-  const ins = inst();
-  $("bVoice").querySelector(".i").textContent = ins.icon;
-  [...instPanel.children].forEach((b, i) => b.classList.toggle("sel", i === state.inst));
-  const mu = MUSIC.find(x => x.id === state.music);
-  $("bMusic").classList.toggle("off", state.music === "off");
-  $("bMusic").querySelector(".i").textContent = mu.icon; 
-  [...musicPanel.children].forEach((b, k) => b.classList.toggle("sel", MUSIC[k].id === state.music));
-  $("bMute").classList.toggle("off", state.muted);
-  $("bMute").querySelector(".i").textContent = state.muted ? "🔇" : "🔊";
-  $("bTheme").querySelector(".i").textContent = THEME_ICONS[state.theme];
-  [...themePanel.children].slice(0, THEMES.length).forEach((b, k) => b.classList.toggle("sel", k === state.theme));
-  const ab = $("animBtn"); if (ab) { ab.classList.toggle("sel", !state.anim); ab.querySelector(".i").textContent = state.anim ? "🎞️" : "⏸️"; ab.querySelector(".t").textContent = state.anim ? "Anim On" : "Anim Off"; }
-  $("bFloat").classList.toggle("off", !state.float);
-  $("bFull").querySelector(".i").textContent = isFS() ? "🗗" : "⛶";
-  $("bFull").querySelector(".t").textContent = isFS() ? "Exit" : "Full";
+  const ins = inst(), mu = MUSIC.find(x => x.id === state.music);
+  setBtn("bVoice", { value:ins.name, icon:ins.icon });
+  setBtn("bMusic", { value:mu.name, icon:mu.icon, on:state.music !== "off" });
+  setBtn("bTheme", { value:THEMES[state.theme].name, icon:THEME_ICONS[state.theme] });
+  setBtn("bMute", { value:state.muted ? "Muted" : "On", icon:state.muted ? "🔇" : "🔊", warn:state.muted, pressed:state.muted });
+  setBtn("bFloat", { value:state.float ? "On" : "Off", on:state.float, pressed:state.float });
+  setBtn("bFull", { value:isFS() ? "On" : "Off", icon:isFS() ? "🗗" : "⛶", on:isFS(), pressed:isFS() });
+  [...instPanel.grid.children].forEach((b, i) => b.classList.toggle("sel", i === state.inst));
+  [...musicPanel.grid.children].forEach((b, k) => b.classList.toggle("sel", MUSIC[k].id === state.music));
+  [...themePanel.grid.children].forEach((b, k) => b.classList.toggle("sel", k === state.theme));
+  const ab = $("animBtn"); if (ab) ab.setAttribute("aria-checked", String(state.anim));
+  layoutDock();
 }
-$("bVoice").onclick = e => { e.stopPropagation(); musicPanel.classList.add("hidden"); themePanel.classList.add("hidden"); instPanel.classList.toggle("hidden"); };
-$("bMusic").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); themePanel.classList.add("hidden"); musicPanel.classList.toggle("hidden"); };
-document.addEventListener("click", e => { if (!instPanel.contains(e.target)) instPanel.classList.add("hidden"); if (!musicPanel.contains(e.target)) musicPanel.classList.add("hidden"); if (!themePanel.contains(e.target)) themePanel.classList.add("hidden"); });
+function closeSheets(except) {
+  for (const [bid, sh] of SHEETS) if (sh !== except) { sh.classList.add("hidden"); $(bid).setAttribute("aria-expanded", "false"); }
+}
+function toggleSheet(sh, bid) {
+  const open = sh.classList.contains("hidden"); closeSheets(open ? sh : null); setHelp(false);
+  sh.classList.toggle("hidden", !open); $(bid).setAttribute("aria-expanded", String(open));
+}
+function setHelp(open) {
+  const was = !helpEl.classList.contains("hidden"); helpEl.classList.toggle("hidden", !open); scrim.classList.toggle("hidden", !open); $("bHelp").setAttribute("aria-expanded", String(open));
+  if (open) { closeSheets(); $("helpClose").focus(); } else if (was) $("bHelp").focus();
+}
+for (const [bid, sh] of SHEETS) $(bid).onclick = e => { e.stopPropagation(); toggleSheet(sh, bid); };
+$("bHelp").onclick = e => { e.stopPropagation(); setHelp(helpEl.classList.contains("hidden")); };
+$("helpClose").onclick = () => setHelp(false); $("helpDone").onclick = () => setHelp(false);
+scrim.addEventListener("click", () => setHelp(false));
+document.addEventListener("click", e => { if (!SHEETS.some(([, sh]) => sh.contains(e.target))) closeSheets(); });
 $("bMute").onclick = () => { state.muted = !state.muted; voice && voice.setMuted(state.muted); save(); syncButtons(); };
-$("bTheme").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); musicPanel.classList.add("hidden"); themePanel.classList.toggle("hidden"); };
 $("bFloat").onclick = () => { state.float = !state.float; if (!state.float) clearFloat(); save(); syncButtons(); };
 $("bFull").onclick = toggleFS;
-const helpEl = $("help");
-const setHelp = open => helpEl.classList.toggle("hidden", !open);
-$("bHelp").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); musicPanel.classList.add("hidden"); themePanel.classList.add("hidden"); setHelp(helpEl.classList.contains("hidden")); };
-$("helpClose").onclick = () => setHelp(false);
-document.addEventListener("click", e => { if (!helpEl.contains(e.target)) setHelp(false); });
-addEventListener("keydown", e => { if (e.key === "Escape") setHelp(false); if (e.key === "?" || e.key === "h" || e.key === "H") setHelp(helpEl.classList.contains("hidden")); });
+addEventListener("keydown", e => {
+  if (e.key === "Escape") { setHelp(false); closeSheets(); }
+  else if ((e.key === "?" || e.key === "h" || e.key === "H") && !e.target.closest?.("input,textarea")) setHelp(helpEl.classList.contains("hidden"));
+});
 </script>
 </body>
 </html>
