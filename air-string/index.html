@@ -77,6 +77,7 @@
   .card .d { display:block; margin-top:2px; font-size:12.5px; line-height:1.3; color:var(--muted); }
   .card.sel { border-color:var(--blue); background:rgba(10,132,255,.2); }
   .card.sel::after { content:"✓"; position:absolute; right:12px; top:50%; transform:translateY(-50%); font-weight:800; color:var(--blue); }
+  .sheet .hint { margin:10px 4px 2px; font-size:12.5px; line-height:1.35; color:var(--muted); }
   .switchrow { display:flex; align-items:center; justify-content:space-between; gap:14px; width:100%; margin-top:10px; padding:12px 14px; cursor:pointer; text-align:left;
     border-radius:16px; border:1.5px solid var(--line); background:rgba(255,255,255,.05); }
   .switchrow .t { display:block; font-size:15px; font-weight:700; }
@@ -161,9 +162,14 @@
     <li>Curl the same finger on both hands to remove that string and its note. Open both again to bring it back.</li>
     <li><b>Duet:</b> while someone holds the five strings, a friend can pluck them by sweeping their fingers across the strings. Up to four hands are tracked.</li>
   </ul>
+  <h3>🚨 Danger mode</h3>
+  <ul>
+    <li>Pick <b>Danger</b> under Music for fast, dark action music. Your finger notes turn into a low laser-like hum.</li>
+    <li>The glowing lines between your hands become a digital power ball: energy streams in from your fingers and gathers in the middle, with a soft charging sound.</li>
+  </ul>
   <h3>🎧 Backing music</h3>
   <ul>
-    <li>Open <b>Music</b> and pick <b>Orchestra</b> (strings, cellos, violins, flute, brass, timpani) or <b>EDM</b> (kick, hats, bass, synth stabs and a lead). Pick Off to stop.</li>
+    <li>Open <b>Music</b> and pick <b>Orchestra</b> (strings, cellos, violins, flute, brass, timpani) or <b>EDM</b> (kick, hats, bass, synth stabs and a lead), or <b>Danger</b> (see above). Pick Off to stop.</li>
     <li>Raise your hands for louder, lower them for softer. Spread your hands wide for more energy: brass and drums, or claps, stabs and lead.</li>
     <li>Move your hands faster to speed it up, hold still to let it slow down.</li>
     <li>You can still pinch, pull out the five strings, or pluck as a duet over the top.</li>
@@ -245,11 +251,13 @@ const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0, music:"o
 let savedInstId = "synth";
 try { const sv = JSON.parse(localStorage.getItem("airstring") || "{}"); Object.assign(state, sv); savedInstId = sv.instId; } catch {}
 state.inst = Math.max(0, INSTRUMENTS.findIndex(i => i.id === savedInstId));     // saved by id; old numeric saves and junk fall back to Synth
-if (!["off", "orch", "edm"].includes(state.music)) state.music = state.orch ? "orch" : "off";
+if (!["off", "orch", "edm", "danger"].includes(state.music)) state.music = state.orch ? "orch" : "off";
 if (!THEMES[state.theme]) state.theme = 0;
 state.snap = true; state.skeleton = true;            // no longer switchable: always snap to the scale, always show hands
 const save = () => { try { const { inst: _i, ...rest } = state; localStorage.setItem("airstring", JSON.stringify({ ...rest, instId:INSTRUMENTS[state.inst].id })); } catch {} };
-const inst = () => INSTRUMENTS[state.inst];
+// While Danger music is on, finger notes become a low laser-like hum instead of the chosen instrument
+const LASER = { id:"laser", name:"Laser", icon:"🔦", laser:true, mode:"sustain", w1:"sawtooth", w2:"square", det:14, q:5, lo:200, hi:1600, atk:0.08, rel:0.3, vib:25, baseVib:14, mix:[0.45, 0.3], padType:"sine", note:{ atk:0.005, dec:0.7, cut:1800 } };
+const inst = () => state.music === "danger" ? LASER : INSTRUMENTS[state.inst];
 
 let toast = "", toastUntil = 0;
 const showToast = (msg, ms = 4500) => { toast = msg; toastUntil = performance.now() + ms; };
@@ -336,6 +344,7 @@ class Voice {
       o.connect(g); o2.connect(g); g.connect(this.padFilter); o.start(); o2.start(); return { o, o2, g };
     });
     this.padOn = false;
+    { const sr = a.sampleRate, nb = a.createBuffer(1, sr, sr), d = nb.getChannelData(0); for (let i = 0; i < sr; i++) d[i] = Math.random() * 2 - 1; this.sfxNoise = nb; }
     this.freq = 440; this.on = false; this.ksCache = new Map(); this.inst = INSTRUMENTS[0];
   }
   makeImpulse(seconds, decay) {
@@ -352,7 +361,7 @@ class Voice {
       this.o1.type = ins.w1; this.o2.type = ins.w2; this.o2.detune.value = ins.det; this.filter.Q.value = ins.q;
       this.mix1.gain.value = ins.mix[0]; this.mix2.gain.value = ins.mix[1];
     }
-    this.pad.forEach(p => { p.o.type = ins.mode === "sustain" ? ins.w1 : "triangle"; });
+    this.pad.forEach(p => { p.o.type = ins.padType || (ins.mode === "sustain" ? ins.w1 : "triangle"); });
   }
   padSet(i, freq, gain) {
     const t = this.ctx.currentTime, p = this.pad[i]; this.padOn = true;
@@ -362,6 +371,22 @@ class Voice {
   padOff() {
     if (!this.padOn) return; this.padOn = false;
     const t = this.ctx.currentTime; this.pad.forEach(p => p.g.gain.setTargetAtTime(0, t, 0.12));
+  }
+  chargeSfx() {                                       // subtle: energy gathering in the middle
+    const a = this.ctx, t = a.currentTime + 0.01;
+    const n = a.createBufferSource(), bp = a.createBiquadFilter(), g = a.createGain();
+    n.buffer = this.sfxNoise; n.loop = true; bp.type = "bandpass"; bp.Q.value = 3; bp.frequency.setValueAtTime(250, t); bp.frequency.exponentialRampToValueAtTime(3200, t + 0.6);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.14, t + 0.45); g.gain.exponentialRampToValueAtTime(0.0008, t + 0.75);
+    n.connect(bp); bp.connect(g); g.connect(this.sendIn); n.start(t); n.stop(t + 0.8);
+    const o = a.createOscillator(), og = a.createGain(); o.type = "sine"; o.frequency.setValueAtTime(70, t); o.frequency.exponentialRampToValueAtTime(420, t + 0.6);
+    og.gain.setValueAtTime(0.0001, t); og.gain.linearRampToValueAtTime(0.08, t + 0.5); og.gain.exponentialRampToValueAtTime(0.0008, t + 0.8);
+    o.connect(og); og.connect(this.sendIn); o.start(t); o.stop(t + 0.85);
+  }
+  dischargeSfx() {                                    // a soft low thump when the ball lets go
+    const a = this.ctx, t = a.currentTime + 0.005, o = a.createOscillator(), g = a.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.25);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.14, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0008, t + 0.3);
+    o.connect(g); g.connect(this.sendIn); o.start(t); o.stop(t + 0.35);
   }
   setNoteCutoff(c) { this.noteFilter.frequency.setTargetAtTime(c, this.ctx.currentTime, 0.05); }
 
@@ -411,7 +436,7 @@ class Voice {
     this.ksCache.set(key, hit); return hit;
   }
   playNote(ins, midi, vel, delay = 0) {
-    const a = this.ctx, t = a.currentTime + 0.012 + delay, f = midiToFreq(midi);
+    const a = this.ctx, t = a.currentTime + 0.012 + delay, f = midiToFreq(ins.laser ? midi - 24 : midi);
     const g = a.createGain(); g.connect(this.noteFilter);
     let src = null;
     const cleanup = n => { n.onended = () => { try { g.disconnect(); } catch {} }; };
@@ -425,6 +450,7 @@ class Voice {
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vel * 0.7, t + n.atk);
       g.gain.exponentialRampToValueAtTime(0.0008, t + n.atk + n.dec);
       const end = t + n.atk + n.dec + 0.05;
+      if (ins.laser) for (const o of [o1, o2]) { o.frequency.setValueAtTime(f * 1.7, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.14); }   // a low "pew"
       o1.start(t); o2.start(t); o1.stop(end); o2.stop(end); src = o1;
     } else if (ins.kind === "bell") {                 // FM bell
       const car = a.createOscillator(), mod = a.createOscillator(), mg = a.createGain(), p2 = a.createOscillator(), p2g = a.createGain();
@@ -638,14 +664,56 @@ class Edm extends Orchestra {                         // four-on-the-floor house
     if (bar === 0 && s === 0 && this.riser) { this.riser = false; this.noiseHit("Hats", t, { type:"highpass", freq:4500, dur:1.1, peak:0.9 }); }
   }
 }
-let orch = null, engines = { orch:null, edm:null };
+const DANGER_PROG = [{ pc:4, minor:true }, { pc:5, minor:false }, { pc:4, minor:true }, { pc:2, minor:false }];   // Em F Em D: tense, driving
+const DANGER_BASS = [0, 0, 12, 0, 0, 3, 0, 5, 0, 0, 12, 0, 1, 0, -2, 0];            // palm-muted ostinato, semitones above the root
+const DANGER_POOL = [0, 1, 3, 7, 8, 12, 13, 15], DANGER_ARP = [0, 2, 1, 3, 2, 4, 3, 5, 4, 6, 5, 7, 6, 4, 5, 3];
+class Danger extends Edm {                            // fast, dark action music: syncopated kick, war drums, bass ostinato, brass stabs, alarm risers
+  constructor(v) { super(v); this.bpm = 150; this.bus.Timpani = this.bus.Kick; }       // the war drums share the kick channel
+  setTempo(mov) { this.bpm = lerp(this.bpm, 140 + 30 * clamp(mov, 0, 1), 0.02); this.dl.delayTime.setTargetAtTime(60 / this.bpm * 0.75, this.ctx.currentTime, 0.2); }
+  schedule(step, t, d) {
+    const s = step % 16, bar = Math.floor(step / 16) % 4, ch = DANGER_PROG[bar], L = this.level, P = this.power, a = this.ctx;
+    const m = (oct, semis) => 12 * (oct + 1) + ch.pc + semis, tones = ch.minor ? [0, 3, 7] : [0, 4, 7];
+    if (s % 4 === 0) this.pulseAt.push(t);
+    if (L > 0.2 && [0, 3, 6, 8, 11, 14].includes(s)) this.kick(t);                        // 3-3-2 syncopation
+    if (L > 0.2 && (s === 0 || (s === 8 && P > 0.5))) this.timp(t, P > 0.7);              // war drums
+    if (P > 0.25 && (s === 4 || s === 12)) {
+      this.noiseHit("Clap", t, { type:"bandpass", freq:1900, q:0.8, dur:0.2, peak:1 });
+      this.noiseHit("Clap", t, { type:"highpass", freq:5000, dur:0.12, peak:0.5 });
+    }
+    if (L > 0.35) this.noiseHit("Hats", t, { type:"highpass", freq:9000, dur:s % 2 ? 0.03 : 0.05, peak:s % 4 === 2 ? 0.5 : 0.26 });
+    if (L > 0.2) {                                                                          // bass ostinato
+      const off = DANGER_BASS[s];
+      this.tone("Bass", { type:"sawtooth", freq:midiToFreq(m(2, off)), t, dur:d * 0.8, atk:0.003, rel:0.05, peak:0.24, lp:450 + 800 * P, q:3 });
+      this.tone("Bass", { type:"sine", freq:midiToFreq(m(1, off)), t, dur:d * 0.8, atk:0.003, rel:0.05, peak:0.2 });
+    }
+    if (P > 0.35 && [0, 3, 6, 10, 12, 14].includes(s))                                      // staccato string stabs
+      for (const iv of tones) this.tone("Chords", { type:"sawtooth", freq:midiToFreq(m(4, iv)), t, dur:d * 1.4, atk:0.004, rel:0.08, peak:0.08, det:10, lp:1100 + 2300 * P, q:2 });
+    if (L > 0.45 && P > 0.3)                                                                // driving synth arpeggio
+      this.tone("Lead", { type:"square", freq:midiToFreq(m(4, DANGER_POOL[DANGER_ARP[s]])), t, dur:d * 0.8, atk:0.004, rel:0.07, peak:0.045, lp:2000 + 2400 * P, q:1.5 });
+    if (P > 0.45 && bar === 0 && (s === 0 || s === 8))                                      // brass hit
+      for (const iv of [0, 7, 12]) this.tone("Chords", { type:"sawtooth", freq:midiToFreq(m(3, iv)), t, dur:d * 3, atk:0.02, rel:0.3, peak:0.14, det:6, lp:500, lpEnd:2400, lpT:0.25, q:1.2 });
+    if (bar === 3 && P > 0.4) {                                                             // alarm riser into the next loop
+      if (s === 0) {
+        const len = d * 16, o = a.createOscillator(), g = a.createGain(), bp = a.createBiquadFilter();
+        o.type = "sawtooth"; o.frequency.setValueAtTime(260, t); o.frequency.exponentialRampToValueAtTime(1100, t + len);
+        bp.type = "lowpass"; bp.frequency.value = 1800; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.1, t + len); g.gain.linearRampToValueAtTime(0.0001, t + len + 0.05);
+        o.connect(bp); bp.connect(g); g.connect(this.bus.Lead); o.start(t); o.stop(t + len + 0.1); this.live.push({ g, end:t + len + 0.1 }); this.meterHit("Lead", t); this.riser = true;
+      }
+      if (s >= 12) this.noiseHit("Clap", t, { type:"bandpass", freq:1500 + s * 90, q:0.9, dur:0.08, peak:0.4 + (s - 12) * 0.12 });
+    }
+    if (bar === 0 && s === 0 && this.riser) { this.riser = false; this.noiseHit("Hats", t, { type:"highpass", freq:4500, dur:1.1, peak:0.9 }); this.timp(t, true); }
+  }
+}
+let orch = null, engines = { orch:null, edm:null, danger:null };
 const MUSIC = [
   { id:"off",  name:"Off",       icon:"⏹️" },
   { id:"orch", name:"Orchestra", icon:"🎼" },
   { id:"edm",  name:"EDM",       icon:"🎛️" },
+  { id:"danger", name:"Danger",   icon:"🚨" },
 ];
 function setMusic(id) {
   state.music = id; save();
+  if (voice) voice.setInstrument(inst());              // Danger swaps your instrument for the laser hum, and back
   if (orch) { orch.stop(); orch = null; }
   if (id !== "off" && engines[id]) { orch = engines[id]; if (voice) voice.resume(); orch.start(); }
 }
@@ -880,7 +948,7 @@ function pluckString(i, vel, delay = 0) {
   const u = rand(0.2, 0.8), px = lerp(o.a.x, o.b.x, u), py = lerp(o.a.y, o.b.y, u); burst(px, py, 5, 0.12 * DIAG, hueFor(1 - i / 4)); ripple(px, py, hueFor(1 - i / 4));
 }
 function startMulti() {
-  M.state = "active"; M.fade = 1; M.lostAt = 0;
+  M.state = "active"; M.fade = 1; M.lostAt = 0; M.since = performance.now(); if (state.music === "danger" && voice && !state.muted) voice.chargeSfx();
   for (let f = 0; f < 5; f++) { const o = M.strings[f]; initChain(o, tips[0][f], tips[1][f]); o.canTrig = true; o.removed = false; o.vis = 1; curled[0][f] = curled[1][f] = false; }
   voice && voice.setNoteCutoff(6500);
   for (let f = 0; f < 5; f++) {                       // harp-style strum, thumb to pinky
@@ -990,7 +1058,7 @@ function updateMulti(now, dt) {
       if (!o.removed && was) { o.canTrig = true; o.lastPluck = 0; pluckString(f, 0.8); }
     }
     o.vis = lerp(o.vis, live && o.removed ? 0 : 1, Math.min(1, dt * 10));
-    if (live && o.removed && voice) voice.padSet(f, midiToFreq(BASE_MIDI + PENT[f] + oct), 0);
+    if (live && o.removed && voice) voice.padSet(f, midiToFreq(BASE_MIDI + PENT[f] + oct - (inst().laser ? 24 : 0)), 0);
     if (live && !o.removed && !curled[0][f] && !curled[1][f]) {                       // wiggle a finger to pluck its string
       if (o.canTrig && o.wobble > 0.16 && now - o.lastPluck > 130) { o.canTrig = false; pluckString(f, clamp(0.65 + o.wobble, 0.65, 1)); }
       else if (!o.canTrig && o.wobble < 0.07) o.canTrig = true;
@@ -998,7 +1066,7 @@ function updateMulti(now, dt) {
     }
     if (live && !o.removed && voice && !state.muted) {   // quiet sustained chord that swells as each string moves
       const midY = (o.a.y + o.b.y) / 2, lift = 0.6 + 0.4 * (1 - clamp(midY / H, 0, 1));
-      voice.padSet(f, midiToFreq(BASE_MIDI + PENT[f] + oct), (0.05 + 0.3 * Math.min(1, o.wobble * 2)) * lift);
+      voice.padSet(f, midiToFreq(BASE_MIDI + PENT[f] + oct - (inst().laser ? 24 : 0)), (0.05 + 0.3 * Math.min(1, o.wobble * 2)) * lift);
     }
   }
 }
@@ -1052,7 +1120,7 @@ function frame(now) {
   const active = !state.write && slots[0].pinched && slots[1].pinched && M.state !== "active";
 
   if (active && !prevActive) {
-    S.since = now;
+    S.since = now; if (state.music === "danger" && voice && !state.muted) voice.chargeSfx();
     initChain(S, slots[0], slots[1]); S.recoil = null; S.fade = 1; S.lastPluckMidi = null; S.noteSemis = -99;
     burst((slots[0].x + slots[1].x) / 2, (slots[0].y + slots[1].y) / 2, 14, 0.25 * DIAG);
   }
@@ -1069,7 +1137,7 @@ function frame(now) {
       toA: keepA ? { x:slots[0].x, y:slots[0].y } : (keepB ? { x:slots[1].x, y:slots[1].y } : mid),
       toB: keepB ? { x:slots[1].x, y:slots[1].y } : (keepA ? { x:slots[0].x, y:slots[0].y } : mid), keepA, keepB };
     burst(S.a.x, S.a.y, 22, 0.35 * DIAG); burst(S.b.x, S.b.y, 22, 0.35 * DIAG);
-    voice && voice.release();
+    voice && voice.release(); if (state.music === "danger" && voice && !state.muted) voice.dischargeSfx();
   }
   prevActive = active; S.active = active;
 
@@ -1094,7 +1162,7 @@ function frame(now) {
     S.t = lerp(S.t, t, 0.5);
     const raw = (1 - S.t) * SPAN;                                                // semitones above C4
     let semis = raw;
-    if (state.snap) {
+    if (state.snap && !ins.laser) {
       if (Math.abs(raw - S.noteSemis) > 0.75) {                                   // hysteresis around note boundaries
         const oct = Math.floor(raw / 12), r = raw - oct * 12;
         let best = SCALE_STEPS[0], bd = 99;
@@ -1104,7 +1172,7 @@ function frame(now) {
       semis = S.noteSemis;
     } else S.noteSemis = raw;
     S.midi = BASE_MIDI + semis;
-    S.freq = midiToFreq(S.midi);
+    S.freq = midiToFreq(S.midi - (ins.laser ? 24 : 0));      // laser hum sits two octaves lower and glides freely
     S.note = noteName(S.midi);
     S.hue = hueFor(S.t);
 
@@ -1154,8 +1222,8 @@ function render(dt, now) {
 
   ctx.globalCompositeOperation = "lighter";
   if (S.active || S.recoil) {
-    drawChain(S, S.hue, S.fade, 1, 2);
-    if (S.active && state.anim && Math.random() < 0.3) {            // drifting sparks off the string
+    if (state.music === "danger") drawBallSingle(); else drawChain(S, S.hue, S.fade, 1, 2);
+    if (S.active && state.anim && state.music !== "danger" && Math.random() < 0.3) {            // drifting sparks off the string
       const pts = S.pts, f = Math.random() * (N_PTS - 1), i0 = Math.floor(f), i1 = Math.min(N_PTS - 1, i0 + 1);
       spawnSpark(lerp(pts[i0].x, pts[i1].x, f - i0), lerp(pts[i0].y, pts[i1].y, f - i0), rand(-30, 30) * DPR, rand(-60, -10) * DPR, S.hue, rand(0.4, 0.9), rand(1.5, 3.5));
     }
@@ -1163,7 +1231,7 @@ function render(dt, now) {
   if (F.on) drawChain(F, F.hue, 1, 1, 1);
   drawWrite();
   if (M.fade > 0) {
-    M.strings.forEach((o, i) => { if (o.vis > 0.02) drawChain(o, hueFor(1 - i / 4), M.fade * o.vis * (0.65 + 0.35 * o.flash), 0.55 + 0.25 * o.flash, 1); });
+    if (state.music === "danger") drawBallMulti(); else M.strings.forEach((o, i) => { if (o.vis > 0.02) drawChain(o, hueFor(1 - i / 4), M.fade * o.vis * (0.65 + 0.35 * o.flash), 0.55 + 0.25 * o.flash, 1); });
   }
   if (state.anim) { drawRipples(dt); drawSparks(dt); }
   ctx.globalCompositeOperation = "source-over";
@@ -1248,7 +1316,48 @@ function drawFloatLabels() {                           // note ticks along the f
   ctx.fillText(`${inst().icon} ${inst().name} · C pentatonic`, (a.x + b.x) / 2 - nx * 30 * DPR, (a.y + b.y) / 2 - ny * 30 * DPR);
   ctx.textBaseline = "alphabetic";
 }
+// A digital power ball where the hands meet: data streams run in from the fingertips and gather into a spinning wireframe orb
+function drawPowerBall(cx, cy, R, hue, a, sources) {
+  const u = DPR, T = animT, th = THEMES[state.theme], simple = !state.anim;
+  R *= 1 + 0.05 * Math.sin(T * 9);
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (const p of sources) {                           // streams of data flowing into the middle
+    ctx.strokeStyle = hsl(hue, 100, 72, 0.75 * a); ctx.lineWidth = 2 * u;
+    if (!simple) { ctx.setLineDash([7 * u, 9 * u]); ctx.lineDashOffset = -T * 140 * u; }
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    if (simple) ctx.lineTo(cx, cy);
+    else { for (let k = 1; k < 6; k++) { const t = k / 6; ctx.lineTo(lerp(p.x, cx, t) + rand(-1, 1) * 9 * u * (1 - t), lerp(p.y, cy, t) + rand(-1, 1) * 9 * u * (1 - t)); } ctx.lineTo(cx, cy); }
+    ctx.stroke(); ctx.setLineDash([]);
+    drawGlow(p.x, p.y, 11 * u, hue, a);
+  }
+  drawGlow(cx, cy, R * 2.5, hue, a * 0.9);
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+  g.addColorStop(0, `rgba(255,255,255,${0.95 * a})`); g.addColorStop(0.45, hsl(hue, 100, 66, 0.8 * a)); g.addColorStop(1, hsl(hue, 100, 50, 0.12 * a));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = hsl(hue, 100, 85, 0.8 * a); ctx.lineWidth = 1.5 * u;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  if (simple) return;
+  for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.ellipse(cx, cy, Math.max(1, R * Math.abs(Math.cos(T * 0.9 + k * Math.PI / 3))), R, 0, 0, Math.PI * 2); ctx.stroke(); }   // turning wireframe
+  ctx.beginPath(); ctx.ellipse(cx, cy, R, R * 0.28, T * 0.3, 0, Math.PI * 2); ctx.stroke();
+  for (let i = 0; i < 16; i++) {                       // digital specks orbiting the ball
+    const ang = T * (1 + (i % 3) * 0.4) + i * 2.4, rr = R * (1.1 + 0.5 * ((i * 37) % 10) / 10), z = (2 + (i % 3) * 1.5) * u;
+    ctx.fillStyle = Math.random() > 0.15 ? `rgba(255,255,255,${0.9 * a})` : hsl(hue, 100, 70, 0.7 * a); ctx.fillRect(cx + Math.cos(ang) * rr, cy + Math.sin(ang) * rr * 0.8, z, z);
+  }
+  if (Math.random() < 0.1) { ctx.fillStyle = hsl(hue, 100, 85, 0.45 * a); ctx.fillRect(cx - R * 1.2, cy + rand(-R, R), R * 2.4, 2 * u); }   // a glitch scanline
+}
+function drawBallSingle() {
+  const now = performance.now(), grow = clamp((now - (S.since || 0)) / 450, 0.05, 1), dist = Math.hypot(S.b.x - S.a.x, S.b.y - S.a.y);
+  drawPowerBall((S.a.x + S.b.x) / 2, (S.a.y + S.b.y) / 2, clamp(dist * 0.2, 22 * DPR, 130 * DPR) * grow, hueFor(0.3), S.fade, [S.a, S.b]);
+}
+function drawBallMulti() {
+  const live = M.strings.filter(o => o.vis > 0.05); if (!live.length) return;
+  const src = [], grow = clamp((performance.now() - (M.since || 0)) / 450, 0.05, 1); let cx = 0, cy = 0, len = 0, wob = 0;
+  for (const o of live) { src.push(o.a, o.b); cx += o.a.x + o.b.x; cy += o.a.y + o.b.y; len += Math.hypot(o.b.x - o.a.x, o.b.y - o.a.y); wob += o.wobble; }
+  const n = live.length; cx /= n * 2; cy /= n * 2; len /= n; wob /= n;
+  drawPowerBall(cx, cy, clamp(len * 0.2, 24 * DPR, 140 * DPR) * grow * (1 + 0.5 * wob), hueFor(0.3), M.fade, src);
+}
 function drawNoteLabels() {
+  if (inst().laser) return;                           // no note names for a laser hum
   if (F.on) drawFloatLabels();
   if (state.write) drawWriteLabels();
   if (M.fade > 0) {
@@ -1471,7 +1580,7 @@ async function start() {
     if (!voice) voice = new Voice();
     await voice.resume();
     voice.setMuted(state.muted); voice.setInstrument(inst());
-    if (!engines.orch) { engines.orch = new Orchestra(voice); engines.edm = new Edm(voice); }
+    if (!engines.orch) { engines.orch = new Orchestra(voice); engines.edm = new Edm(voice); engines.danger = new Danger(voice); }
     setMusic(state.music);
   } catch (e) { voice = null; console.warn("audio failed", e); }
 
@@ -1526,7 +1635,7 @@ const ICONS = {                                       // SF Symbols-style line i
 };
 const svgIcon = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
 const INST_DESC = { synth:"Warm, smooth tone", bells:"Bright and ringing", guitar:"Plucked strings" };
-const MUSIC_DESC = { off:"No backing music", orch:"Strings, brass, timpani", edm:"Beat, bass and synths" };
+const MUSIC_DESC = { off:"No backing music", orch:"Strings, brass, timpani", edm:"Beat, bass and synths", danger:"Action music, laser hum" };
 const THEME_DESC = ["Electric glow", "Sweet striped rope", "Flowing water", "Flames and embers", "Comets and stars", "Seven glowing centres"];
 const writePanel = $("writePanel");
 const SHEETS = [["bVoice", instPanel], ["bMusic", musicPanel], ["bTheme", themePanel], ["bWrite", writePanel]];
@@ -1561,7 +1670,10 @@ function buildWritePanel() {
   writePanel.appendChild(a);
 }
 function buildMusicPanel() { buildSheet(musicPanel, "Music", MUSIC.map(mu => card(mu.icon, mu.name, MUSIC_DESC[mu.id], () => { setMusic(mu.id); closeSheets(); syncButtons(); }))); }
-function buildInstPanel() { buildSheet(instPanel, "Instrument", INSTRUMENTS.map((ins, i) => card(ins.icon, ins.name, INST_DESC[ins.id], () => pickInstrument(i)))); }
+function buildInstPanel() {
+  const hint = document.createElement("p"); hint.className = "hint hidden"; hint.textContent = "Danger music is on, so finger notes play as a laser hum. Your instrument comes back when you pick other music.";
+  buildSheet(instPanel, "Instrument", INSTRUMENTS.map((ins, i) => card(ins.icon, ins.name, INST_DESC[ins.id], () => pickInstrument(i))), hint); instPanel.hint = hint;
+}
 function pickInstrument(i) {
   state.inst = i; save();
   if (voice) { voice.setInstrument(inst()); if (!state.muted) voice.playNote(inst(), 72, 0.7); }   // preview
@@ -1589,6 +1701,7 @@ function syncButtons() {
   $("writeSwitch").setAttribute("aria-checked", String(state.write));
   setBtn("bFull", { value:isFS() ? "On" : "Off", icon:isFS() ? "exit" : "full", on:isFS(), pressed:isFS() });
   [...instPanel.grid.children].forEach((b, i) => b.classList.toggle("sel", i === state.inst));
+  instPanel.hint.classList.toggle("hidden", state.music !== "danger");
   [...musicPanel.grid.children].forEach((b, k) => b.classList.toggle("sel", MUSIC[k].id === state.music));
   [...themePanel.grid.children].forEach((b, k) => b.classList.toggle("sel", k === state.theme));
   const ab = $("animBtn"); if (ab) ab.setAttribute("aria-checked", String(state.anim));
