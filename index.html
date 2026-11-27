@@ -713,9 +713,7 @@ const S = { ph: 'title', n: 0, roundMs: CONFIG.ROUND_MS, t: 0, cdT: 0, drones: [
   codeBuf: '', connecting: false, connectError: '',
   gameMode: 'drones',                 // live value for the current match (mirrors NET.gameMode)
   bombs: [], bombSeq: 0,
-  battleCfg: { bots: 2, durMin: 2, mode: 'drones', airString: false } };   // practice-vs-bots settings page selection; airString is a launch choice, never read by match code
-{ const t = store.get('bsw_battle_tile', 'drones');                       // last chosen mode tile; anything unknown falls back to drones
-  if (t === 'powers') S.battleCfg.mode = 'powers'; else if (t === 'air') S.battleCfg.airString = true; }
+  battleCfg: { bots: 2, durMin: 2, mode: 'drones' } };   // practice-vs-bots settings page selection
 
 function startLocal(nBots) {
   const n = clamp(1 + (Number.isFinite(nBots) ? nBots : 2), 2, CONFIG.MAX_SLOTS);
@@ -1396,10 +1394,7 @@ function segRow(c, x, y, w, h, labels, selIdx, fontPx) {
     c.strokeStyle = sel ? CC.cyan : CC.bd; c.lineWidth = sel ? 2.5 : 2; c.fillStyle = sel ? CC.md : CC.pan;
     c.beginPath(); c.roundRect(bx, y, bw, h, 8); c.fill(); c.stroke();
     c.fillStyle = sel ? CC.lt : CC.t2; c.font = '700 ' + (fontPx || 13) + 'px system-ui'; c.textAlign = 'center';
-    const fp = fontPx || 13, sp = label.indexOf(' ');
-    if (sp > 0 && c.measureText(label).width > bw - 10) {      // too wide for one line: break at the space
-      c.fillText(label.slice(0, sp), bx + bw / 2, y + h / 2 - fp * 0.1); c.fillText(label.slice(sp + 1), bx + bw / 2, y + h / 2 + fp * 1.05);
-    } else c.fillText(label, bx + bw / 2, y + h / 2 + fp * 0.36);
+    c.fillText(label, bx + bw / 2, y + h / 2 + (fontPx || 13) * 0.36);
     rects.push({ x: bx, y, w: bw, h });
   });
   return rects;
@@ -1411,21 +1406,19 @@ function drawBattleSettings(c) {
   c.fillText('PRACTICE VS BOTS', VW / 2, PLAY_Y0 + 34);
   let y = PLAY_Y0 + 58;
   c.font = '600 11px system-ui'; c.fillStyle = CC.t2; c.textAlign = 'left';
-  c.save(); if (cfg.airString) c.globalAlpha = 0.3;                      // bots and match length do not apply to Air String
   c.fillText('BOTS', 30, y);
   UI.battle.bots = segRow(c, 30, y + 8, VW - 60, 42, ['1 BOT', '2 BOTS'], cfg.bots - 1);
   y += 62;
   c.fillStyle = CC.t2; c.textAlign = 'left'; c.fillText('MATCH LENGTH', 30, y);
   UI.battle.dur = segRow(c, 30, y + 8, VW - 60, 42, ['1 MIN', '2 MIN', '4 MIN', '∞'], BATTLE_DUR_OPTS.indexOf(cfg.durMin));
-  c.restore();
   y += 62;
   c.fillStyle = CC.t2; c.textAlign = 'left'; c.fillText('GAME MODE', 30, y);
-  UI.battle.mode = segRow(c, 30, y + 8, VW - 60, 48, ['BADSOFFWARES', 'CHARACTER POWERS', 'AIR STRING'], cfg.airString ? 2 : (cfg.mode === 'drones' ? 0 : 1), 11);
+  UI.battle.mode = segRow(c, 30, y + 8, VW - 60, 48, ['BADSOFFWARES', 'CHARACTER POWERS'], cfg.mode === 'drones' ? 0 : 1, 11);
   y += 74;
   c.font = '600 10px system-ui'; c.fillStyle = CC.t2; c.textAlign = 'center';
-  c.fillText(cfg.airString ? 'Uses your camera. Play a string in the air.' : cfg.mode === 'drones' ? 'catch a badsoffware for its own power (dash/slam/blink/hijack)' : 'catch any badsoffware to use YOUR robot\'s signature power', VW / 2, y);
+  c.fillText(cfg.mode === 'drones' ? 'catch a badsoffware for its own power (dash/slam/blink/hijack)' : 'catch any badsoffware to use YOUR robot\'s signature power', VW / 2, y);
   y += 26;
-  UI.battle.start = btn(c, 30, y, VW - 60, 48, cfg.airString ? 'OPEN AIR STRING' : 'START PRACTICE');
+  UI.battle.start = btn(c, 30, y, VW - 60, 48, 'START PRACTICE');
   c.strokeStyle = CC.bd; c.lineWidth = 1.5; c.beginPath(); c.roundRect(10, PLAY_Y0 + 6, 50, 24, 6); c.stroke();
   c.fillStyle = CC.t2; c.font = '600 10px system-ui'; c.textAlign = 'center'; c.fillText('BACK', 35, PLAY_Y0 + 21);
   UI.battle.back = { x: 10, y: PLAY_Y0 + 6, w: 50, h: 24 };
@@ -1515,16 +1508,10 @@ cv.addEventListener('pointerdown', e => {
   if (S.ph === 'battleSettings') {
     const cfg = S.battleCfg;
     if (UI.battle.back && inRect(t, UI.battle.back)) { S.ph = 'title'; return; }
-    if (!cfg.airString) {                                      // greyed out (and ignored) while Air String is picked
-      (UI.battle.bots || []).forEach((r, i) => { if (inRect(t, r)) cfg.bots = i + 1; });
-      (UI.battle.dur || []).forEach((r, i) => { if (inRect(t, r)) cfg.durMin = BATTLE_DUR_OPTS[i]; });
-    }
-    (UI.battle.mode || []).forEach((r, i) => {
-      if (!inRect(t, r)) return;
-      cfg.airString = i === 2; if (i < 2) cfg.mode = i === 0 ? 'drones' : 'powers';       // cfg.mode stays 'drones' | 'powers'
-      store.set('bsw_battle_tile', i === 2 ? 'air' : cfg.mode);
-    });
-    if (UI.battle.start && inRect(t, UI.battle.start)) { if (cfg.airString) { location.href = 'air-string/'; return; } return startLocal(cfg.bots); }   // Snd.init() already ran above
+    (UI.battle.bots || []).forEach((r, i) => { if (inRect(t, r)) cfg.bots = i + 1; });
+    (UI.battle.dur || []).forEach((r, i) => { if (inRect(t, r)) cfg.durMin = BATTLE_DUR_OPTS[i]; });
+    (UI.battle.mode || []).forEach((r, i) => { if (inRect(t, r)) cfg.mode = i === 0 ? 'drones' : 'powers'; });
+    if (UI.battle.start && inRect(t, UI.battle.start)) return startLocal(cfg.bots);
     return;
   }
   if (S.ph === 'enterCode') {

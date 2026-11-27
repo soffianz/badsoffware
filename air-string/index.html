@@ -69,7 +69,6 @@
   <h1>Air String</h1>
   <button id="startBtn" class="big">Start</button>
   <div id="err"></div>
-  <button id="backBtn" class="big alt hidden">Back to BSW</button>
   <small>Everything stays on this device. The camera feed is never recorded, uploaded or saved.</small>
 </div>
 
@@ -86,6 +85,12 @@
     <li>Move your hands apart for a lower note, together for a higher one.</li>
     <li>Raise the string for louder, lower it for quieter. Tilt it to make the tone brighter or mellower.</li>
     <li>Wiggle a hand for vibrato (or a re-pluck on Guitar and Bells). Let go to twang it away.</li>
+  </ul>
+  <h3>Floating string</h3>
+  <ul>
+    <li>Turn on <b>Float</b>, pinch both hands, pull them apart, then let go. The string stays in the air.</li>
+    <li>Pluck it with any finger of either hand. Where you pluck decides the note: low on the left, high on the right.</li>
+    <li>Make a new one to replace it, or turn Float off to clear it.</li>
   </ul>
   <h3>Five strings</h3>
   <ul>
@@ -120,8 +125,8 @@
   <button id="bMusic" title="Music"><span class="i">🎧</span><span class="t">Music</span></button>
   <button id="bMute"  title="Mute"><span class="i">🔊</span><span class="t">Sound</span></button>
   <button id="bTheme" title="Visuals"><span class="i">⚡</span><span class="t">Visuals</span></button>
+  <button id="bFloat" title="Leave the string floating in the air"><span class="i">📌</span><span class="t">Float</span></button>
   <button id="bFull"  title="Full screen"><span class="i">⛶</span><span class="t">Full</span></button>
-  <button id="bBack"  title="Back to Badsoffware"><span class="i">🏠</span><span class="t">BSW</span></button>
 </div>
 <div id="debug"></div>
 
@@ -169,9 +174,9 @@ const canvas = $("c"), ctx = canvas.getContext("2d");
 const video = $("v"), chip = $("chip"), startEl = $("start"), startBtn = $("startBtn"), errEl = $("err");
 const debugEl = $("debug"), instPanel = $("instPanel");
 const DEBUG = new URLSearchParams(location.search).has("debug");
-if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { allHands = h; newDet = true; }; window.__dbg = () => ({ M, S, voice }); }
+if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { allHands = h; newDet = true; }; window.__dbg = () => ({ M, S, F, voice }); }
 
-const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0, music:"off", anim:true };
+const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0, music:"off", anim:true, float:false };
 let savedInstId = "synth";
 try { const sv = JSON.parse(localStorage.getItem("airstring") || "{}"); Object.assign(state, sv); savedInstId = sv.instId; } catch {}
 state.inst = Math.max(0, INSTRUMENTS.findIndex(i => i.id === savedInstId));     // saved by id; old numeric saves and junk fall back to Synth
@@ -627,6 +632,41 @@ const tips = [0, 1].map(() => FINGERS.map(() => ({ fx:new OneEuro(2, 0.03), fy:n
 const curled = [0, 1].map(() => [false, false, false, false, false]);
 const M = { holderWrist:[{ x:0, y:0 }, { x:0, y:0 }], state:"idle", armedAt:-1e9, lostAt:0, fade:0, D:0, strings:FINGERS.map((_, i) => Object.assign(makeChain(M_PTS), { canTrig:true, flash:0, lastPluck:0, midi:BASE_MIDI + PENT[i], removed:false, vis:1 })) };
 const sparks = [];
+// the floating string: left in the air after you let go (when Float is on), plucked with any free finger
+const FLOAT_NOTES = [0, 2, 4, 7, 9, 12, 14, 16];       // C D E G A C D E: low on the left, high on the right
+const F = Object.assign(makeChain(N_PTS), { on:false, hue:20, flash:0, noteFlash:FLOAT_NOTES.map(() => 0), lastTouch:FLOAT_NOTES.map(() => 0) });
+const floatPrev = [];
+function clearFloat() { if (F.on) { burst((F.a.x + F.b.x) / 2, (F.a.y + F.b.y) / 2, 14, 0.25 * DIAG, F.hue); ripple((F.a.x + F.b.x) / 2, (F.a.y + F.b.y) / 2, F.hue); } F.on = false; floatPrev.length = 0; }
+function pluckFloat(t, speed, vx, vy, now) {
+  const idx = clamp(Math.round((F.a.x <= F.b.x ? t : 1 - t) * (FLOAT_NOTES.length - 1)), 0, FLOAT_NOTES.length - 1);
+  if (now - F.lastTouch[idx] < 110) return;
+  F.lastTouch[idx] = now; F.noteFlash[idx] = 1; F.flash = 1;
+  if (voice && !state.muted) { voice.setNoteCutoff(6000); voice.playNote(inst(), BASE_MIDI + FLOAT_NOTES[idx], clamp(0.6 + speed / (0.6 * DIAG) * 0.4, 0.6, 1)); }
+  const kx = vx * 0.35, ky = vy * 0.35, kc = Math.min(1, 0.45 * DIAG / (Math.hypot(kx, ky) || 1)), mid = Math.round(clamp(t, 0, 1) * (F.pts.length - 1));
+  [0.3, 0.7, 1, 0.7, 0.3].forEach((w, j) => { const q = F.pts[mid + j - 2]; if (q && q !== F.pts[0] && q !== F.pts[F.pts.length - 1]) { q.vx += kx * kc * w; q.vy += ky * kc * w; } });
+  const x = lerp(F.a.x, F.b.x, t), y = lerp(F.a.y, F.b.y, t); burst(x, y, 8, 0.15 * DIAG, F.hue); ripple(x, y, F.hue);
+}
+function updateFloatPluck(now) {                       // any fingertip of any hand that is not pinching can pluck it
+  const prevList = floatPrev.splice(0), cur = [];
+  for (const h of allHands) {
+    let prev = null, bd = 0.3 * DIAG;
+    for (const pp of prevList) { const d = Math.hypot(pp.wrist.x - h.wrist.x, pp.wrist.y - h.wrist.y); if (d < bd) { bd = d; prev = pp; } }
+    const tipsNow = FINGERS.map(k => ({ x:h.lm[k].x, y:h.lm[k].y }));
+    if (F.on && prev && h.ratio > PINCH_OFF) {
+      const dtp = Math.max(0.008, (now - prev.t) / 1000), rx = F.b.x - F.a.x, ry = F.b.y - F.a.y;
+      for (let f = 0; f < 5; f++) {
+        const p0 = prev.tips[f], p1 = tipsNow[f], sx = p1.x - p0.x, sy = p1.y - p0.y, speed = Math.hypot(sx, sy) / dtp;
+        if (speed < 0.05 * DIAG) continue;
+        const den = cross(rx, ry, sx, sy); if (Math.abs(den) < 1e-6) continue;
+        const qx = p0.x - F.a.x, qy = p0.y - F.a.y, t = cross(qx, qy, sx, sy) / den, u = cross(qx, qy, rx, ry) / den;
+        if (t < -0.02 || t > 1.02 || u < 0 || u > 1) continue;
+        pluckFloat(clamp(t, 0, 1), speed, sx / dtp, sy / dtp, now);
+      }
+    }
+    cur.push({ wrist:h.wrist, tips:tipsNow, t:now });
+  }
+  floatPrev.push(...cur);
+}
 
 function initChain(o, a, b) {
   o.a = { ...a }; o.b = { ...b };
@@ -732,7 +772,7 @@ function selectHands() {
   }
   if (hands.length === 2) M.holderWrist = hands.map(h => ({ x:h.wrist.x, y:h.wrist.y }));
 }
-const cross = (ax, ay, bx, by) => ax * by - ay * bx;
+function cross(ax, ay, bx, by) { return ax * by - ay * bx; }
 // A fingertip of a second person sweeping across a string plucks it.
 function updatePlucking(now, live) {
   const prevList = pluckPrev.splice(0), cur = [];
@@ -867,17 +907,24 @@ function frame(now) {
   selectHands();
   updateSlots(now);
   updateMulti(now, dt);
-  if (newDet) { updatePlucking(now, M.state === "active"); newDet = false; }
+  if (newDet) { updatePlucking(now, M.state === "active"); updateFloatPluck(now); newDet = false; }
   if (orch && orch.on) conduct(now, dt);
   const ins = inst();
 
   const active = slots[0].pinched && slots[1].pinched && M.state !== "active";
 
   if (active && !prevActive) {
+    S.since = now;
     initChain(S, slots[0], slots[1]); S.recoil = null; S.fade = 1; S.lastPluckMidi = null; S.noteSemis = -99;
     burst((slots[0].x + slots[1].x) / 2, (slots[0].y + slots[1].y) / 2, 14, 0.25 * DIAG);
   }
-  if (!active && prevActive) {
+  if (!active && prevActive && state.float && now - S.since > 250 && Math.hypot(S.b.x - S.a.x, S.b.y - S.a.y) > 0.12 * DIAG) {
+    // Float is on: let go and the string stays right where it is
+    if (F.on) clearFloat();
+    initChain(F, S.a, S.b); F.on = true; F.hue = S.hue; F.flash = 1; floatPrev.length = 0;
+    burst((S.a.x + S.b.x) / 2, (S.a.y + S.b.y) / 2, 10, 0.2 * DIAG, S.hue); ripple((S.a.x + S.b.x) / 2, (S.a.y + S.b.y) / 2, S.hue);
+    S.recoil = null; S.fade = 0; voice && voice.release();
+  } else if (!active && prevActive) {
     const keepA = slots[0].pinched, keepB = slots[1].pinched;
     const mid = { x:(S.a.x + S.b.x) / 2, y:(S.a.y + S.b.y) / 2 };
     S.recoil = { t:0, fromA:{ ...S.a }, fromB:{ ...S.b },
@@ -899,6 +946,7 @@ function frame(now) {
     if (S.fade <= 0) S.recoil = null;
   }
   if (S.active || S.recoil) stepString(S, dt);
+  if (F.on) { stepString(F, dt); F.flash = Math.max(0, F.flash - dt * 2); for (let k = 0; k < F.noteFlash.length; k++) F.noteFlash[k] = Math.max(0, F.noteFlash[k] - dt * 2.5); }
 
   // ----- sound + colour mapping (single string, only while held) -----
   if (S.active) {
@@ -974,6 +1022,7 @@ function render(dt, now) {
       spawnSpark(lerp(pts[i0].x, pts[i1].x, f - i0), lerp(pts[i0].y, pts[i1].y, f - i0), rand(-30, 30) * DPR, rand(-60, -10) * DPR, S.hue, rand(0.4, 0.9), rand(1.5, 3.5));
     }
   }
+  if (F.on) drawChain(F, F.hue, 1, 1, 1);
   if (M.fade > 0) {
     M.strings.forEach((o, i) => { if (o.vis > 0.02) drawChain(o, hueFor(1 - i / 4), M.fade * o.vis * (0.65 + 0.35 * o.flash), 0.55 + 0.25 * o.flash, 1); });
   }
@@ -1045,7 +1094,23 @@ function drawLabel(text, x, y, hue, a, big) {
   ctx.fillStyle = "#fff"; ctx.fillText(text, x, y + 1 * DPR);
   ctx.globalAlpha = 1; ctx.textBaseline = "alphabetic";
 }
+function drawFloatLabels() {                           // note ticks along the floating string, like frets
+  const a = F.a, b = F.b, dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1, left = a.x <= b.x;
+  let nx = -dy / l, ny = dx / l; if (ny < 0 || (Math.abs(ny) < 1e-3 && nx < 0)) { nx = -nx; ny = -ny; }
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (let k = 0; k < FLOAT_NOTES.length; k++) {
+    const p = pointAt(F.pts, left ? k / (FLOAT_NOTES.length - 1) : 1 - k / (FLOAT_NOTES.length - 1)), fl = F.noteFlash[k];
+    ctx.strokeStyle = `rgba(255,255,255,${0.55 + 0.45 * fl})`; ctx.lineWidth = 1.5 * DPR; ctx.beginPath();
+    ctx.moveTo(p.x - nx * 8 * DPR, p.y - ny * 8 * DPR); ctx.lineTo(p.x + nx * 8 * DPR, p.y + ny * 8 * DPR); ctx.stroke();
+    ctx.font = `700 ${Math.round((12 + 8 * fl) * DPR)}px system-ui,sans-serif`; ctx.fillStyle = `rgba(255,255,255,${0.8 + 0.2 * fl})`;
+    ctx.fillText(noteName(BASE_MIDI + FLOAT_NOTES[k]), p.x + nx * 24 * DPR, p.y + ny * 24 * DPR);
+  }
+  ctx.font = `700 ${Math.round(12 * DPR)}px system-ui,sans-serif`; ctx.fillStyle = "rgba(255,255,255,.75)";
+  ctx.fillText(`${inst().icon} ${inst().name} · C pentatonic`, (a.x + b.x) / 2 - nx * 30 * DPR, (a.y + b.y) / 2 - ny * 30 * DPR);
+  ctx.textBaseline = "alphabetic";
+}
 function drawNoteLabels() {
+  if (F.on) drawFloatLabels();
   if (M.fade > 0) {
     const gap = 42 * DPR, items = M.strings.map((o, i) => {
       const left = o.a.x <= o.b.x ? o.a : o.b;
@@ -1295,24 +1360,8 @@ async function start() {
     trackerMsg = "Couldn't load the hand tracker. Air String needs the internet to start. Check your connection and reload.";
   }
 }
-function fail(msg) { errEl.textContent = msg; startBtn.disabled = false; startBtn.textContent = "Try again"; $("backBtn").classList.remove("hidden"); }
+function fail(msg) { errEl.textContent = msg; startBtn.disabled = false; startBtn.textContent = "Try again"; }
 startBtn.addEventListener("click", () => start());
-
-// ---- leaving: let go of the camera, sound, full screen and orientation, then go back to the game ----
-let leaving = false;
-function leaveToBSW() {
-  if (leaving) return; leaving = true;
-  try { if (orch) orch.stop(); } catch {}
-  try { if (camStream) camStream.getTracks().forEach(t => t.stop()); video.srcObject = null; } catch {}
-  try { if (landmarker) landmarker.close(); } catch {}
-  try { if (voice) voice.ctx.close(); } catch {}
-  try { if (isFS()) fsExit.call(document); } catch {}
-  try { screen.orientation.unlock(); } catch {}
-  location.href = "../";
-}
-$("backBtn").addEventListener("click", leaveToBSW);
-$("bBack").onclick = leaveToBSW;
-addEventListener("pageshow", e => { if (e.persisted) location.reload(); });       // returning with the browser back button: start fresh, no stale camera or audio
 
 addEventListener("resize", updateVideoMap);
 video.addEventListener("loadedmetadata", updateVideoMap);
@@ -1373,6 +1422,7 @@ function syncButtons() {
   $("bTheme").querySelector(".i").textContent = THEME_ICONS[state.theme];
   [...themePanel.children].slice(0, THEMES.length).forEach((b, k) => b.classList.toggle("sel", k === state.theme));
   const ab = $("animBtn"); if (ab) { ab.classList.toggle("sel", !state.anim); ab.querySelector(".i").textContent = state.anim ? "🎞️" : "⏸️"; ab.querySelector(".t").textContent = state.anim ? "Anim On" : "Anim Off"; }
+  $("bFloat").classList.toggle("off", !state.float);
   $("bFull").querySelector(".i").textContent = isFS() ? "🗗" : "⛶";
   $("bFull").querySelector(".t").textContent = isFS() ? "Exit" : "Full";
 }
@@ -1381,6 +1431,7 @@ $("bMusic").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidde
 document.addEventListener("click", e => { if (!instPanel.contains(e.target)) instPanel.classList.add("hidden"); if (!musicPanel.contains(e.target)) musicPanel.classList.add("hidden"); if (!themePanel.contains(e.target)) themePanel.classList.add("hidden"); });
 $("bMute").onclick = () => { state.muted = !state.muted; voice && voice.setMuted(state.muted); save(); syncButtons(); };
 $("bTheme").onclick = e => { e.stopPropagation(); instPanel.classList.add("hidden"); musicPanel.classList.add("hidden"); themePanel.classList.toggle("hidden"); };
+$("bFloat").onclick = () => { state.float = !state.float; if (!state.float) clearFloat(); save(); syncButtons(); };
 $("bFull").onclick = toggleFS;
 const helpEl = $("help");
 const setHelp = open => helpEl.classList.toggle("hidden", !open);
