@@ -202,3 +202,9 @@ list) are all different.
 - **Float** (new): with the option on, letting go of a pinched string leaves it where it is. Any fingertip of any non-pinching hand
   that crosses it plucks it; the crossing position picks one of eight notes (C D E G A C D E, low on the left, high on the right),
   played with the selected instrument. One floating string at a time: a new one replaces it, switching Float off clears it.
+
+- **Air write** (new, from a reference video): a toggle in Air String's dock. With it on, a pinch draws a glowing line that stays; a pink
+  vertical line sweeps left to right (slow 9 s, normal 6 s, fast 3.5 s) and plays a note whenever it newly touches a stroke, pitch from
+  height (C pentatonic over three octaves from C3), using the selected instrument. Both hands can draw. Undo and Clear live in its panel.
+  While it is on, the one-string, five-string and Float gestures are paused so a pinch only draws. "In the game" was read as "in Air
+  String", since Air String was made separate from the BSW game earlier; nothing was added to the game.

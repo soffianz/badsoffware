@@ -120,6 +120,7 @@
 <div id="instPanel" class="sheet hidden" role="dialog" aria-label="Choose an instrument"></div>
 <div id="musicPanel" class="sheet hidden" role="dialog" aria-label="Choose backing music"></div>
 <div id="themePanel" class="sheet hidden" role="dialog" aria-label="Choose a look"></div>
+<div id="writePanel" class="sheet hidden" role="dialog" aria-label="Air write"></div>
 <div id="scrim" class="hidden"></div>
 <div id="help" class="hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
   <button id="helpClose" aria-label="Close help">✕</button>
@@ -137,6 +138,13 @@
     <li>Turn on <b>Float</b>, pinch both hands, pull them apart, then let go. The string stays in the air.</li>
     <li>Pluck it with any finger of either hand. Where you pluck decides the note: low on the left, high on the right.</li>
     <li>Make a new one to replace it, or turn Float off to clear it.</li>
+  </ul>
+  <h3>✍️ Air write</h3>
+  <ul>
+    <li>Open <b>Air write</b> and switch it on. Pinch thumb and index finger and draw in the air: your line glows and stays.</li>
+    <li>A pink line sweeps across the screen. Every time it touches your drawing it plays a note: draw high for high notes, low for low notes.</li>
+    <li>Use both hands to draw two lines at once. Choose a slower or faster sweep, undo the last stroke, or clear everything from the same panel.</li>
+    <li>While Air write is on, the string and five-string gestures are paused.</li>
   </ul>
   <h3>🖐️ Five strings</h3>
   <ul>
@@ -175,6 +183,7 @@
   <span class="sep"></span>
   <button id="bMute"  aria-label="Sound" aria-pressed="false"><span class="i">🔊</span><span class="t">Sound</span><span class="v">On</span></button>
   <button id="bFloat" aria-label="Float: leave the string in the air" aria-pressed="false"><span class="i">📌</span><span class="t">Float</span><span class="v">Off</span></button>
+  <button id="bWrite" aria-label="Air write" aria-haspopup="dialog" aria-expanded="false"><span class="i">✍️</span><span class="t">Air write</span><span class="v">Off</span></button>
   <button id="bFull"  aria-label="Full screen" aria-pressed="false"><span class="i">⛶</span><span class="t">Full screen</span><span class="v">Off</span></button>
 </nav>
 <div id="debug"></div>
@@ -223,9 +232,9 @@ const canvas = $("c"), ctx = canvas.getContext("2d");
 const video = $("v"), chip = $("chip"), startEl = $("start"), startBtn = $("startBtn"), errEl = $("err");
 const debugEl = $("debug"), instPanel = $("instPanel");
 const DEBUG = new URLSearchParams(location.search).has("debug");
-if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { allHands = h; newDet = true; }; window.__dbg = () => ({ M, S, F, voice }); }
+if (DEBUG) { debugEl.style.display = "block"; window.__inject = h => { allHands = h; newDet = true; }; window.__dbg = () => ({ M, S, F, WR, voice }); }
 
-const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0, music:"off", anim:true, float:false };
+const state = { muted:false, snap:true, skeleton:true, theme:0, inst:0, music:"off", anim:true, float:false, write:false, writeSpeed:1 };
 let savedInstId = "synth";
 try { const sv = JSON.parse(localStorage.getItem("airstring") || "{}"); Object.assign(state, sv); savedInstId = sv.instId; } catch {}
 state.inst = Math.max(0, INSTRUMENTS.findIndex(i => i.id === savedInstId));     // saved by id; old numeric saves and junk fall back to Synth
@@ -685,6 +694,78 @@ const sparks = [];
 const FLOAT_NOTES = [0, 2, 4, 7, 9, 12, 14, 16];       // C D E G A C D E: low on the left, high on the right
 const F = Object.assign(makeChain(N_PTS), { on:false, hue:20, flash:0, noteFlash:FLOAT_NOTES.map(() => 0), lastTouch:FLOAT_NOTES.map(() => 0) });
 const floatPrev = [];
+// ---- air write: draw with a pinch; a sweeping line plays whatever it touches ----
+const WRITE_PERIOD = [9, 6, 3.5];                       // seconds per sweep: slow, normal, fast
+const WRITE_SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28, 31, 33];   // C pentatonic, three octaves from C3
+const WR = { strokes:[], live:[null, null], x:0, total:0, hits:[], dots:[] };
+const writeMidi = y => 48 + WRITE_SCALE[clamp(Math.floor((1 - y / H) * WRITE_SCALE.length), 0, WRITE_SCALE.length - 1)];
+function crossings(st, x) {                             // heights at which the stroke meets the vertical line at x
+  const out = [], pts = st.pts, tol = 2.5 * DPR;
+  for (let k = 1; k < pts.length; k++) {
+    const a = pts[k - 1], b = pts[k], dx = b.x - a.x;
+    if (Math.abs(dx) < 2) { if (Math.abs(x - a.x) < tol) out.push((a.y + b.y) / 2); continue; }
+    const t = (x - a.x) / dx; if (t >= 0 && t < 1) out.push(a.y + (b.y - a.y) * t);
+  }
+  if (pts.length === 1 && Math.abs(x - pts[0].x) < tol) out.push(pts[0].y);
+  return out;
+}
+function updateWrite(now, dt) {
+  if (!state.write) { WR.live[0] = WR.live[1] = null; WR.dots.length = 0; return; }
+  for (let i = 0; i < 2; i++) {                         // each pinching hand draws its own stroke
+    const sl = slots[i];
+    if (sl.pinched && sl.seen) {
+      let st = WR.live[i];
+      if (!st) { st = { pts:[], hue:hueFor((WR.strokes.length * 0.37) % 1) }; WR.live[i] = st; WR.strokes.push(st); }
+      const last = st.pts[st.pts.length - 1];
+      if (!last || Math.hypot(sl.x - last.x, sl.y - last.y) > 5 * DPR) { st.pts.push({ x:sl.x, y:sl.y }); WR.total++; }
+    } else WR.live[i] = null;
+  }
+  while (WR.total > 2500 && WR.strokes.length > 1 && !WR.live.includes(WR.strokes[0])) WR.total -= WR.strokes.shift().pts.length;
+  // the sweeping line
+  const x0 = WR.x * W; WR.x += dt / WRITE_PERIOD[state.writeSpeed] ; const wrapped = WR.x >= 1; if (wrapped) WR.x -= 1;
+  const x1 = WR.x * W; WR.dots.length = 0;
+  for (const st of WR.strokes) {
+    const now1 = crossings(st, x1), before = wrapped ? [] : crossings(st, x0);
+    for (const y of now1) {
+      WR.dots.push({ x:x1, y, hue:st.hue });
+      if (!before.some(y0 => Math.abs(y0 - y) < 45 * DPR)) {      // newly touched: play it
+        const midi = writeMidi(y); WR.hits.push({ x:x1, y, midi, life:0.7 }); ripple(x1, y, 320);
+        if (voice && !state.muted) { voice.setNoteCutoff(6000); voice.playNote(inst(), midi, 0.8); }
+      }
+    }
+  }
+  for (let i = WR.hits.length - 1; i >= 0; i--) { WR.hits[i].life -= dt; if (WR.hits[i].life <= 0) WR.hits.splice(i, 1); }
+}
+function setWrite(on) {
+  state.write = on; save();
+  if (on) { clearFloat(); if (M.state === "active") endMulti("lost", performance.now()); voice && voice.release(); S.recoil = null; S.fade = 0; }
+  else { WR.live[0] = WR.live[1] = null; WR.dots.length = 0; }
+  syncButtons();
+}
+const writeUndo = () => { const st = WR.strokes.pop(); if (st) WR.total -= st.pts.length; WR.live[0] = WR.live[1] = null; };
+const writeClear = () => { WR.strokes.length = 0; WR.total = 0; WR.live[0] = WR.live[1] = null; WR.hits.length = 0; };
+function drawWrite() {
+  if (!state.write && !WR.strokes.length) return;
+  const u = DPR, th = THEMES[state.theme];
+  for (const st of WR.strokes) {
+    if (st.pts.length < 2) { const q = st.pts[0]; if (q) drawGlow(q.x, q.y, 16 * u, st.hue, 1); continue; }
+    strokePath(st.pts, 22 * u, hsl(st.hue, th.sat, th.lit, 0.22));
+    strokePath(st.pts, 10 * u, hsl(st.hue, th.sat, th.lit, 0.65));
+    strokePath(st.pts, 3.5 * u, "rgba(255,255,255,.92)");
+  }
+  for (let i = 0; i < 2; i++) { const st = WR.live[i]; if (st && st.pts.length) { const q = st.pts[st.pts.length - 1]; drawGlow(q.x, q.y, 28 * u, 55, 1); } }   // the glowing "pen" at your fingertips
+  if (!state.write) return;
+  const x = WR.x * W;                                   // the sweeping line
+  ctx.fillStyle = "rgba(255,60,200,.16)"; ctx.fillRect(x - 9 * u, 0, 18 * u, H);
+  ctx.fillStyle = "rgba(255,70,210,.55)"; ctx.fillRect(x - 3 * u, 0, 6 * u, H);
+  ctx.fillStyle = "rgba(255,230,250,.95)"; ctx.fillRect(x - 1 * u, 0, 2 * u, H);
+  for (const d of WR.dots) drawGlow(d.x, d.y, 26 * u, 320, 1);
+}
+function drawWriteLabels() {
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const h of WR.hits) { ctx.font = `800 ${Math.round(16 * DPR)}px system-ui,sans-serif`; ctx.fillStyle = `rgba(255,255,255,${Math.min(1, h.life * 2)})`; ctx.fillText(noteName(h.midi), h.x + 26 * DPR, h.y - 22 * DPR); }
+  ctx.textBaseline = "alphabetic";
+}
 function clearFloat() { if (F.on) { burst((F.a.x + F.b.x) / 2, (F.a.y + F.b.y) / 2, 14, 0.25 * DIAG, F.hue); ripple((F.a.x + F.b.x) / 2, (F.a.y + F.b.y) / 2, F.hue); } F.on = false; floatPrev.length = 0; }
 function pluckFloat(t, speed, vx, vy, now) {
   const idx = clamp(Math.round((F.a.x <= F.b.x ? t : 1 - t) * (FLOAT_NOTES.length - 1)), 0, FLOAT_NOTES.length - 1);
@@ -875,7 +956,7 @@ function updateMulti(now, dt) {
   } else if (anyPinch) { M.state = "idle"; M.armedAt = -1e9; }
   else if (two) {
     if (M.D < MULTI_ARM) { M.armedAt = now; M.state = "armed"; }
-    else if (M.D > MULTI_OPEN && now - M.armedAt < ARM_WINDOW_MS) startMulti();
+    else if (M.D > MULTI_OPEN && now - M.armedAt < ARM_WINDOW_MS && !state.write) startMulti();
     else if (now - M.armedAt >= ARM_WINDOW_MS) M.state = "idle";
   } else if (now - M.armedAt >= ARM_WINDOW_MS) M.state = "idle";   // one hand lost (overlapping hands often drop to one): stay armed briefly
 
@@ -956,11 +1037,12 @@ function frame(now) {
   selectHands();
   updateSlots(now);
   updateMulti(now, dt);
+  updateWrite(now, dt);
   if (newDet) { updatePlucking(now, M.state === "active"); updateFloatPluck(now); newDet = false; }
   if (orch && orch.on) conduct(now, dt);
   const ins = inst();
 
-  const active = slots[0].pinched && slots[1].pinched && M.state !== "active";
+  const active = !state.write && slots[0].pinched && slots[1].pinched && M.state !== "active";
 
   if (active && !prevActive) {
     S.since = now;
@@ -1072,6 +1154,7 @@ function render(dt, now) {
     }
   }
   if (F.on) drawChain(F, F.hue, 1, 1, 1);
+  drawWrite();
   if (M.fade > 0) {
     M.strings.forEach((o, i) => { if (o.vis > 0.02) drawChain(o, hueFor(1 - i / 4), M.fade * o.vis * (0.65 + 0.35 * o.flash), 0.55 + 0.25 * o.flash, 1); });
   }
@@ -1160,6 +1243,7 @@ function drawFloatLabels() {                           // note ticks along the f
 }
 function drawNoteLabels() {
   if (F.on) drawFloatLabels();
+  if (state.write) drawWriteLabels();
   if (M.fade > 0) {
     const gap = 42 * DPR, items = M.strings.map((o, i) => {
       const left = o.a.x <= o.b.x ? o.a : o.b;
@@ -1393,7 +1477,7 @@ async function start() {
 
   startEl.classList.add("hidden");
   $("controls").classList.remove("hidden");
-  buildInstPanel(); buildMusicPanel(); buildThemePanel(); syncButtons();
+  buildInstPanel(); buildMusicPanel(); buildThemePanel(); buildWritePanel(); syncButtons();
   requestAnimationFrame(frame);                                                  // camera feed shows while the model loads
 
   try {
@@ -1424,7 +1508,8 @@ const musicPanel = $("musicPanel"), themePanel = $("themePanel"), helpEl = $("he
 const INST_DESC = { synth:"Warm, smooth tone", bells:"Bright and ringing", guitar:"Plucked strings" };
 const MUSIC_DESC = { off:"No backing music", orch:"Strings, brass, timpani", edm:"Beat, bass and synths" };
 const THEME_DESC = ["Electric glow", "Sweet striped rope", "Flowing water", "Flames and embers", "Comets and stars", "Seven glowing centres"];
-const SHEETS = [["bVoice", instPanel], ["bMusic", musicPanel], ["bTheme", themePanel]];
+const writePanel = $("writePanel");
+const SHEETS = [["bVoice", instPanel], ["bMusic", musicPanel], ["bTheme", themePanel], ["bWrite", writePanel]];
 const card = (icon, name, desc, onclick) => {
   const b = document.createElement("button"); b.className = "card"; b.innerHTML = `<span class="i">${icon}</span><span><span class="t">${name}</span><span class="d">${desc}</span></span>`;
   b.onclick = e => { e.stopPropagation(); onclick(); }; return b;
@@ -1438,6 +1523,22 @@ function buildThemePanel() {
   ab.innerHTML = '<span><span class="t">Animation</span><span class="d">Turn off for a plain glowing string if things feel laggy</span></span><span class="switch"></span>';
   ab.onclick = e => { e.stopPropagation(); state.anim = !state.anim; save(); if (!state.anim) { sparks.length = 0; ripples.length = 0; } syncButtons(); };
   buildSheet(themePanel, "Visuals", THEMES.map((th, i) => card(THEME_ICONS[i], th.name, THEME_DESC[i], () => { state.theme = i; save(); closeSheets(); syncButtons(); })), ab);
+}
+function buildWritePanel() {
+  writePanel.innerHTML = '<h2>Air write</h2>';
+  const sw = document.createElement("button"); sw.id = "writeSwitch"; sw.className = "switchrow"; sw.setAttribute("role", "switch");
+  sw.style.marginTop = "0";
+  sw.innerHTML = '<span><span class="t">Air write</span><span class="d">Pinch and draw in the air. A moving line plays what you draw.</span></span><span class="switch"></span>';
+  sw.onclick = e => { e.stopPropagation(); setWrite(!state.write); };
+  writePanel.appendChild(sw);
+  const h = document.createElement("h2"); h.textContent = "Sweep speed"; h.style.marginTop = "14px"; writePanel.appendChild(h);
+  const g = document.createElement("div"); g.className = "grid"; g.style.gridTemplateColumns = "repeat(3,1fr)";
+  ["Slow", "Normal", "Fast"].forEach((n, i) => g.appendChild(card(["🐢", "🚶", "🐇"][i], n, "", () => { state.writeSpeed = i; save(); syncButtons(); })));
+  writePanel.appendChild(g); writePanel.speedGrid = g;
+  const a = document.createElement("div"); a.className = "grid"; a.style.marginTop = "8px";
+  a.appendChild(card("↩️", "Undo", "Remove the last stroke", () => writeUndo()));
+  a.appendChild(card("🧹", "Clear", "Wipe the drawing", () => writeClear()));
+  writePanel.appendChild(a);
 }
 function buildMusicPanel() { buildSheet(musicPanel, "Music", MUSIC.map(mu => card(mu.icon, mu.name, MUSIC_DESC[mu.id], () => { setMusic(mu.id); closeSheets(); syncButtons(); }))); }
 function buildInstPanel() { buildSheet(instPanel, "Instrument", INSTRUMENTS.map((ins, i) => card(ins.icon, ins.name, INST_DESC[ins.id], () => pickInstrument(i)))); }
@@ -1462,6 +1563,9 @@ function syncButtons() {
   setBtn("bTheme", { value:THEMES[state.theme].name, icon:THEME_ICONS[state.theme] });
   setBtn("bMute", { value:state.muted ? "Muted" : "On", icon:state.muted ? "🔇" : "🔊", warn:state.muted, pressed:state.muted });
   setBtn("bFloat", { value:state.float ? "On" : "Off", on:state.float, pressed:state.float });
+  setBtn("bWrite", { value:state.write ? "On" : "Off", on:state.write });
+  [...writePanel.speedGrid.children].forEach((b, i) => b.classList.toggle("sel", i === state.writeSpeed));
+  $("writeSwitch").setAttribute("aria-checked", String(state.write));
   setBtn("bFull", { value:isFS() ? "On" : "Off", icon:isFS() ? "🗗" : "⛶", on:isFS(), pressed:isFS() });
   [...instPanel.grid.children].forEach((b, i) => b.classList.toggle("sel", i === state.inst));
   [...musicPanel.grid.children].forEach((b, k) => b.classList.toggle("sel", MUSIC[k].id === state.music));

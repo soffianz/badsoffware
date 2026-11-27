@@ -43,7 +43,7 @@ Needs https for fullscreen, wake lock and WebRTC.
 `air-string/index.html` is a standalone webcam hand-tracking instrument with no link to the game: pinch both hands and a glowing
 string appears between them (or press hands together and pull apart for five strings). Turn on **Float**, pull the hands apart and
 let go, and the string stays in the air to be plucked with any finger. Live at https://soffianz.github.io/badsoffware/air-string/ .
-Instruments: Synth, Bells, Guitar. It needs the internet to start (MediaPipe from jsDelivr, hand model from `storage.googleapis.com`)
+**Air write** (✍️ button): pinch and draw in the air; a pink line sweeps across the screen and plays whatever it touches, pitch by height. Instruments: Synth, Bells, Guitar. It needs the internet to start (MediaPipe from jsDelivr, hand model from `storage.googleapis.com`)
 and asks for the camera only after you tap Start. Deploy with `tools/deploy_air_string.sh`, which copies only `air-string/` to
 `gh-pages` and leaves the game's `index.html` alone (and `tools/deploy_pages.sh` leaves `air-string/` alone).
 
